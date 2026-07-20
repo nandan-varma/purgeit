@@ -15,17 +15,25 @@ export function parseSizeString(input: string): number {
   const trimmed = input.trim();
   const match = /^([\d.]+)\s*([a-zA-Z]*)$/.exec(trimmed);
   if (!match) {
-    throw new Error(`invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`);
+    throw new Error(
+      `invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`,
+    );
   }
-  const [, numberPart, unitPart] = match;
-  const value = Number.parseFloat(numberPart ?? '');
-  if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`);
+  // Regex guarantees both captures are strings — assert to eliminate ?? branches
+  const numberPart = match[1] as string;
+  const unitPart = match[2] as string;
+  const value = Number.parseFloat(numberPart);
+  if (!Number.isFinite(value)) {
+    throw new Error(
+      `invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`,
+    );
   }
-  const unit = (unitPart ?? '').toLowerCase() || 'b';
+  const unit = unitPart.toLowerCase() || 'b';
   const multiplier = SIZE_UNITS[unit];
   if (multiplier === undefined) {
-    throw new Error(`invalid size unit '${unitPart}' in '${input}' (expected one of B, KB, MB, GB, TB)`);
+    throw new Error(
+      `invalid size unit '${unitPart}' in '${input}' (expected one of B, KB, MB, GB, TB)`,
+    );
   }
   return Math.round(value * multiplier);
 }

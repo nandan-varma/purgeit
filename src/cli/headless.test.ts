@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import type { ParsedCli } from './args.js';
 import { runHeadless } from './headless.js';
@@ -196,7 +196,10 @@ describe('runHeadless', () => {
   it('--delete --dry-run simulates deletion without touching the filesystem', async () => {
     root = buildTree({ node_modules: { f: 'x' } });
     const io = captureIO();
-    const code = await runHeadless(baseArgs({ directory: root, delete: true, yes: true, dryRun: true }), io);
+    const code = await runHeadless(
+      baseArgs({ directory: root, delete: true, yes: true, dryRun: true }),
+      io,
+    );
     expect(code).toBe(0);
     expect(existsSync(join(root, 'node_modules'))).toBe(true);
     expect(io.out.some((l) => l.includes('(dry-run) deleted'))).toBe(true);
@@ -208,5 +211,62 @@ describe('runHeadless', () => {
     const code = await runHeadless(baseArgs({ directory: root, noConfig: false }), io);
     expect(code).toBe(2);
     expect(io.err[0]).toMatch(/invalid config/);
+  });
+});
+
+describe('runHeadless default I/O paths', () => {
+  let root: string;
+  afterEach(() => cleanupTree(root));
+
+  it('uses process.stdout/stderr when io.stdout/stderr are not provided', async () => {
+    root = buildTree({ node_modules: { f: 'x'.repeat(1000) } });
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const code = await runHeadless(baseArgs({ directory: root }), { cwd: root });
+      expect(code).toBe(0);
+      expect(stdoutSpy).toHaveBeenCalled();
+    } finally {
+      stdoutSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+
+  it('uses all defaults when io object is minimal', async () => {
+    root = buildTree({ 'readme.txt': 'hi' });
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const code = await runHeadless(baseArgs({ directory: root }), {});
+      expect(code).toBe(1);
+      expect(stdoutSpy).toHaveBeenCalled();
+    } finally {
+      stdoutSpy.mockRestore();
+      stderrSpy.mockRestore();
+    }
+  });
+});
+
+describe('runHeadless error handling', () => {
+  let root: string;
+  afterEach(() => cleanupTree(root));
+
+  it('uses defaultConfirm when io.confirm is not provided', async () => {
+    root = buildTree({ node_modules: { f: 'x' } });
+    const rlMock = { question: vi.fn(async () => 'y'), close: vi.fn() };
+    vi.doMock('node:readline/promises', () => ({
+      createInterface: vi.fn(() => rlMock),
+    }));
+    try {
+      const io = captureIO();
+      const code = await runHeadless(baseArgs({ directory: root, delete: true }), {
+        stdout: io.stdout,
+        stderr: io.stderr,
+      });
+      expect(code).toBe(0);
+      expect(rlMock.question).toHaveBeenCalled();
+    } finally {
+      vi.doUnmock('node:readline/promises');
+    }
   });
 });

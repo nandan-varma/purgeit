@@ -153,7 +153,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     json: values.json ?? false,
     tui: values.tui ?? false,
     headless: values.headless ?? false,
-    concurrency: values.concurrency !== undefined ? parsePositiveInt('concurrency', values.concurrency) : 8,
+    concurrency:
+      values.concurrency !== undefined ? parsePositiveInt('concurrency', values.concurrency) : 8,
     color: values.color ? true : values['no-color'] ? false : undefined,
   };
 }

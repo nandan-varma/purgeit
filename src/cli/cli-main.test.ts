@@ -1,10 +1,36 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-describe('cli-main (bin entry, scaffold placeholder)', () => {
-  it('writes a placeholder line to stdout', async () => {
-    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+const runCliMock = vi.fn();
+vi.mock('./cli.js', () => ({ runCli: runCliMock }));
+
+describe('cli-main (bin entry)', () => {
+  const originalArgv = process.argv;
+  const originalExitCode = process.exitCode;
+
+  afterEach(() => {
+    process.argv = originalArgv;
+    process.exitCode = originalExitCode;
+    process.removeAllListeners('SIGINT');
+    vi.resetModules();
+    runCliMock.mockReset();
+  });
+
+  it('forwards argv, wires SIGINT to abort, and sets process.exitCode', async () => {
+    process.argv = ['node', 'purgeit', '--full', '--json'];
+
+    let seenArgv: string[] | undefined;
+    runCliMock.mockImplementation(async (argv: string[], opts: { signal: AbortSignal }) => {
+      seenArgv = argv;
+      expect(opts.signal.aborted).toBe(false);
+      process.emit('SIGINT');
+      expect(opts.signal.aborted).toBe(true);
+      return 3;
+    });
+
     await import('./cli-main.js');
-    expect(write).toHaveBeenCalledWith('purgeit: scaffold placeholder\n');
-    write.mockRestore();
+
+    expect(seenArgv).toEqual(['--full', '--json']);
+    expect(runCliMock).toHaveBeenCalledOnce();
+    expect(process.exitCode).toBe(3);
   });
 });

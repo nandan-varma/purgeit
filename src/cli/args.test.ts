@@ -58,7 +58,8 @@ describe('parseCliArgs', () => {
 
   it('splits and trims comma-separated --targets', () => {
     const parsed = parseCliArgs(['--targets', 'node_modules, dist ,, python']);
-    if (typeof parsed !== 'string') expect(parsed.targets).toEqual(['node_modules', 'dist', 'python']);
+    if (typeof parsed !== 'string')
+      expect(parsed.targets).toEqual(['node_modules', 'dist', 'python']);
   });
 
   it('parses --depth and --concurrency as positive integers', () => {
@@ -97,7 +98,9 @@ describe('parseCliArgs', () => {
   });
 
   it('rejects --config combined with --no-config', () => {
-    expect(() => parseCliArgs(['--config', 'x.json', '--no-config'])).toThrow(/--config and --no-config/);
+    expect(() => parseCliArgs(['--config', 'x.json', '--no-config'])).toThrow(
+      /--config and --no-config/,
+    );
   });
 
   it('resolves color: true/false/undefined from --color/--no-color/neither', () => {
@@ -118,6 +121,8 @@ describe('parseCliArgs', () => {
   });
 
   it('rejects passing the directory both positionally and via --directory', () => {
-    expect(() => parseCliArgs(['~/dev', '--directory', '/tmp/x'])).toThrow(/either a positional argument or --directory/);
+    expect(() => parseCliArgs(['~/dev', '--directory', '/tmp/x'])).toThrow(
+      /either a positional argument or --directory/,
+    );
   });
 });

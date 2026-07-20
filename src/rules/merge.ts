@@ -78,7 +78,10 @@ export function mergeRuleSets(
  * map (which expands to its member names). An empty token list is a no-op
  * (matches everything, same as not passing --targets at all).
  */
-export function restrictRuleSetToTargets(ruleSet: ResolvedRuleSet, tokens: readonly string[]): ResolvedRuleSet {
+export function restrictRuleSetToTargets(
+  ruleSet: ResolvedRuleSet,
+  tokens: readonly string[],
+): ResolvedRuleSet {
   if (tokens.length === 0) return ruleSet;
 
   const names = new Set<string>();

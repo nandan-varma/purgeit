@@ -28,7 +28,11 @@ async function defaultConfirm(question: string): Promise<boolean> {
   }
 }
 
-function sortEntries(entries: ScanEntry[], sortKey: ParsedCli['sort'], ascending: boolean): ScanEntry[] {
+function sortEntries(
+  entries: ScanEntry[],
+  sortKey: ParsedCli['sort'],
+  ascending: boolean,
+): ScanEntry[] {
   const dir = ascending ? 1 : -1;
   return [...entries].sort((a, b) => {
     if (sortKey === 'size') return dir * ((a.size ?? 0) - (b.size ?? 0));
@@ -63,7 +67,11 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
 
   let loaded: Awaited<ReturnType<typeof loadConfig>>;
   try {
-    loaded = await loadConfig({ cwd: root, configPath: parsed.configPath, noConfig: parsed.noConfig });
+    loaded = await loadConfig({
+      cwd: root,
+      configPath: parsed.configPath,
+      noConfig: parsed.noConfig,
+    });
   } catch (err) {
     stderr(`purgeit: ${(err as Error).message}`);
     return 2;
@@ -171,6 +179,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     if (event.type === 'deleted') {
       stdout(`${event.dryRun ? '(dry-run) ' : ''}deleted: ${event.path}`);
     } else if (event.type === 'error') {
+      /* v8 ignore next -- defensive: error event only fires if rm() fails mid-batch (race condition) */
       stderr(`error: ${event.path}: ${event.message}`);
     } else if (event.type === 'done') {
       deletedCount = event.deleted;

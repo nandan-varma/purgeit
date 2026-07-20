@@ -237,7 +237,10 @@ export async function* scan(
         for (const warning of project.warnings) {
           queue.push({ type: 'warning', warning });
         }
-        for await (const match of walk(project.path, ruleSet, { signal, maxDepth: opts.maxDepth })) {
+        for await (const match of walk(project.path, ruleSet, {
+          signal,
+          maxDepth: opts.maxDepth,
+        })) {
           if (signal?.aborted) break;
           handleMatch(project.name, match);
         }

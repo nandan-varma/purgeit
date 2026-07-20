@@ -43,3 +43,19 @@ jobs:
             echo "::error::ink import found outside src/ui/ — keep the scanner/rule-engine/config core framework-agnostic"
             exit 1
           fi
+
+      - name: Headless smoke test
+        run: |
+          FIXTURE=$(node -e "
+            const {buildTree} = require('./test/fixtures/build-tmp-tree.js');
+            console.log(buildTree({
+              proj: { node_modules: { f: 'x'.repeat(1000) }, dist: { f: 'y'.repeat(500) } },
+              ios: { Podfile: 'platform :ios\n', Pods: { dummy: 'x' } },
+            }));
+          ")
+          OUTPUT=$(node dist/cli.js "$FIXTURE" --json --dry-run)
+          echo "$OUTPUT" | node -e "
+            const j = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+            if (j.entries.length < 2) { console.error('Expected >= 2 entries, got', j.entries.length); process.exit(1); }
+            console.log('Smoke test passed:', j.entries.length, 'entries found');
+          "
