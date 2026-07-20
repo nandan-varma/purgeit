@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      - run: npm run coverage
+
+      - run: npm run build
+
+      # Scanner/rule-engine/config core must stay framework-agnostic so it's
+      # usable as a plain library independent of the Ink TUI (see
+      # src/ui/README or CONTRIBUTING.md for the isolation rationale).
+      - name: "Verify react/ink stay isolated to src/ui/"
+        run: |
+          if grep -rn "from 'react'" src --include='*.ts' --include='*.tsx' | grep -v '^src/ui/'; then
+            echo "::error::react import found outside src/ui/ — keep the scanner/rule-engine/config core framework-agnostic"
+            exit 1
+          fi
+          if grep -rn "from 'ink'" src --include='*.ts' --include='*.tsx' | grep -v '^src/ui/'; then
+            echo "::error::ink import found outside src/ui/ — keep the scanner/rule-engine/config core framework-agnostic"
+            exit 1
+          fi
