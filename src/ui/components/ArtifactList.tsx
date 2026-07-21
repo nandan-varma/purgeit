@@ -1,5 +1,4 @@
 import { Text } from 'ink';
-import React from 'react';
 import type { AppState } from '../state.js';
 import { sortedEntries } from '../state.js';
 import { Row } from './Row.js';

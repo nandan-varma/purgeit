@@ -1,5 +1,4 @@
 import { Text } from 'ink';
-import React from 'react';
 import type { ScanEntry } from '../../scan/scanner.js';
 import { fmtSize } from '../format.js';
 

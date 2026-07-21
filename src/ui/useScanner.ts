@@ -12,6 +12,10 @@ export function useScanner(
   const [state, dispatch] = useReducer(reducer, null, initialState);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Run once on mount — root/ruleSet/opts are supplied once from cli.ts's
+  // single App render and are never expected to change identity for the
+  // lifetime of the TUI, so re-running on their identity isn't meaningful.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — see comment above
   useEffect(() => {
     const controller = new AbortController();
     abortRef.current = controller;
@@ -53,8 +57,6 @@ export function useScanner(
       cancelled = true;
       controller.abort();
     };
-    // Run once on mount
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return [state, dispatch];

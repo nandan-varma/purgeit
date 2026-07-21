@@ -18,9 +18,9 @@
     "rules": {
       "preset": "recommended",
       "correctness": {
-        "noUnusedImports": "warn",
-        "noUnusedVariables": "warn",
-        "useExhaustiveDependencies": "warn"
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error",
+        "useExhaustiveDependencies": "error"
       },
       "suspicious": {
         "noExplicitAny": "warn"

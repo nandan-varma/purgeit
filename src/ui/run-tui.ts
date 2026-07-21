@@ -3,7 +3,6 @@ import React from 'react';
 import { loadConfig } from '../config/resolve.js';
 import { defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import type { ScanOptions } from '../scan/scanner.js';
-import type { ResolvedRuleSet } from '../types.js';
 import { App } from './App.js';
 
 export interface TuiOptions {

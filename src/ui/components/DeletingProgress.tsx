@@ -1,5 +1,4 @@
 import { Text } from 'ink';
-import React from 'react';
 
 export function DeletingProgress({ deleted, failed }: { deleted: number; failed: number }) {
   return (

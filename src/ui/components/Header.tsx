@@ -1,5 +1,4 @@
 import { Text } from 'ink';
-import React from 'react';
 import { fmtSize, sortLabel } from '../format.js';
 import type { AppState } from '../state.js';
 

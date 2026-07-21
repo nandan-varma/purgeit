@@ -1,7 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { render as inkRender } from 'ink';
 import { render } from 'ink-testing-library';
-import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { ResolvedRuleSet } from '../types.js';
 import { App } from './App.js';

@@ -22,7 +22,11 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
   const [state, dispatch] = useScanner(root, ruleSet, scanOpts);
   const { exit } = useApp();
 
-  // Handle deletion
+  // Handle deletion. Only re-runs when entering the 'deleting' phase, not on
+  // every entries/selected change while scanning (state.entries.filter's
+  // identity would change every render, re-triggering this on each incoming
+  // scan event).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — see comment above
   useEffect(() => {
     if (state.phase !== 'deleting') return;
     const selected = state.entries.filter((e) => state.selected.has(e.path)).map((e) => e.path);
@@ -39,7 +43,7 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       dispatch({ type: 'DELETE_DONE', deleted, failed });
     };
     void run();
-  }, [state.phase]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [state.phase]);
 
   // Keymap
   useInput((input, key) => {
