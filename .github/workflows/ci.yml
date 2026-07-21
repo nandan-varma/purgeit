@@ -46,13 +46,7 @@ jobs:
 
       - name: Headless smoke test
         run: |
-          FIXTURE=$(node -e "
-            const {buildTree} = require('./test/fixtures/build-tmp-tree.js');
-            console.log(buildTree({
-              proj: { node_modules: { f: 'x'.repeat(1000) }, dist: { f: 'y'.repeat(500) } },
-              ios: { Podfile: 'platform :ios\n', Pods: { dummy: 'x' } },
-            }));
-          ")
+          FIXTURE=$(npx tsx test/fixtures/ci-smoke-fixture.ts)
           OUTPUT=$(node dist/cli.js "$FIXTURE" --json --dry-run)
           echo "$OUTPUT" | node -e "
             const j = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
