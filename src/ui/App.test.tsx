@@ -1,9 +1,18 @@
 import { EventEmitter } from 'node:events';
+import chalk from 'chalk';
 import { render as inkRender } from 'ink';
 import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
 import type { ResolvedRuleSet } from '../types.js';
 import { App } from './App.js';
+
+// Ink colorizes via a shared chalk singleton that auto-detects color
+// support from the *real* process.stdout, not the fake streams
+// ink-testing-library renders into — under vitest (non-TTY) that means
+// color output is silently disabled and every ANSI code assertion would
+// vacuously pass. Force it on so tests that check backgroundColor output
+// (see the row-highlight test below) actually exercise the real code path.
+chalk.level = 1;
 
 // Feeds useScanner a canned sequence instead of a real filesystem scan:
 // two resolved entries (node_modules larger than dist) plus one warning.
@@ -66,7 +75,7 @@ describe('App', () => {
     const { lastFrame } = renderApp();
     await flush();
     const frame = lastFrame() ?? '';
-    expect(frame).not.toContain('[x]');
+    expect(frame).not.toContain('[✓]');
     expect(frame).toContain('[ ]');
   });
 
@@ -83,10 +92,20 @@ describe('App', () => {
     await flush();
     stdin.write(' ');
     await flush();
-    expect(lastFrame() ?? '').toContain('[x]');
+    expect(lastFrame() ?? '').toContain('[✓]');
     stdin.write('\r');
     await flush();
     expect(lastFrame() ?? '').toMatch(/Delete 1 item/);
+  });
+
+  it('highlights the entire selected row with a background color, not just the checkbox', async () => {
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+    stdin.write(' ');
+    await flush();
+    const frame = lastFrame() ?? '';
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: asserting on raw ANSI escapes is the point of this test
+    expect(frame).toMatch(/\x1b\[42m/); // green background (theme.selectedBg) on the selected row
   });
 
   it('surfaces validator warnings collected during the scan', async () => {

@@ -1,4 +1,4 @@
-import { Text, useApp, useInput } from 'ink';
+import { Box, Text, useApp, useInput } from 'ink';
 import { useEffect } from 'react';
 import { deleteEntries } from '../delete/deleter.js';
 import type { ScanOptions } from '../scan/scanner.js';
@@ -9,6 +9,7 @@ import { DeletingProgress } from './components/DeletingProgress.js';
 import { DoneSummary } from './components/DoneSummary.js';
 import { Header } from './components/Header.js';
 import { Legend } from './components/Legend.js';
+import { theme } from './theme.js';
 import { useScanner } from './useScanner.js';
 
 export interface AppProps {
@@ -91,23 +92,34 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
     }
   });
 
+  const showWarnings =
+    state.warnings.length > 0 && (state.phase === 'ready' || state.phase === 'confirming');
+
   // Render
   return (
-    <>
+    <Box flexDirection="column">
       <Header root={root} state={state} />
-      {state.phase === 'error' && <Text color="red">Error: {state.error}</Text>}
-      {state.warnings.length > 0 &&
-        (state.phase === 'ready' || state.phase === 'confirming') &&
-        state.warnings.slice(0, 3).map((w) => (
-          <Text key={w.file} color="yellow" dimColor>
-            warning: {w.file}: {w.message}
-          </Text>
-        ))}
-      {state.warnings.length > 3 && (state.phase === 'ready' || state.phase === 'confirming') && (
-        <Text dimColor>... {state.warnings.length - 3} more warning(s)</Text>
+      {state.phase === 'error' && (
+        <Box marginTop={1}>
+          <Text color={theme.danger}>✗ Error: {state.error}</Text>
+        </Box>
+      )}
+      {showWarnings && (
+        <Box flexDirection="column" marginTop={1}>
+          {state.warnings.slice(0, 3).map((w) => (
+            <Text key={w.file} color={theme.warning}>
+              ⚠ {w.file}: {w.message}
+            </Text>
+          ))}
+          {state.warnings.length > 3 && (
+            <Text dimColor>... {state.warnings.length - 3} more warning(s)</Text>
+          )}
+        </Box>
       )}
       {(state.phase === 'scanning' || state.phase === 'ready' || state.phase === 'confirming') && (
-        <ArtifactList state={state} />
+        <Box marginTop={1}>
+          <ArtifactList state={state} />
+        </Box>
       )}
       {state.phase === 'confirming' && <ConfirmDialog state={state} />}
       {state.phase === 'deleting' && (
@@ -118,6 +130,6 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       )}
       {state.phase === 'done' && <DoneSummary state={state} />}
       <Legend />
-    </>
+    </Box>
   );
 }
