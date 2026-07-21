@@ -1,27 +1,28 @@
-import { Box, Text, useStdout } from 'ink';
+import { Box, Text } from 'ink';
+import { computeVisibleRows, NARROW_TERMINAL_COLUMNS } from '../layout.js';
 import type { AppState } from '../state.js';
 import { sortedEntries } from '../state.js';
-import { FIXED_COLUMNS_WIDTH, MIN_PATH_WIDTH, theme } from '../theme.js';
+import { theme } from '../theme.js';
+import { useTerminalSize } from '../useTerminalSize.js';
 import { Row } from './Row.js';
 import { TableHeader } from './TableHeader.js';
 
-const VISIBLE_ROWS = 30;
-
 export function ArtifactList({ state }: { state: AppState }) {
-  const { stdout } = useStdout();
-  const pathWidth = Math.max(MIN_PATH_WIDTH, (stdout.columns || 80) - FIXED_COLUMNS_WIDTH);
+  const { columns, rows } = useTerminalSize();
+  const showProject = columns >= NARROW_TERMINAL_COLUMNS;
+  const visibleRows = computeVisibleRows(rows);
   const entries = sortedEntries(state);
 
-  // Center the viewport on the cursor so moving past row 30 keeps the
-  // highlighted row visible instead of scrolling off-screen.
-  const maxStart = Math.max(0, entries.length - VISIBLE_ROWS);
-  const start = Math.max(0, Math.min(state.cursor - Math.floor(VISIBLE_ROWS / 2), maxStart));
-  const visible = entries.slice(start, start + VISIBLE_ROWS);
+  // Center the viewport on the cursor so moving past the visible window
+  // keeps the highlighted row visible instead of scrolling off-screen.
+  const maxStart = Math.max(0, entries.length - visibleRows);
+  const start = Math.max(0, Math.min(state.cursor - Math.floor(visibleRows / 2), maxStart));
+  const visible = entries.slice(start, start + visibleRows);
   const hiddenAfter = entries.length - start - visible.length;
 
   return (
     <Box flexDirection="column">
-      <TableHeader pathWidth={pathWidth} />
+      <TableHeader showProject={showProject} />
       {start > 0 && (
         <Text color={theme.accent} dimColor>
           ↑ {start} more above
@@ -34,7 +35,7 @@ export function ArtifactList({ state }: { state: AppState }) {
           cursor={state.cursor}
           index={start + i}
           selected={state.selected.has(entry.path)}
-          pathWidth={pathWidth}
+          showProject={showProject}
         />
       ))}
       {hiddenAfter > 0 && (

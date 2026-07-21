@@ -33,9 +33,3 @@ export const COLUMN_WIDTHS = {
 
 /** Gap between adjacent table columns — pass to Box's `columnGap`, keep row/header widths in sync with it. */
 export const COLUMN_GAP = 1;
-const GAP_COUNT = 6; // one gap between each of the 6 fixed columns and the path column
-
-export const FIXED_COLUMNS_WIDTH =
-  Object.values(COLUMN_WIDTHS).reduce((sum, w) => sum + w, 0) + COLUMN_GAP * GAP_COUNT;
-
-export const MIN_PATH_WIDTH = 12;

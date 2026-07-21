@@ -1,5 +1,5 @@
 import { Box, Text, useApp, useInput } from 'ink';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { deleteEntries } from '../delete/deleter.js';
 import type { ScanOptions } from '../scan/scanner.js';
 import type { ResolvedRuleSet } from '../types.js';
@@ -8,9 +8,12 @@ import { ConfirmDialog } from './components/ConfirmDialog.js';
 import { DeletingProgress } from './components/DeletingProgress.js';
 import { DoneSummary } from './components/DoneSummary.js';
 import { Header } from './components/Header.js';
+import { HelpOverlay } from './components/HelpOverlay.js';
 import { Legend } from './components/Legend.js';
+import { computeVisibleRows } from './layout.js';
 import { theme } from './theme.js';
 import { useScanner } from './useScanner.js';
+import { useTerminalSize } from './useTerminalSize.js';
 
 export interface AppProps {
   root: string;
@@ -22,6 +25,11 @@ export interface AppProps {
 export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
   const [state, dispatch] = useScanner(root, ruleSet, scanOpts);
   const { exit } = useApp();
+  const { rows } = useTerminalSize();
+  const pageSize = computeVisibleRows(rows);
+  // Not part of AppState: it's a pure UI overlay unrelated to the scan/
+  // delete state machine, so it doesn't belong in the reducer.
+  const [showHelp, setShowHelp] = useState(false);
 
   // Handle deletion. Only re-runs when entering the 'deleting' phase, not on
   // every entries/selected change while scanning (state.entries.filter's
@@ -50,6 +58,14 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
   useInput((input, key) => {
     if (state.phase === 'deleting') return;
 
+    // The help overlay is a modal on top of 'ready' — any key dismisses it
+    // rather than falling through to whatever it would normally do, so a
+    // stray space/enter right after opening help can't select/confirm.
+    if (showHelp) {
+      setShowHelp(false);
+      return;
+    }
+
     // q/Ctrl+C quit from any other phase, including after a scan/delete has
     // finished ('done'/'error') — without this, unmount() is never called
     // and the process hangs forever after the summary is shown.
@@ -75,6 +91,14 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       dispatch({ type: 'MOVE_CURSOR', delta: -1 });
     } else if (key.downArrow || input === 'j') {
       dispatch({ type: 'MOVE_CURSOR', delta: 1 });
+    } else if (key.pageUp) {
+      dispatch({ type: 'SET_CURSOR', index: state.cursor - pageSize });
+    } else if (key.pageDown) {
+      dispatch({ type: 'SET_CURSOR', index: state.cursor + pageSize });
+    } else if (key.home || input === 'g') {
+      dispatch({ type: 'SET_CURSOR', index: 0 });
+    } else if (key.end || input === 'G') {
+      dispatch({ type: 'SET_CURSOR', index: state.entries.length - 1 });
     } else if (input === ' ') {
       dispatch({ type: 'TOGGLE_SELECT' });
     } else if (input === 'a') {
@@ -87,6 +111,8 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       dispatch({ type: 'CYCLE_SORT' });
     } else if (input === 'r') {
       dispatch({ type: 'REVERSE_SORT' });
+    } else if (input === '?') {
+      setShowHelp(true);
     } else if (key.return && state.selected.size > 0) {
       dispatch({ type: 'ENTER_CONFIRM' });
     }
@@ -116,12 +142,14 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
           )}
         </Box>
       )}
-      {(state.phase === 'scanning' || state.phase === 'ready' || state.phase === 'confirming') && (
-        <Box marginTop={1}>
-          <ArtifactList state={state} />
-        </Box>
-      )}
-      {state.phase === 'confirming' && <ConfirmDialog state={state} />}
+      {showHelp && <HelpOverlay />}
+      {!showHelp &&
+        (state.phase === 'scanning' || state.phase === 'ready' || state.phase === 'confirming') && (
+          <Box marginTop={1}>
+            <ArtifactList state={state} />
+          </Box>
+        )}
+      {!showHelp && state.phase === 'confirming' && <ConfirmDialog state={state} />}
       {state.phase === 'deleting' && (
         <DeletingProgress
           deleted={state.deletion?.deleted ?? 0}

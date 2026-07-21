@@ -12,7 +12,7 @@ export function Legend() {
       </Text>
       <Text dimColor>
         ↑/k ↓/j move · space toggle · a select all · n clear · i invert · s sort · r reverse · enter
-        confirm · q quit
+        confirm · q quit · ? help
       </Text>
     </Box>
   );

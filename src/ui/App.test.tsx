@@ -126,6 +126,47 @@ describe('App', () => {
     const after = lastFrame() ?? '';
     expect(after.indexOf('dist')).toBeLessThan(after.indexOf('node_modules'));
   });
+
+  it('opens the help overlay on ? and swallows the next keypress instead of acting on it', async () => {
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+    stdin.write('?');
+    await flush();
+    expect(lastFrame() ?? '').toContain('Keybindings');
+
+    stdin.write(' '); // would normally toggle selection on the cursor row
+    await flush();
+    const frame = lastFrame() ?? '';
+    expect(frame).not.toContain('Keybindings'); // help closed
+    expect(frame).not.toContain('[✓]'); // ...but the space wasn't also applied as a toggle
+  });
+
+  it('jumps to the last entry with G and back to the first with g', async () => {
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+
+    stdin.write('G');
+    await flush();
+    const lastEntryFrame = lastFrame() ?? '';
+    const lastCursorLine = lastEntryFrame.split('\n').find((l) => l.includes('❯'));
+    expect(lastCursorLine).toContain('dist'); // smaller entry, sorted last by default (size desc)
+
+    stdin.write('g');
+    await flush();
+    const firstEntryFrame = lastFrame() ?? '';
+    const firstCursorLine = firstEntryFrame.split('\n').find((l) => l.includes('❯'));
+    expect(firstCursorLine).toContain('node_modules');
+  });
+
+  it('previews which items will be deleted in the confirm dialog', async () => {
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+    stdin.write(' ');
+    await flush();
+    stdin.write('\r');
+    await flush();
+    expect(lastFrame() ?? '').toContain('• node_modules');
+  });
 });
 
 describe('App quitting', () => {

@@ -2,8 +2,10 @@ import { Box, Text } from 'ink';
 import { fmtSize, sortLabel } from '../format.js';
 import type { AppState } from '../state.js';
 import { theme } from '../theme.js';
+import { useSpinner } from '../useSpinner.js';
 
 export function Header({ root, state }: { root: string; state: AppState }) {
+  const spinner = useSpinner(state.phase === 'scanning');
   const total = state.entries.reduce((sum, e) => sum + (e.size ?? 0), 0);
   const selectedBytes = [...state.selected].reduce((sum, path) => {
     const e = state.entries.find((x) => x.path === path);
@@ -14,7 +16,7 @@ export function Header({ root, state }: { root: string; state: AppState }) {
     <Box borderStyle="round" borderColor={theme.accent} paddingX={1} flexDirection="column">
       <Box justifyContent="space-between">
         <Text bold color={theme.accent}>
-          purgeit{state.phase === 'scanning' ? ' ⠋ scanning…' : ''}
+          purgeit{state.phase === 'scanning' ? ` ${spinner} scanning…` : ''}
         </Text>
         <Text dimColor>{sortLabel(state.sortKey, state.sortDir)}</Text>
       </Box>
