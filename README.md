@@ -15,7 +15,7 @@ npx purgeit ~/dev
 ## Features
 
 - **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
-- **Interactive TUI** — browse results, see live sizes, toggle selection with space
+- **Interactive TUI** — a sortable table (size/type/name/project/path) with live sizes; selection is a full-row color highlight, not just a checkbox
 - **Headless mode** — `--json`/`--delete` flags for scripting and CI
 - **Configurable rules** — extend built-in defaults with a `purgeit.config.ts`
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
