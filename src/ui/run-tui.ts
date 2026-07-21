@@ -24,6 +24,9 @@ export async function runTui(opts: TuiOptions): Promise<number> {
       scanOpts: opts.scanOpts,
       signal: opts.signal,
     }),
+    // App itself handles Ctrl+C via useApp().exit() (see App.tsx's keymap),
+    // so Ink's own built-in Ctrl+C listener is redundant and disabled here.
+    { exitOnCtrlC: false },
   );
 
   // Handle SIGINT — unmount gracefully

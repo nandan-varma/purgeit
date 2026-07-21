@@ -1,5 +1,5 @@
-import { Text, useInput } from 'ink';
-import React, { useEffect } from 'react';
+import { Text, useApp, useInput } from 'ink';
+import { useEffect } from 'react';
 import { deleteEntries } from '../delete/deleter.js';
 import type { ScanOptions } from '../scan/scanner.js';
 import type { ResolvedRuleSet } from '../types.js';
@@ -20,6 +20,7 @@ export interface AppProps {
 
 export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
   const [state, dispatch] = useScanner(root, ruleSet, scanOpts);
+  const { exit } = useApp();
 
   // Handle deletion
   useEffect(() => {
@@ -42,7 +43,18 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
 
   // Keymap
   useInput((input, key) => {
-    if (state.phase === 'scanning' || state.phase === 'deleting') return;
+    if (state.phase === 'deleting') return;
+
+    // q/Ctrl+C quit from any other phase, including after a scan/delete has
+    // finished ('done'/'error') — without this, unmount() is never called
+    // and the process hangs forever after the summary is shown.
+    if (input === 'q' || (key.ctrl && input === 'c')) {
+      dispatch({ type: 'QUIT' });
+      exit();
+      return;
+    }
+
+    if (state.phase === 'scanning' || state.phase === 'done' || state.phase === 'error') return;
 
     if (state.phase === 'confirming') {
       if (input === 'y' || input === 'Y') {
@@ -50,10 +62,6 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       } else if (input === 'n' || input === 'N' || key.escape) {
         dispatch({ type: 'CANCEL_CONFIRM' });
       }
-      return;
-    }
-
-    if (state.phase === 'done' || state.phase === 'error') {
       return;
     }
 
@@ -76,8 +84,6 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       dispatch({ type: 'REVERSE_SORT' });
     } else if (key.return && state.selected.size > 0) {
       dispatch({ type: 'ENTER_CONFIRM' });
-    } else if (input === 'q' || (key.ctrl && input === 'c')) {
-      dispatch({ type: 'QUIT' });
     }
   });
 
@@ -86,6 +92,16 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
     <>
       <Header root={root} state={state} />
       {state.phase === 'error' && <Text color="red">Error: {state.error}</Text>}
+      {state.warnings.length > 0 &&
+        (state.phase === 'ready' || state.phase === 'confirming') &&
+        state.warnings.slice(0, 3).map((w) => (
+          <Text key={w.file} color="yellow" dimColor>
+            warning: {w.file}: {w.message}
+          </Text>
+        ))}
+      {state.warnings.length > 3 && (state.phase === 'ready' || state.phase === 'confirming') && (
+        <Text dimColor>... {state.warnings.length - 3} more warning(s)</Text>
+      )}
       {(state.phase === 'scanning' || state.phase === 'ready' || state.phase === 'confirming') && (
         <ArtifactList state={state} />
       )}

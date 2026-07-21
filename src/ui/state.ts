@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import type { ScanEntry } from '../scan/scanner.js';
 import type { ValidationWarning } from '../types.js';
 
@@ -38,6 +39,22 @@ export type Action =
   | { type: 'QUIT' };
 
 export const SORT_KEYS: readonly SortKey[] = ['size', 'path', 'name'];
+
+/**
+ * The entries in current display order. `cursor` and `TOGGLE_SELECT` index
+ * into this, not the raw discovery-order `entries` array, so the row a user
+ * sees highlighted is always the one space/enter actually act on.
+ */
+export function sortedEntries(
+  state: Pick<AppState, 'entries' | 'sortKey' | 'sortDir'>,
+): ScanEntry[] {
+  const dir = state.sortDir === 'asc' ? 1 : -1;
+  return [...state.entries].sort((a, b) => {
+    if (state.sortKey === 'size') return dir * ((a.size ?? 0) - (b.size ?? 0));
+    if (state.sortKey === 'name') return dir * basename(a.path).localeCompare(basename(b.path));
+    return dir * a.path.localeCompare(b.path);
+  });
+}
 
 export function initialState(): AppState {
   return {
@@ -85,7 +102,7 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, cursor: Math.max(0, Math.min(action.index, state.entries.length - 1)) };
 
     case 'TOGGLE_SELECT': {
-      const entry = state.entries[state.cursor];
+      const entry = sortedEntries(state)[state.cursor];
       if (!entry) return state;
       const selected = new Set(state.selected);
       if (selected.has(entry.path)) {

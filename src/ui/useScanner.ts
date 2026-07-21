@@ -17,6 +17,7 @@ export function useScanner(
     abortRef.current = controller;
 
     let cancelled = false;
+    const warnings: AppState['warnings'] = [];
 
     const run = async () => {
       try {
@@ -30,12 +31,14 @@ export function useScanner(
               dispatch({ type: 'UPDATE_SIZE', path: event.path, bytes: event.bytes });
               break;
             case 'warning':
-              // Warnings are collected and dispatched at scan end
+              // Collected here and dispatched together at scan end, rather
+              // than one dispatch per warning, to match SCAN_DONE's shape.
+              warnings.push(event.warning);
               break;
           }
         }
         if (!cancelled) {
-          dispatch({ type: 'SCAN_DONE', warnings: [] });
+          dispatch({ type: 'SCAN_DONE', warnings });
         }
       } catch (err) {
         if (!cancelled) {
