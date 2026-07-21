@@ -28,7 +28,7 @@ export function DoneSummary({ state }: { state: AppState }) {
         <Text bold color={hasFailures ? theme.danger : theme.success}>
           {hasFailures ? '✗' : '✓'} Done
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {state.deletion.deleted} deleted, {state.deletion.failed} failed
           {state.deletion.deleted > 0 && ` — ${fmtSize(totalBytes)} freed`}
         </Text>

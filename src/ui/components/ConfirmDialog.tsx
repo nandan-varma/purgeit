@@ -22,12 +22,12 @@ export function ConfirmDialog({ state }: { state: AppState }) {
       flexDirection="column"
       marginTop={1}
     >
-      <Text bold color={theme.danger}>
+      <Text bold color={theme.danger} wrap="truncate-end">
         ⚠ Delete {selectedEntries.length} item(s), {fmtSize(totalBytes)}? This cannot be undone.
       </Text>
       <Box flexDirection="column" marginTop={1}>
         {preview.map((entry) => (
-          <Text key={entry.path} dimColor>
+          <Text key={entry.path} dimColor wrap="truncate-end">
             {'  • '}
             {entry.ruleName}
             {entry.project ? ` (${basename(entry.project)})` : ''} — {fmtSize(entry.size)}

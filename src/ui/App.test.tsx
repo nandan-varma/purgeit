@@ -108,6 +108,32 @@ describe('App', () => {
     expect(frame).toMatch(/\x1b\[42m/); // green background (theme.selectedBg) on the selected row
   });
 
+  it('keeps a constant header height across the 0-selected <-> N-selected transition', async () => {
+    // A prior bug conditionally rendered the "N selected" row, so the whole
+    // header (and everything below it) visibly jumped by a line each time
+    // the user made or cleared their first selection — and that same
+    // line-count instability is what left stale content behind across a
+    // terminal resize (Ink's redraw erases based on the *previous* render's
+    // line count). The row index of the table header ("SIZE"/"TYPE"/...)
+    // is a stand-in for "how tall is everything above the table".
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+    const tableHeaderRow = (frame: string) =>
+      frame.split('\n').findIndex((l) => l.includes('SIZE'));
+
+    const before = tableHeaderRow(lastFrame() ?? '');
+    stdin.write(' ');
+    await flush();
+    const afterSelect = tableHeaderRow(lastFrame() ?? '');
+    stdin.write(' ');
+    await flush();
+    const afterDeselect = tableHeaderRow(lastFrame() ?? '');
+
+    expect(before).toBeGreaterThan(0);
+    expect(afterSelect).toBe(before);
+    expect(afterDeselect).toBe(before);
+  });
+
   it('surfaces validator warnings collected during the scan', async () => {
     const { lastFrame } = renderApp();
     await flush();

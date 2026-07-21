@@ -127,13 +127,15 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
       <Header root={root} state={state} />
       {state.phase === 'error' && (
         <Box marginTop={1}>
-          <Text color={theme.danger}>✗ Error: {state.error}</Text>
+          <Text color={theme.danger} wrap="truncate-end">
+            ✗ Error: {state.error}
+          </Text>
         </Box>
       )}
       {showWarnings && (
         <Box flexDirection="column" marginTop={1}>
           {state.warnings.slice(0, 3).map((w) => (
-            <Text key={w.file} color={theme.warning}>
+            <Text key={w.file} color={theme.warning} wrap="truncate-end">
               ⚠ {w.file}: {w.message}
             </Text>
           ))}
