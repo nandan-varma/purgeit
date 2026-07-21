@@ -1,20 +1,50 @@
 import { render } from 'ink';
 import React from 'react';
 import { loadConfig } from '../config/resolve.js';
-import { defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
+import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from '../rules/merge.js';
 import type { ScanOptions } from '../scan/scanner.js';
 import { App } from './App.js';
+import type { SortKey } from './state.js';
 
 export interface TuiOptions {
   root: string;
   signal?: AbortSignal | undefined;
   scanOpts: ScanOptions;
   full?: boolean;
+  /** Explicit config file path — mirrors headless's --config. */
+  configPath?: string | undefined;
+  /** Skip config resolution entirely — mirrors headless's --no-config. */
+  noConfig?: boolean | undefined;
+  /** Disable gated-rule evaluation — mirrors headless's --no-gated. */
+  noGated?: boolean | undefined;
+  /** Restrict matching to these rule names / target groups — mirrors headless's --targets. */
+  targets?: readonly string[] | undefined;
+  /** Glob patterns (relative to root) to exclude — mirrors headless's --exclude. */
+  exclude?: readonly string[] | undefined;
+  /** Skip matches below this size in bytes — mirrors headless's --min-size. */
+  minSizeBytes?: number | undefined;
+  /** Initial sort key — mirrors headless's --sort. */
+  sort?: SortKey | undefined;
+  /** Initial sort direction — mirrors headless's --asc. */
+  ascending?: boolean | undefined;
+  /** Simulate deletion without touching the filesystem — mirrors headless's --dry-run. */
+  dryRun?: boolean | undefined;
 }
 
 export async function runTui(opts: TuiOptions): Promise<number> {
-  const loaded = await loadConfig({ cwd: opts.root, noConfig: false });
-  const ruleSet = mergeRuleSets(defaultRuleSet(), loaded.config);
+  const loaded = await loadConfig({
+    cwd: opts.root,
+    configPath: opts.configPath,
+    noConfig: opts.noConfig ?? false,
+  });
+
+  let ruleSet = mergeRuleSets(defaultRuleSet(), loaded.config);
+  if (opts.noGated) {
+    ruleSet = { ...ruleSet, gated: new Map() };
+  }
+  if (opts.targets && opts.targets.length > 0) {
+    ruleSet = restrictRuleSetToTargets(ruleSet, opts.targets);
+  }
 
   const { unmount, waitUntilExit } = render(
     React.createElement(App, {
@@ -22,6 +52,11 @@ export async function runTui(opts: TuiOptions): Promise<number> {
       ruleSet,
       scanOpts: opts.scanOpts,
       signal: opts.signal,
+      exclude: opts.exclude,
+      minSizeBytes: opts.minSizeBytes,
+      initialSortKey: opts.sort,
+      initialSortDir: opts.ascending ? 'asc' : 'desc',
+      dryRun: opts.dryRun ?? false,
     }),
     // App itself handles Ctrl+C via useApp().exit() (see App.tsx's keymap),
     // so Ink's own built-in Ctrl+C listener is redundant and disabled here.

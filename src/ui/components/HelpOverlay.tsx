@@ -14,12 +14,17 @@ function KeyRow({ keys, description }: { keys: string; description: string }) {
 
 export function HelpOverlay() {
   return (
+    // flexShrink={0}: see Header.tsx's comment — this is bordered chrome
+    // stacked on top of Header (and the always-rendered Legend below), so it
+    // must render fully or be clipped whole by the app root's overflow
+    // clamp, never squashed into a garbled partial box.
     <Box
       borderStyle="round"
       borderColor={theme.accent}
       paddingX={1}
       flexDirection="column"
       marginTop={1}
+      flexShrink={0}
     >
       <Text bold color={theme.accent}>
         Keybindings

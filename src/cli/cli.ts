@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { parseSizeString } from '../format.js';
 import { parseCliArgs, USAGE } from './args.js';
 import { runHeadless } from './headless.js';
 
@@ -37,6 +38,16 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     (!parsed.headless && !parsed.json && !parsed.delete && Boolean(process.stdout.isTTY));
 
   if (wantsTui) {
+    let minSizeBytes: number | undefined;
+    if (parsed.minSize !== undefined) {
+      try {
+        minSizeBytes = parseSizeString(parsed.minSize);
+      } catch (err) {
+        stderr(`purgeit: ${(err as Error).message}`);
+        return 2;
+      }
+    }
+
     const { runTui } = await import('../ui/run-tui.js');
     const cwd = io.cwd ?? process.cwd();
     const root = resolve(cwd, parsed.directory);
@@ -49,6 +60,15 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
         concurrency: parsed.concurrency,
         maxDepth: parsed.depth,
       },
+      configPath: parsed.configPath,
+      noConfig: parsed.noConfig,
+      noGated: parsed.noGated,
+      targets: parsed.targets,
+      exclude: parsed.exclude,
+      minSizeBytes,
+      sort: parsed.sort,
+      ascending: parsed.ascending,
+      dryRun: parsed.dryRun,
     });
   }
 

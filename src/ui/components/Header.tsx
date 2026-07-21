@@ -4,7 +4,15 @@ import type { AppState } from '../state.js';
 import { theme } from '../theme.js';
 import { useSpinner } from '../useSpinner.js';
 
-export function Header({ root, state }: { root: string; state: AppState }) {
+export function Header({
+  root,
+  state,
+  dryRun,
+}: {
+  root: string;
+  state: AppState;
+  dryRun: boolean;
+}) {
   const spinner = useSpinner(state.phase === 'scanning');
   const total = state.entries.reduce((sum, e) => sum + (e.size ?? 0), 0);
   const selectedBytes = [...state.selected].reduce((sum, path) => {
@@ -30,7 +38,9 @@ export function Header({ root, state }: { root: string; state: AppState }) {
     >
       <Box justifyContent="space-between">
         <Text bold color={theme.accent} wrap="truncate-end">
-          purgeit{state.phase === 'scanning' ? ` ${spinner} scanning…` : ''}
+          purgeit
+          {dryRun ? ' [dry-run]' : ''}
+          {state.phase === 'scanning' ? ` ${spinner} scanning…` : ''}
         </Text>
         <Text dimColor wrap="truncate-end">
           {sortLabel(state.sortKey, state.sortDir)}

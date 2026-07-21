@@ -6,7 +6,7 @@ import { theme } from '../theme.js';
 
 const PREVIEW_LIMIT = 5;
 
-export function ConfirmDialog({ state }: { state: AppState }) {
+export function ConfirmDialog({ state, dryRun }: { state: AppState; dryRun: boolean }) {
   const selectedEntries = state.entries
     .filter((e) => state.selected.has(e.path))
     .sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
@@ -26,7 +26,9 @@ export function ConfirmDialog({ state }: { state: AppState }) {
       flexShrink={0}
     >
       <Text bold color={theme.danger} wrap="truncate-end">
-        ⚠ Delete {selectedEntries.length} item(s), {fmtSize(totalBytes)}? This cannot be undone.
+        {`⚠ ${dryRun ? '[dry-run] ' : ''}Delete ${selectedEntries.length} item(s), ${fmtSize(totalBytes)}? ${
+          dryRun ? 'Simulated — nothing will actually be deleted.' : 'This cannot be undone.'
+        }`}
       </Text>
       <Box flexDirection="column" marginTop={1}>
         {preview.map((entry) => (

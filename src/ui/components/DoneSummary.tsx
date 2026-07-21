@@ -3,7 +3,7 @@ import { fmtSize } from '../format.js';
 import type { AppState } from '../state.js';
 import { theme } from '../theme.js';
 
-export function DoneSummary({ state }: { state: AppState }) {
+export function DoneSummary({ state, dryRun }: { state: AppState; dryRun: boolean }) {
   if (state.entries.length === 0 && state.scanDone) {
     return (
       <Box borderStyle="round" borderColor={theme.accent} paddingX={1} marginTop={1} flexShrink={0}>
@@ -27,11 +27,12 @@ export function DoneSummary({ state }: { state: AppState }) {
         flexShrink={0}
       >
         <Text bold color={hasFailures ? theme.danger : theme.success}>
-          {hasFailures ? '✗' : '✓'} Done
+          {hasFailures ? '✗' : '✓'} Done{dryRun ? ' (dry-run)' : ''}
         </Text>
         <Text wrap="truncate-end">
           {state.deletion.deleted} deleted, {state.deletion.failed} failed
-          {state.deletion.deleted > 0 && ` — ${fmtSize(totalBytes)} freed`}
+          {state.deletion.deleted > 0 &&
+            ` — ${fmtSize(totalBytes)} ${dryRun ? 'would be freed' : 'freed'}`}
         </Text>
       </Box>
     );

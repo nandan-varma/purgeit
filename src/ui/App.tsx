@@ -11,6 +11,7 @@ import { Header } from './components/Header.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { Legend } from './components/Legend.js';
 import { computeVisibleRows } from './layout.js';
+import type { SortKey } from './state.js';
 import { theme } from './theme.js';
 import { useScanner } from './useScanner.js';
 import { useTerminalSize } from './useTerminalSize.js';
@@ -20,10 +21,35 @@ export interface AppProps {
   ruleSet: ResolvedRuleSet;
   scanOpts: ScanOptions;
   signal?: AbortSignal | undefined;
+  /** Glob patterns (relative to root) to exclude — mirrors headless's --exclude. */
+  exclude?: readonly string[] | undefined;
+  /** Skip matches below this size in bytes — mirrors headless's --min-size. */
+  minSizeBytes?: number | undefined;
+  /** Initial sort key — mirrors headless's --sort. Defaults to 'size'. */
+  initialSortKey?: SortKey | undefined;
+  /** Initial sort direction — mirrors headless's --asc. Defaults to 'desc'. */
+  initialSortDir?: 'asc' | 'desc' | undefined;
+  /** Simulate deletion without touching the filesystem — mirrors headless's --dry-run. */
+  dryRun?: boolean | undefined;
 }
 
-export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
-  const [state, dispatch] = useScanner(root, ruleSet, scanOpts);
+export function App({
+  root,
+  ruleSet,
+  scanOpts,
+  signal,
+  exclude,
+  minSizeBytes,
+  initialSortKey,
+  initialSortDir,
+  dryRun = false,
+}: AppProps) {
+  const [state, dispatch] = useScanner(root, ruleSet, scanOpts, {
+    exclude,
+    minSizeBytes,
+    initialSortKey,
+    initialSortDir,
+  });
   const { exit } = useApp();
   const { rows } = useTerminalSize();
   const pageSize = computeVisibleRows(rows);
@@ -34,7 +60,8 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
   // Handle deletion. Only re-runs when entering the 'deleting' phase, not on
   // every entries/selected change while scanning (state.entries.filter's
   // identity would change every render, re-triggering this on each incoming
-  // scan event).
+  // scan event). signal/dryRun are static for the app's lifetime (from a
+  // single cli.ts-driven App render), so they're intentionally left out too.
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — see comment above
   useEffect(() => {
     if (state.phase !== 'deleting') return;
@@ -43,7 +70,7 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
     const run = async () => {
       let deleted = 0;
       let failed = 0;
-      for await (const event of deleteEntries(selected, { signal, dryRun: false })) {
+      for await (const event of deleteEntries(selected, { signal, dryRun })) {
         if (event.type === 'done') {
           deleted = event.deleted;
           failed = event.failed;
@@ -139,7 +166,7 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
     // whatever doesn't fit, from the bottom) makes that overflow structurally
     // impossible, regardless of how accurate the row-budget estimate is.
     <Box flexDirection="column" height={rows} overflow="hidden">
-      <Header root={root} state={state} />
+      <Header root={root} state={state} dryRun={dryRun} />
       {state.phase === 'error' && (
         <Box marginTop={1}>
           <Text color={theme.danger} wrap="truncate-end">
@@ -166,14 +193,15 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
             <ArtifactList state={state} />
           </Box>
         )}
-      {!showHelp && state.phase === 'confirming' && <ConfirmDialog state={state} />}
+      {!showHelp && state.phase === 'confirming' && <ConfirmDialog state={state} dryRun={dryRun} />}
       {state.phase === 'deleting' && (
         <DeletingProgress
           deleted={state.deletion?.deleted ?? 0}
           failed={state.deletion?.failed ?? 0}
+          dryRun={dryRun}
         />
       )}
-      {state.phase === 'done' && <DoneSummary state={state} />}
+      {state.phase === 'done' && <DoneSummary state={state} dryRun={dryRun} />}
       <Legend />
     </Box>
   );

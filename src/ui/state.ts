@@ -56,14 +56,17 @@ export function sortedEntries(
   });
 }
 
-export function initialState(): AppState {
+export function initialState(
+  sortKey: SortKey = 'size',
+  sortDir: 'asc' | 'desc' = 'desc',
+): AppState {
   return {
     phase: 'scanning',
     entries: [],
     cursor: 0,
     selected: new Set<string>(),
-    sortKey: 'size',
-    sortDir: 'desc',
+    sortKey,
+    sortDir,
     scanDone: false,
     warnings: [],
     deletion: null,

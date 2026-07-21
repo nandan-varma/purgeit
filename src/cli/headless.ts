@@ -1,9 +1,9 @@
-import { basename, relative, resolve, sep } from 'node:path';
+import { basename, resolve } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
 import { formatBytes, parseSizeString } from '../format.js';
-import { globToRegExp } from '../rules/gate-context.js';
 import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from '../rules/merge.js';
+import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
 import type { ParsedCli } from './args.js';
@@ -85,11 +85,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     ruleSet = restrictRuleSetToTargets(ruleSet, parsed.targets);
   }
 
-  const excludeMatchers = parsed.exclude.map((pattern) => globToRegExp(pattern));
-  const isExcluded = (path: string): boolean => {
-    const rel = relative(root, path).split(sep).join('/');
-    return excludeMatchers.some((re) => re.test(rel));
-  };
+  const isExcluded = createExcludeMatcher(root, parsed.exclude);
 
   const found: ScanEntry[] = [];
   const warnings: string[] = [];

@@ -3,6 +3,8 @@ import chalk from 'chalk';
 import { render as inkRender } from 'ink';
 import { render } from 'ink-testing-library';
 import { describe, expect, it, vi } from 'vitest';
+import { deleteEntries } from '../delete/deleter.js';
+import { scan } from '../scan/scanner.js';
 import type { ResolvedRuleSet } from '../types.js';
 import { App } from './App.js';
 
@@ -48,6 +50,15 @@ vi.mock('../scan/scanner.js', async () => {
       yield { type: 'done', totalBytes: 1_000_500 };
     }),
   };
+});
+
+// deleteEntries is left as its real implementation by default (paths under
+// these tests' fake '/root/...' don't exist, and `rm(..., { force: true })`
+// is a silent no-op for a missing path) — wrapped in vi.fn so individual
+// tests can assert on how App.tsx called it (e.g. the dryRun flag).
+vi.mock('../delete/deleter.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../delete/deleter.js')>();
+  return { ...actual, deleteEntries: vi.fn(actual.deleteEntries) };
 });
 
 const emptyRuleSet: ResolvedRuleSet = {
@@ -192,6 +203,119 @@ describe('App', () => {
     stdin.write('\r');
     await flush();
     expect(lastFrame() ?? '').toContain('• node_modules');
+  });
+});
+
+describe('App with CLI-forwarded options', () => {
+  it('hides entries matching an --exclude glob', async () => {
+    vi.mocked(scan).mockImplementationOnce(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/skip/node_modules',
+          project: 'skip',
+          kind: 'always-safe',
+          ruleName: 'node_modules',
+          size: 100,
+        },
+      };
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/keep/dist',
+          project: 'keep',
+          kind: 'always-safe',
+          ruleName: 'dist',
+          size: 100,
+        },
+      };
+      yield { type: 'done', totalBytes: 100 };
+    });
+
+    const { lastFrame } = render(
+      <App root="/root" ruleSet={emptyRuleSet} scanOpts={{ mode: 'flat' }} exclude={['skip/*']} />,
+    );
+    await flush();
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('dist');
+    expect(frame).not.toContain('node_modules');
+  });
+
+  it('hides entries whose resolved size is below --min-size', async () => {
+    vi.mocked(scan).mockImplementationOnce(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/small/node_modules',
+          project: 'small',
+          kind: 'always-safe',
+          ruleName: 'node_modules',
+          size: null,
+        },
+      };
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/big/dist',
+          project: 'big',
+          kind: 'always-safe',
+          ruleName: 'dist',
+          size: null,
+        },
+      };
+      yield { type: 'size', path: '/root/small/node_modules', bytes: 100 };
+      yield { type: 'size', path: '/root/big/dist', bytes: 10_000_000 };
+      yield { type: 'done', totalBytes: 10_000_100 };
+    });
+
+    const { lastFrame } = render(
+      <App
+        root="/root"
+        ruleSet={emptyRuleSet}
+        scanOpts={{ mode: 'flat' }}
+        minSizeBytes={1_000_000}
+      />,
+    );
+    await flush();
+    const frame = lastFrame() ?? '';
+    expect(frame).toContain('dist');
+    expect(frame).not.toContain('node_modules');
+  });
+
+  it('opens already sorted by an initial sort key/direction from --sort/--asc', async () => {
+    const { lastFrame } = render(
+      <App
+        root="/root"
+        ruleSet={emptyRuleSet}
+        scanOpts={{ mode: 'flat' }}
+        initialSortKey="name"
+        initialSortDir="asc"
+      />,
+    );
+    await flush();
+    const frame = lastFrame() ?? '';
+    // Default mock has 'dist' and 'node_modules' — name-ascending puts dist first,
+    // the opposite of the default size-descending order asserted elsewhere.
+    expect(frame.indexOf('dist')).toBeLessThan(frame.indexOf('node_modules'));
+  });
+
+  it('forwards --dry-run through to deleteEntries instead of hardcoding a real delete', async () => {
+    vi.mocked(deleteEntries).mockClear();
+    const { lastFrame, stdin } = render(
+      <App root="/root" ruleSet={emptyRuleSet} scanOpts={{ mode: 'flat' }} dryRun />,
+    );
+    await flush();
+    expect(lastFrame() ?? '').toContain('[dry-run]');
+    stdin.write(' ');
+    await flush();
+    stdin.write('\r');
+    await flush();
+    stdin.write('y');
+    await flush();
+    expect(vi.mocked(deleteEntries)).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({ dryRun: true }),
+    );
   });
 });
 

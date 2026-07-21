@@ -134,6 +134,56 @@ describe('runCli', () => {
     );
   });
 
+  it('forwards config/filter/sort/dry-run flags through to the TUI', async () => {
+    runTuiMock.mockResolvedValue(0);
+    const io = captureIO();
+    const code = await runCli(
+      [
+        '--tui',
+        '--config',
+        './purgeit.config.json',
+        '--no-gated',
+        '--targets',
+        'node_modules,dist',
+        '--exclude',
+        'skip/*',
+        '--min-size',
+        '10MB',
+        '--sort',
+        'name',
+        '--asc',
+        '--dry-run',
+        '/tmp',
+      ],
+      { ...io, cwd: '/tmp' },
+    );
+    expect(code).toBe(0);
+    expect(runTuiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        configPath: './purgeit.config.json',
+        noConfig: false,
+        noGated: true,
+        targets: ['node_modules', 'dist'],
+        exclude: ['skip/*'],
+        minSizeBytes: 10 * 1024 * 1024,
+        sort: 'name',
+        ascending: true,
+        dryRun: true,
+      }),
+    );
+  });
+
+  it('rejects an invalid --min-size before launching the TUI, without calling runTui', async () => {
+    const io = captureIO();
+    const code = await runCli(['--tui', '--min-size', 'not-a-size', '/tmp'], {
+      ...io,
+      cwd: '/tmp',
+    });
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/invalid size/);
+    expect(runTuiMock).not.toHaveBeenCalled();
+  });
+
   it('uses process.stdout/stderr when io is not provided', async () => {
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
