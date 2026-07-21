@@ -71,6 +71,8 @@ export default {
 
 Config is resolved via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) — searches from cwd upward. Use `--config <path>` to specify explicitly, or `--no-config` for defaults only.
 
+`.js`/`.ts`/`.cjs`/`.mjs` config files are executed as code (same trust model as ESLint/Jest configs) — only run purgeit somewhere you trust the config files that could be found by that upward search.
+
 ## Development
 
 ```bash
