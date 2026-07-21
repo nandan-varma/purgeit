@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-`@nandan-varma/purgeit` (bin: `purgeit`) — an npx-runnable CLI that finds and deletes regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across a directory of projects. Interactive Ink TUI by default in a TTY; a full non-interactive flag surface otherwise. Safety is the entire point of the tool: matching is restricted to either unconditionally-safe directory names or names gated behind proof of a sibling manifest, and nothing is ever deleted without an explicit human action (TUI: multi-select + confirm, nothing selected by default; headless: `--delete` + confirmation unless `--yes`).
+`purgeit` (bin: `purgeit`) — an npx-runnable CLI that finds and deletes regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across a directory of projects. Interactive Ink TUI by default in a TTY; a full non-interactive flag surface otherwise. Safety is the entire point of the tool: matching is restricted to either unconditionally-safe directory names or names gated behind proof of a sibling manifest, and nothing is ever deleted without an explicit human action (TUI: multi-select + confirm, nothing selected by default; headless: `--delete` + confirmation unless `--yes`).
 
 ## Commands
 
@@ -76,12 +76,20 @@ cli/                    args.ts (parseCliArgs) → cli.ts (runCli: TTY-dispatch)
 
 ui/                     App.tsx (useReducer + useInput keymap + phase machine) / state.ts (pure, no JSX) /
                         useScanner.ts (bridges scan()'s async generator into the reducer via useEffect + for
-                        await, AbortController created on mount and aborted on unmount) / components/*.tsx
+                        await, AbortController created on mount and aborted on unmount) / theme.ts (single
+                        source of truth for colors/glyphs — components should not hardcode ANSI color names) /
+                        components/*.tsx (ArtifactList/TableHeader/Row render the artifact table; both use
+                        state.ts's sortedEntries() and the same theme.ts widths so header labels stay aligned
+                        with row cells)
 ```
 
 ### TUI safety model (don't regress)
 
 Nothing is selected by default; `space` toggles selection; a separate `confirming` phase (reachable only via `enter` with ≥1 selected) is the only path that can trigger deletion — this is the explicit safety differentiator from npkill-style tools. `q`/Ctrl+C must actually call Ink's `useApp().exit()` to quit (not just update reducer state) — a prior bug had `q` update `phase` without ever calling `unmount()`, leaving the real CLI process hanging forever after showing the summary. `state.ts`'s `sortedEntries()` is the single source of truth for display order; the reducer's cursor/`TOGGLE_SELECT` resolve against it (not raw discovery order) so the row a user sees highlighted is always the one space/enter act on — don't reintroduce a separate unsorted render path.
+
+### TUI table layout
+
+`ArtifactList`/`TableHeader`/`Row` render a real table via Ink `Box` flex columns, not concatenated `Text` strings. Selection/cursor are a **full-row background color band** (green/cyan), not just a checkbox glyph: set `backgroundColor` once on a row's outer `<Box>` and every nested `<Text>` inherits it automatically via Ink's `backgroundContext` (see `node_modules/ink/build/components/Text.js` — `inheritedBackgroundColor = useContext(backgroundContext)`), including the flex-grow path column's trailing empty space, so no manual string-padding is needed. `theme.ts`'s `COLUMN_WIDTHS`/`COLUMN_GAP` are shared by both `Row.tsx` and `TableHeader.tsx` — they must stay structurally identical (same number of column `Box`es, same `columnGap`) or header labels drift out of alignment with row cells. The PATH column's width is computed from `useStdout().stdout.columns` (fallback 80) minus `FIXED_COLUMNS_WIDTH`.
 
 ### TypeScript gotchas
 
@@ -103,6 +111,11 @@ Two entries in `tsup.config.ts`, in order: library (`src/index.ts` → `dist/ind
 - **Abort timing** — don't rely on inter-project/inter-directory navigation timing for "aborts mid-scan" tests; it's genuinely racy. Use multiple matching dirs as *siblings in one directory* with `concurrency: 1` so p-limit's queuing is deterministic (only the first task runs immediately, the rest are provably still queued) — see `scanner.test.ts`.
 - **`Array.prototype.sort` doesn't invoke its comparator for arrays of length ≤ 1**, and for length 2 calls it exactly once with the operands in original array order — when testing a sort comparator's null-coalescing branches, you need entries in both orderings (two test cases with swapped discovery order) to hit both operand positions. See `headless-null-size.test.ts` / `headless-null-size-reverse.test.ts`.
 - **TUI tests needing real Ink internals** (e.g. asserting `waitUntilExit()` actually resolves, not just that reducer state changed) can't use `ink-testing-library`'s `render()` since it doesn't expose `waitUntilExit`. Construct a minimal fake stdin/stdout (EventEmitter + `isTTY`/`setRawMode`/`read()`/`ref`/`unref`) and call `ink`'s real `render()` directly — see `App.test.tsx`'s quitting test.
-- Manually driving the built TUI to reproduce a real bug requires a pty (`python3`'s `pty.fork()`, or `script`) — piped stdin can't enable raw mode, so `child_process.spawn` with plain pipes fails with "Raw mode is not supported."
+- **Asserting on ANSI color codes in `ink-testing-library` output** — Ink colorizes through a shared `chalk` singleton, and chalk auto-detects color support from the *real* `process.stdout`, not the fake streams `ink-testing-library` renders into. Under vitest (non-TTY) that means color output is silently disabled and any ANSI-code assertion vacuously passes. Set `chalk.level = 1` at the top of the test file before rendering to force it on (see `App.test.tsx`'s row-highlight-color test).
+- Manually driving the built TUI to reproduce a real bug requires a pty (`python3`'s `pty.fork()`, or `script`) — piped stdin can't enable raw mode, so `child_process.spawn` with plain pipes fails with "Raw mode is not supported." `pty.fork()` also doesn't set a window size by default, so `process.stdout.columns` reads `0` inside it — since the table layout sizes columns off that, an unset winsize produces a garbled character-per-line render that looks like a real bug but isn't one. Set it explicitly before the child writes anything: `fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))`.
+
+### Releasing
+
+Tag-push triggered: bump `version` in `package.json`/`package-lock.json` (`npm version patch --no-git-tag-version`), commit, push to `main`, then `git tag vX.Y.Z && git push origin vX.Y.Z` — `.github/workflows/release.yml` runs `npm publish --provenance --access public` on any `v*` tag push. `NPM_TOKEN` is already configured on the repo and this flow has published successfully multiple times (v0.0.1–v0.0.3); the pre-flight `NPM_TOKEN` checklist in `CONTRIBUTING.md` is for a from-scratch repo, not a live concern here.
 
 Full architecture/decision history lives in `AGENTS.md` (durable conventions) — read it too before making structural changes.
