@@ -179,7 +179,6 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     if (event.type === 'deleted') {
       stdout(`${event.dryRun ? '(dry-run) ' : ''}deleted: ${event.path}`);
     } else if (event.type === 'error') {
-      /* v8 ignore next -- defensive: error event only fires if rm() fails mid-batch (race condition) */
       stderr(`error: ${event.path}: ${event.message}`);
     } else if (event.type === 'done') {
       deletedCount = event.deleted;

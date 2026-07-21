@@ -245,6 +245,18 @@ describe('runHeadless default I/O paths', () => {
       stderrSpy.mockRestore();
     }
   });
+
+  it('writes to the real process.stderr by default when something is reported', async () => {
+    root = buildTree({});
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const code = await runHeadless(baseArgs({ directory: root, minSize: 'not-a-size' }), {});
+      expect(code).toBe(2);
+      expect(stderrSpy).toHaveBeenCalled();
+    } finally {
+      stderrSpy.mockRestore();
+    }
+  });
 });
 
 describe('runHeadless error handling', () => {

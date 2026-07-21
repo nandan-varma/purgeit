@@ -3,7 +3,16 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const runTuiMock = vi.fn();
 vi.mock('../ui/run-tui.js', () => ({ runTui: runTuiMock }));
 
+// vi.spyOn can't redefine a live ESM namespace export, so readFile is
+// wrapped as a mock at module-load time instead — see the failing-readFile
+// test below, which is the only one that overrides its behavior.
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...actual, readFile: vi.fn(actual.readFile) };
+});
+
 const { runCli } = await import('./cli.js');
+const fsPromises = await import('node:fs/promises');
 
 function captureIO() {
   const out: string[] = [];
@@ -90,16 +99,55 @@ describe('runCli', () => {
 
   it('--version returns "0.0.0" when both package.json candidates are unreadable', async () => {
     const io = captureIO();
-    const fs = await import('node:fs/promises');
-    const orig = fs.readFile;
-    // Make every readFile call fail
-    vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+    // Both readOwnVersion() candidates get one rejection each.
+    vi.mocked(fsPromises.readFile)
+      .mockRejectedValueOnce(new Error('ENOENT'))
+      .mockRejectedValueOnce(new Error('ENOENT'));
+    const code = await runCli(['--version'], io);
+    expect(code).toBe(0);
+    expect(io.out[0]).toBe('0.0.0');
+  });
+
+  it('launches TUI when stdout is a TTY and no mode flag forces headless', async () => {
+    runTuiMock.mockResolvedValue(0);
+    const isTTYDescriptor = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
     try {
-      const code = await runCli(['--version'], io);
+      // Also covers the io.cwd/parsed.full default branches: no cwd override
+      // and no --full, so cli.ts falls back to process.cwd() and 'projects'.
+      const code = await runCli(['--directory', '/tmp'], {});
       expect(code).toBe(0);
-      expect(io.out[0]).toBe('0.0.0');
+      expect(runTuiMock).toHaveBeenCalledOnce();
     } finally {
-      vi.mocked(fs.readFile).mockRestore();
+      if (isTTYDescriptor) {
+        Object.defineProperty(process.stdout, 'isTTY', isTTYDescriptor);
+      }
+    }
+  });
+
+  it('passes flat mode through to the TUI scan options when --full is given', async () => {
+    runTuiMock.mockResolvedValue(0);
+    const code = await runCli(['--tui', '--full', '/tmp'], {});
+    expect(code).toBe(0);
+    expect(runTuiMock).toHaveBeenCalledWith(
+      expect.objectContaining({ scanOpts: expect.objectContaining({ mode: 'flat' }) }),
+    );
+  });
+
+  it('uses process.stdout/stderr when io is not provided', async () => {
+    const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      const helpCode = await runCli(['--help']);
+      expect(helpCode).toBe(0);
+      expect(stdoutSpy).toHaveBeenCalled();
+
+      const badArgsCode = await runCli(['--bogus']);
+      expect(badArgsCode).toBe(2);
+      expect(stderrSpy).toHaveBeenCalled();
+    } finally {
+      stdoutSpy.mockRestore();
+      stderrSpy.mockRestore();
     }
   });
 });
