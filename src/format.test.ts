@@ -25,6 +25,10 @@ describe('parseSizeString', () => {
     expect(() => parseSizeString('-5MB')).toThrow(/invalid size/);
   });
 
+  it('throws on a string that matches the regex but parses to NaN', () => {
+    expect(() => parseSizeString('.')).toThrow(/invalid size/);
+  });
+
   it('throws on an unrecognized unit', () => {
     expect(() => parseSizeString('5XB')).toThrow(/invalid size unit/);
   });

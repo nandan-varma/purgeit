@@ -87,4 +87,19 @@ describe('runCli', () => {
     const code = await runCli(['--headless', '-d', '/tmp'], io);
     expect(code).toBe(1);
   });
+
+  it('--version returns "0.0.0" when both package.json candidates are unreadable', async () => {
+    const io = captureIO();
+    const fs = await import('node:fs/promises');
+    const orig = fs.readFile;
+    // Make every readFile call fail
+    vi.spyOn(fs, 'readFile').mockRejectedValue(new Error('ENOENT'));
+    try {
+      const code = await runCli(['--version'], io);
+      expect(code).toBe(0);
+      expect(io.out[0]).toBe('0.0.0');
+    } finally {
+      vi.mocked(fs.readFile).mockRestore();
+    }
+  });
 });
