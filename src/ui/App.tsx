@@ -123,7 +123,22 @@ export function App({ root, ruleSet, scanOpts, signal }: AppProps) {
 
   // Render
   return (
-    <Box flexDirection="column">
+    // height + overflow="hidden" is a hard backstop, not just a nicety:
+    // ArtifactList's row budget (computeVisibleRows) is only an *estimate*
+    // of how much vertical space is left after the header/warnings/legend —
+    // it doesn't (and can't cheaply) account for every combination, e.g.
+    // ConfirmDialog's variable-length item preview on top of an
+    // already-full-height list. If actual rendered content ever exceeds the
+    // terminal's row count, the *terminal itself* scrolls to accommodate it
+    // — and Ink's redraw assumes it can always move the cursor up N rows to
+    // reach the start of its previous frame, which is no longer true once
+    // scrolling has shifted everything. That's what produces the cascading
+    // stacked-borders corruption after a few resizes: each subsequent
+    // render's cursor math lands in the wrong place. Clamping the whole
+    // app's rendered height to the real terminal height (Yoga clips
+    // whatever doesn't fit, from the bottom) makes that overflow structurally
+    // impossible, regardless of how accurate the row-budget estimate is.
+    <Box flexDirection="column" height={rows} overflow="hidden">
       <Header root={root} state={state} />
       {state.phase === 'error' && (
         <Box marginTop={1}>

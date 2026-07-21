@@ -13,7 +13,21 @@ export function Header({ root, state }: { root: string; state: AppState }) {
   }, 0);
 
   return (
-    <Box borderStyle="round" borderColor={theme.accent} paddingX={1} flexDirection="column">
+    // flexShrink={0}: the app root clamps total height to the terminal
+    // (see App.tsx) via overflow="hidden", and Yoga's default is to shrink
+    // children to fit before falling back to clipping whatever's left over.
+    // A bordered Box that gets shrunk instead of clipped doesn't shrink
+    // "gracefully" — its top/bottom border rows get squashed together with
+    // content into a garbled single line. Refusing to shrink means this
+    // renders fully or (on an extremely short terminal) gets cleanly
+    // omitted entirely by the outer clip — never half-mangled.
+    <Box
+      borderStyle="round"
+      borderColor={theme.accent}
+      paddingX={1}
+      flexDirection="column"
+      flexShrink={0}
+    >
       <Box justifyContent="space-between">
         <Text bold color={theme.accent} wrap="truncate-end">
           purgeit{state.phase === 'scanning' ? ` ${spinner} scanning…` : ''}

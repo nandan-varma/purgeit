@@ -15,12 +15,15 @@ export function ConfirmDialog({ state }: { state: AppState }) {
   const hiddenCount = selectedEntries.length - preview.length;
 
   return (
+    // flexShrink={0}: see Header.tsx's comment — a bordered Box must render
+    // fully or be clipped whole, never squashed into a garbled partial one.
     <Box
       borderStyle="round"
       borderColor={theme.danger}
       paddingX={1}
       flexDirection="column"
       marginTop={1}
+      flexShrink={0}
     >
       <Text bold color={theme.danger} wrap="truncate-end">
         ⚠ Delete {selectedEntries.length} item(s), {fmtSize(totalBytes)}? This cannot be undone.

@@ -6,7 +6,7 @@ import { theme } from '../theme.js';
 export function DoneSummary({ state }: { state: AppState }) {
   if (state.entries.length === 0 && state.scanDone) {
     return (
-      <Box borderStyle="round" borderColor={theme.accent} paddingX={1} marginTop={1}>
+      <Box borderStyle="round" borderColor={theme.accent} paddingX={1} marginTop={1} flexShrink={0}>
         <Text>Nothing to clean — this directory looks tidy.</Text>
       </Box>
     );
@@ -24,6 +24,7 @@ export function DoneSummary({ state }: { state: AppState }) {
         paddingX={1}
         flexDirection="column"
         marginTop={1}
+        flexShrink={0}
       >
         <Text bold color={hasFailures ? theme.danger : theme.success}>
           {hasFailures ? '✗' : '✓'} Done
@@ -37,7 +38,7 @@ export function DoneSummary({ state }: { state: AppState }) {
   }
 
   return (
-    <Box borderStyle="round" borderColor={theme.accent} paddingX={1} marginTop={1}>
+    <Box borderStyle="round" borderColor={theme.accent} paddingX={1} marginTop={1} flexShrink={0}>
       <Text dimColor>Quit — nothing was deleted.</Text>
     </Box>
   );

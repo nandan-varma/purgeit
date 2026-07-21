@@ -6,7 +6,8 @@ export function DeletingProgress({ deleted, failed }: { deleted: number; failed:
   const spinner = useSpinner(true);
 
   return (
-    <Box borderStyle="round" borderColor={theme.warning} paddingX={1} marginTop={1}>
+    // flexShrink={0}: see Header.tsx's comment.
+    <Box borderStyle="round" borderColor={theme.warning} paddingX={1} marginTop={1} flexShrink={0}>
       <Text bold color={theme.warning} wrap="truncate-end">
         {spinner} Deleting…
       </Text>
