@@ -49,4 +49,10 @@ describe('formatBytes', () => {
   it('caps at TB for absurdly large sizes', () => {
     expect(formatBytes(1024 ** 5)).toBe('1024.0 TB');
   });
+
+  it('returns "0 B" for negative, NaN, or Infinity input', () => {
+    expect(formatBytes(-1)).toBe('0 B');
+    expect(formatBytes(Number.NaN)).toBe('0 B');
+    expect(formatBytes(Number.POSITIVE_INFINITY)).toBe('0 B');
+  });
 });

@@ -40,6 +40,7 @@ export function parseSizeString(input: string): number {
 
 /** Formats a byte count as a human-readable string (e.g. "4.2 MB"). */
 export function formatBytes(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes < 0) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
   const units = ['KB', 'MB', 'GB', 'TB'];
   let value = bytes / 1024;
