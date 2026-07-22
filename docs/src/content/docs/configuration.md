@@ -19,10 +19,9 @@ Use `--config <path>` to specify an explicit file, or `--no-config` to skip conf
 export default {
   extends: 'merge', // 'merge' (default) or 'replace'
   skipDirs: ['tmp', '_tmp_clone'],
-  alwaysSafe: ['coverage'],
-  alwaysSafeRemove: ['build'],
+  alwaysSafeRemove: ['coverage'],
   gated: [
-    { name: 'Pods', when: { file: 'Podfile' } },
+    { name: 'generated', when: { file: 'codegen.json' } },
   ],
   targets: {
     frontend: ['node_modules', '.next', 'dist'],
@@ -97,6 +96,107 @@ Named groups of rule names. You can then use `--targets <group-name>` on the CLI
 ```bash
 purgeit --targets frontend
 ```
+
+## Common patterns
+
+### Replace the entire ruleset
+
+Use `extends: 'replace'` when you want full control and do not want any built-in defaults:
+
+```ts
+export default {
+  extends: 'replace',
+  alwaysSafe: ['node_modules', 'dist'],
+  skipDirs: ['.git'],
+};
+```
+
+### Remove a built-in rule
+
+If a built-in always-safe rule does not match your workflow, remove it instead of adding it:
+
+```ts
+export default {
+  alwaysSafeRemove: ['.nyc_output'],
+};
+```
+
+Remove a gated rule entirely:
+
+```ts
+export default {
+  gatedRemove: ['Pods'],
+};
+```
+
+### Add a custom gated rule
+
+Custom rules are useful for project-specific generated directories. For example, a `generated/` directory that should only be deleted when a `codegen.json` manifest is present:
+
+```ts
+export default {
+  gated: [
+    { name: 'generated', when: { file: 'codegen.json' } },
+  ],
+};
+```
+
+Use multiple OR conditions:
+
+```ts
+export default {
+  gated: [
+    {
+      name: 'build',
+      when: [{ file: 'Makefile' }, { glob: '*.cmake' }],
+    },
+  ],
+};
+```
+
+Use a function gate for logic that declarative conditions cannot express:
+
+```ts
+export default {
+  gated: [
+    {
+      name: 'scratch',
+      gate: (ctx) => ctx.siblingFile('README.md') && !ctx.siblingFile('keep-scratch'),
+    },
+  ],
+};
+```
+
+### Skip directories during scanning
+
+`skipDirs` prevents purgeit from descending into directories. This is useful for large, non-project folders inside your scan root:
+
+```ts
+export default {
+  skipDirs: ['backups', 'archives', 'node_modules'],
+};
+```
+
+### Target groups
+
+Define named groups of rules so you can run focused cleanups from the CLI:
+
+```ts
+export default {
+  targets: {
+    frontend: ['node_modules', '.next', 'dist'],
+    mobile: ['Pods', 'build', '.gradle'],
+    python: ['__pycache__', '.venv', '.tox'],
+  },
+};
+```
+
+```bash
+purgeit --targets frontend
+purgeit --targets mobile,python
+```
+
+Target groups can also reference other target groups indirectly by listing their member names.
 
 ## Security note
 

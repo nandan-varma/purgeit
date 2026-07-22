@@ -18,11 +18,16 @@ const { config, filepath } = await loadConfig({
 ## Build a ruleset
 
 ```ts
-import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from 'purgeit';
+import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets, applyCliFilters } from 'purgeit';
 
 const base = defaultRuleSet();
 const withUser = mergeRuleSets(base, config);
+
+// Restrict to one or more rule names, or target groups defined in config.
 const restricted = restrictRuleSetToTargets(withUser, ['node_modules', 'dist']);
+
+// Or apply the same CLI-style filters the headless/TUI paths use.
+const filtered = applyCliFilters(withUser, /* noGated */ false, /* targets */ ['node_modules']);
 ```
 
 ## Scan
@@ -68,6 +73,7 @@ Exported types include:
 - `DeleteEvent`, `DeleteOptions`
 - `ArtifactRule`, `Gate`, `GateContext`, `ResolvedRuleSet`, `ValidationWarning`
 - `PurgeitUserConfig`, `UserGatedRule`, `GateCondition`
+- `LoadConfigOptions`, `LoadedConfig`
 
 ## Gated rules
 
@@ -91,3 +97,15 @@ The `GateContext` provides:
 - `siblingFile(name)`: true if a sibling file exists
 - `siblingGlob(pattern)`: true if any sibling entry matches the glob
 - `siblingGrep(name, pattern)`: true if the sibling file exists and matches the regex
+
+## CLI-style filters
+
+`applyCliFilters` is the same helper used by the headless runner and the TUI to apply `--no-gated` and `--targets` after merging user config:
+
+```ts
+import { applyCliFilters } from 'purgeit';
+
+const ruleSet = applyCliFilters(withUser, /* noGated */ true, /* targets */ ['frontend']);
+```
+
+`restrictRuleSetToTargets` is the lower-level helper that expands target group names to their member rule names and returns a ruleset containing only those names.

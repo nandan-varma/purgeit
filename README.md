@@ -61,10 +61,9 @@ Create a `purgeit.config.ts` (or `.js`, `.json`, `.mjs`, `.cjs`) in your project
 export default {
   extends: 'merge', // 'merge' (default) or 'replace'
   skipDirs: ['tmp', '_tmp_clone'],
-  alwaysSafe: ['coverage'],
-  alwaysSafeRemove: ['build'],
+  alwaysSafeRemove: ['coverage'],
   gated: [
-    { name: 'Pods', when: { file: 'Podfile' } },
+    { name: 'generated', when: { file: 'codegen.json' } },
   ],
   targets: {
     frontend: ['node_modules', '.next', 'dist'],

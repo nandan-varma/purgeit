@@ -3,7 +3,7 @@ title: purgeit
 description: Find and delete regenerable dev build artifacts across your projects.
 template: splash
 hero:
-  tagline: Interactive TUI by default, scriptable via flags for CI/cron.
+  tagline: Reclaim disk space from node_modules, dist, target, Pods, and more. Interactive TUI by default, scriptable via flags for CI/cron.
   image:
     file: ../../assets/logo.svg
   actions:
@@ -11,9 +11,13 @@ hero:
       link: /getting-started/
       icon: right-arrow
       variant: primary
+    - text: CLI reference
+      link: /cli/
+      icon: document
     - text: View on GitHub
       link: https://github.com/nandan-varma/purgeit
       icon: external
+      variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -40,3 +44,16 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     macOS, Linux, and Windows. Uses `du` on Unix; pure-Node fallback on Windows.
   </Card>
 </CardGrid>
+
+## Install in one command
+
+```bash
+# Run without installing
+npx purgeit ~/dev
+
+# Or install globally
+npm install -g purgeit
+purgeit ~/dev
+```
+
+No config required. See the [CLI reference](/cli/) for `--json`, `--delete`, `--dry-run`, and every other flag.

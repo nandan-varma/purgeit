@@ -42,15 +42,15 @@ purgeit --json --dry-run ~/dev
 
 ## What gets cleaned
 
-By default, purgeit matches directories like:
+By default, purgeit matches the most common regenerable directories:
 
 - `node_modules`, `dist`, `.next`, `.nuxt`, `out`, `target`
-- Framework caches: `.cache`, `.vite`, `.turbo`, `.swc`
-- Test artifacts: `coverage`, `.nyc_output`, `playwright-report`
-- Python artifacts: `__pycache__`, `.venv`, `.tox`
+- Framework caches: `.cache`, `.vite`, `.turbo`, `.swc`, `.angular`, `.svelte-kit`, `.astro`
+- Test artifacts: `coverage`, `.nyc_output`, `playwright-report`, `test-results`
+- Python artifacts: `__pycache__`, `.venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`
 - Gated directories (only when a sibling manifest exists): `Pods`, `build`, `.gradle`, `bin`, `obj`
 
-You can extend or replace these rules with a [configuration file](/configuration/).
+See the full [built-in rules reference](/rules/) for the complete list and gate conditions. You can extend or replace these rules with a [configuration file](/configuration/).
 
 ## Exit codes
 

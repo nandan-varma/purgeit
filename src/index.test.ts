@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { defaultRuleSet, loadConfig, mergeRuleSets, scan } from './index.js';
+import {
+  applyCliFilters,
+  defaultRuleSet,
+  loadConfig,
+  mergeRuleSets,
+  restrictRuleSetToTargets,
+  scan,
+} from './index.js';
 
 describe('public API', () => {
   it('exports scan as a function', () => {
@@ -12,6 +19,14 @@ describe('public API', () => {
 
   it('exports mergeRuleSets as a function', () => {
     expect(typeof mergeRuleSets).toBe('function');
+  });
+
+  it('exports restrictRuleSetToTargets as a function', () => {
+    expect(typeof restrictRuleSetToTargets).toBe('function');
+  });
+
+  it('exports applyCliFilters as a function', () => {
+    expect(typeof applyCliFilters).toBe('function');
   });
 
   it('exports loadConfig as a function', () => {
