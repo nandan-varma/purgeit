@@ -6,17 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.0.8] - 2026-07-22
+
 ### Added
 - Cross-platform CI matrix (macOS, Linux, Windows)
 - Cross-platform documentation in README
 - Expanded library API exports (`deleteEntries`, `Gate`, `GateContext`, `PurgeitUserConfig`, `GateCondition`, `UserGatedRule`, `createExcludeMatcher`)
 - `typescript` peer dependency now marked optional
+- New library API exports: `restrictRuleSetToTargets`, `applyCliFilters`, `LoadConfigOptions`, `LoadedConfig`
+- New docs pages: built-in rules reference, FAQ & troubleshooting
+- Improved docs site metadata (Open Graph / Twitter Cards, sitemap, last updated timestamps)
 
 ### Fixed
 - README badge now points to correct `purgeit` package name
 - `isDangerousPath` now correctly rejects Windows drive roots (e.g. `C:\`)
 - `skipDirs` entries now properly pruned during recursive walks, not just at top-level project listing
 - `chmod`-based permission tests guarded on Windows (no-op on NTFS)
+- Corrected config examples in README and docs (removed misleading `alwaysSafe`/`alwaysSafeRemove` usage)
 
 ### Changed
 - Lazy-load `cosmiconfig-typescript-loader` (saves 1.7MB `jiti` install for non-TS config users)
