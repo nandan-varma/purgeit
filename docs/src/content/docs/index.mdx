@@ -1,0 +1,42 @@
+---
+title: purgeit
+description: Find and delete regenerable dev build artifacts across your projects.
+template: splash
+hero:
+  tagline: Interactive TUI by default, scriptable via flags for CI/cron.
+  image:
+    file: ../../assets/logo.svg
+  actions:
+    - text: Get started
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/nandan-varma/purgeit
+      icon: external
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+  <Card title="Safe by default" icon="approve-check">
+    Nothing is selected. Permanent deletion requires explicit multi-select + confirmation.
+  </Card>
+  <Card title="Interactive TUI" icon="screen">
+    Sortable table with live sizes, full-row highlight selection, and keyboard-driven workflow.
+  </Card>
+  <Card title="Headless mode" icon="document">
+    `--json` and `--delete` flags for scripting, CI, and cron jobs.
+  </Card>
+  <Card title="Configurable rules" icon="setting">
+    Extend built-in defaults with a `purgeit.config.ts`.
+  </Card>
+  <Card title="Two scan modes" icon="list-format">
+    Projects mode groups by top-level directory; flat mode (`--full`) scans everything as one unit.
+  </Card>
+  <Card title="Cross-platform" icon="rocket">
+    macOS, Linux, and Windows. Uses `du` on Unix; pure-Node fallback on Windows.
+  </Card>
+</CardGrid>
