@@ -55,51 +55,49 @@ export async function* walk(
   function scheduleDir(dir: string, depth: number): void {
     pending++;
     void limit(async () => {
-      if (opts.signal?.aborted) {
-        pending--;
-        maybeFinish();
-        return;
-      }
-
-      let entries: import('node:fs').Dirent[];
       try {
-        entries = await readdir(dir, { withFileTypes: true });
-      } catch {
-        // Permission denied, or the directory vanished mid-scan — skip it
-        // rather than aborting the whole scan over one unreadable subtree.
+        if (opts.signal?.aborted) return;
+
+        let entries: import('node:fs').Dirent[];
+        try {
+          entries = await readdir(dir, { withFileTypes: true });
+        } catch {
+          return;
+        }
+
+        for (const entry of entries) {
+          if (opts.signal?.aborted) break;
+          if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+
+          const name = entry.name;
+          if (ruleSet.pruneMeta.has(name)) continue;
+
+          const path = join(dir, name);
+
+          if (ruleSet.alwaysSafe.has(name)) {
+            queue.push({ path, kind: 'always-safe', ruleName: name });
+            continue;
+          }
+
+          const gate = ruleSet.gated.get(name);
+          if (gate !== undefined) {
+            try {
+              if (gate(createGateContext(path))) {
+                queue.push({ path, kind: 'gated', ruleName: name });
+              }
+            } catch {
+              // A throwing gate is treated as "gate failed" — don't report the match.
+            }
+            continue;
+          }
+
+          if (opts.maxDepth !== undefined && depth >= opts.maxDepth) continue;
+          scheduleDir(path, depth + 1);
+        }
+      } finally {
         pending--;
         maybeFinish();
-        return;
       }
-
-      for (const entry of entries) {
-        if (opts.signal?.aborted) break;
-        if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
-
-        const name = entry.name;
-        if (ruleSet.pruneMeta.has(name)) continue;
-
-        const path = join(dir, name);
-
-        if (ruleSet.alwaysSafe.has(name)) {
-          queue.push({ path, kind: 'always-safe', ruleName: name });
-          continue;
-        }
-
-        const gate = ruleSet.gated.get(name);
-        if (gate !== undefined) {
-          if (gate(createGateContext(path))) {
-            queue.push({ path, kind: 'gated', ruleName: name });
-          }
-          continue;
-        }
-
-        if (opts.maxDepth !== undefined && depth >= opts.maxDepth) continue;
-        scheduleDir(path, depth + 1);
-      }
-
-      pending--;
-      maybeFinish();
     });
   }
 

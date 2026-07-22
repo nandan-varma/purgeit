@@ -8,26 +8,31 @@ import pLimit from 'p-limit';
 const execFileAsync = promisify(execFile);
 
 let duAvailable: boolean | undefined;
+let duProbe: Promise<boolean> | undefined;
 
 async function checkDuAvailable(): Promise<boolean> {
   if (duAvailable !== undefined) return duAvailable;
-  try {
-    // A real, harmless probe call (`du -s -k` on a directory that always
-    // exists) rather than `du --version`, since BSD du (macOS) doesn't
-    // support --version but does support -s -k identically to GNU du.
-    await execFileAsync('du', ['-s', '-k', tmpdir()]);
-    duAvailable = true;
-  } catch (err) {
-    // ENOENT means the binary itself is missing; any other error means it
-    // ran (even if it exited non-zero for some other reason), so it exists.
-    duAvailable = (err as NodeJS.ErrnoException).code !== 'ENOENT';
-  }
-  return duAvailable;
+  duProbe ??= (async () => {
+    try {
+      // A real, harmless probe call (`du -s -k` on a directory that always
+      // exists) rather than `du --version`, since BSD du (macOS) doesn't
+      // support --version but does support -s -k identically to GNU du.
+      await execFileAsync('du', ['-s', '-k', tmpdir()]);
+      duAvailable = true;
+    } catch (err) {
+      // ENOENT means the binary itself is missing; any other error means it
+      // ran (even if it exited non-zero for some other reason), so it exists.
+      duAvailable = (err as NodeJS.ErrnoException).code !== 'ENOENT';
+    }
+    return duAvailable;
+  })();
+  return duProbe;
 }
 
 /** Test-only: forces the next computeSize() call to re-probe `du` availability. */
 export function resetDuAvailabilityCache(): void {
   duAvailable = undefined;
+  duProbe = undefined;
 }
 
 /**

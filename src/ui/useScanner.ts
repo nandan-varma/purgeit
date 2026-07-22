@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer } from 'react';
 import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry, ScanOptions } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
@@ -30,7 +30,6 @@ export function useScanner(
   const [state, dispatch] = useReducer(reducer, undefined, () =>
     initialState(initialSortKey, initialSortDir),
   );
-  const abortRef = useRef<AbortController | null>(null);
 
   // Run once on mount — root/ruleSet/opts/uiOpts are supplied once from
   // cli.ts's single App render and are never expected to change identity for
@@ -38,7 +37,6 @@ export function useScanner(
   // biome-ignore lint/correctness/useExhaustiveDependencies: intentional — see comment above
   useEffect(() => {
     const controller = new AbortController();
-    abortRef.current = controller;
     const isExcluded = createExcludeMatcher(root, exclude);
     // Entries discovered but awaiting their first size resolution before we
     // know whether --min-size lets them through — kept out of the reducer
@@ -86,7 +84,10 @@ export function useScanner(
         }
       } catch (err) {
         if (!cancelled) {
-          dispatch({ type: 'SET_ERROR', message: (err as Error).message });
+          dispatch({
+            type: 'SET_ERROR',
+            message: err instanceof Error ? err.message : String(err),
+          });
         }
       }
     };

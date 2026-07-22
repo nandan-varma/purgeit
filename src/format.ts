@@ -13,7 +13,7 @@ const SIZE_UNITS: Record<string, number> = {
  */
 export function parseSizeString(input: string): number {
   const trimmed = input.trim();
-  const match = /^([\d.]+)\s*([a-zA-Z]*)$/.exec(trimmed);
+  const match = /^(\d*\.?\d+)\s*([a-zA-Z]*)$/.exec(trimmed);
   if (!match) {
     throw new Error(
       `invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`,

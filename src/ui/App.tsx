@@ -66,19 +66,37 @@ export function App({
   useEffect(() => {
     if (state.phase !== 'deleting') return;
     const selected = state.entries.filter((e) => state.selected.has(e.path)).map((e) => e.path);
+    const controller = new AbortController();
+    // Merge the app-level signal (if any) with our deletion-scoped controller
+    // so either path can cancel the deletion.
+    if (signal) {
+      if (signal.aborted) controller.abort();
+      else signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
 
     const run = async () => {
-      let deleted = 0;
-      let failed = 0;
-      for await (const event of deleteEntries(selected, { signal, dryRun })) {
-        if (event.type === 'done') {
-          deleted = event.deleted;
-          failed = event.failed;
+      try {
+        let deleted = 0;
+        let failed = 0;
+        for await (const event of deleteEntries(selected, {
+          signal: controller.signal,
+          dryRun,
+        })) {
+          if (event.type === 'done') {
+            deleted = event.deleted;
+            failed = event.failed;
+          }
         }
+        dispatch({ type: 'DELETE_DONE', deleted, failed });
+      } catch {
+        dispatch({ type: 'DELETE_DONE', deleted: 0, failed: selected.length });
       }
-      dispatch({ type: 'DELETE_DONE', deleted, failed });
     };
     void run();
+
+    return () => {
+      controller.abort();
+    };
   }, [state.phase]);
 
   // Keymap

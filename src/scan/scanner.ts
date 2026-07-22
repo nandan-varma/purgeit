@@ -192,17 +192,16 @@ export async function* scan(
     queue.push({ type: 'found', entry });
     pendingSizes++;
     void limit(async () => {
-      if (signal?.aborted) {
+      try {
+        if (signal?.aborted) return;
+        const bytes = await computeSize(match.path);
+        entry.size = bytes;
+        totalBytes += bytes;
+        queue.push({ type: 'size', path: match.path, bytes });
+      } finally {
         pendingSizes--;
         maybeFinish();
-        return;
       }
-      const bytes = await computeSize(match.path);
-      entry.size = bytes;
-      totalBytes += bytes;
-      queue.push({ type: 'size', path: match.path, bytes });
-      pendingSizes--;
-      maybeFinish();
     });
   }
 
