@@ -3,7 +3,7 @@ import { lstat, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import pLimit from 'p-limit';
+import pLimit, { type LimitFunction } from 'p-limit';
 
 const execFileAsync = promisify(execFile);
 
@@ -36,18 +36,142 @@ export function resetDuAvailabilityCache(): void {
 }
 
 /**
+ * Batches multiple `du -s -k` calls into a single subprocess invocation.
+ * Paths are accumulated and flushed when the batch reaches `maxBatchSize`
+ * or after `flushDelayMs` milliseconds, whichever comes first. This reduces
+ * process-fork overhead from O(n) to O(n/batchSize).
+ */
+class DuBatcher {
+  private readonly maxBatchSize: number;
+  private readonly flushDelayMs: number;
+  private readonly limit: LimitFunction;
+  private pending = new Map<
+    string,
+    { resolve: (bytes: number) => void; reject: (err: Error) => void }
+  >();
+  private flushTimer: ReturnType<typeof setTimeout> | undefined;
+  private abortListener: (() => void) | undefined;
+
+  constructor(opts: { maxBatchSize?: number; flushDelayMs?: number; limit?: LimitFunction } = {}) {
+    this.maxBatchSize = opts.maxBatchSize ?? 32;
+    this.flushDelayMs = opts.flushDelayMs ?? 10;
+    this.limit = opts.limit ?? pLimit(8);
+  }
+
+  /**
+   * Attach an AbortSignal so that aborting the scan immediately flushes
+   * and rejects all pending size requests instead of hanging on the timer.
+   */
+  bindAbortSignal(signal: AbortSignal | undefined): void {
+    if (signal === undefined || this.abortListener !== undefined) return;
+    if (signal.aborted) {
+      this.rejectAll(new Error('scan aborted'));
+      return;
+    }
+    this.abortListener = () => {
+      this.rejectAll(new Error('scan aborted'));
+    };
+    signal.addEventListener('abort', this.abortListener, { once: true });
+  }
+
+  private rejectAll(err: Error): void {
+    if (this.flushTimer !== undefined) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = undefined;
+    }
+    for (const { reject } of this.pending.values()) reject(err);
+    this.pending.clear();
+  }
+
+  sizeOf(path: string): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.pending.set(path, { resolve, reject });
+      if (this.pending.size >= this.maxBatchSize) {
+        this.flush();
+      } else if (this.flushTimer === undefined) {
+        this.flushTimer = setTimeout(() => {
+          this.flushTimer = undefined;
+          this.flush();
+        }, this.flushDelayMs);
+        // Allow Node to exit even if the timer is still pending.
+        if (this.flushTimer.unref) this.flushTimer.unref();
+      }
+    });
+  }
+
+  private flush(): void {
+    if (this.flushTimer !== undefined) {
+      clearTimeout(this.flushTimer);
+      this.flushTimer = undefined;
+    }
+    if (this.pending.size === 0) return;
+
+    const batch = this.pending;
+    this.pending = new Map();
+
+    const paths = [...batch.keys()];
+    void this.limit(() => this.runBatch(paths, batch));
+  }
+
+  private async runBatch(
+    paths: string[],
+    resolvers: Map<string, { resolve: (bytes: number) => void; reject: (err: Error) => void }>,
+  ): Promise<void> {
+    let stdout: string;
+    try {
+      ({ stdout } = await execFileAsync('du', ['-s', '-k', ...paths]));
+    } catch {
+      for (const { reject } of resolvers.values()) {
+        reject(new Error('du batch failed'));
+      }
+      return;
+    }
+
+    const parsed = new Map<string, number>();
+    for (const line of stdout.split('\n')) {
+      const trimmed = line.trim();
+      if (trimmed === '') continue;
+      const spaceIdx = trimmed.indexOf('\t');
+      if (spaceIdx === -1) continue;
+      const kb = Number.parseInt(trimmed.substring(0, spaceIdx), 10);
+      const path = trimmed.substring(spaceIdx + 1);
+      if (Number.isFinite(kb) && path !== '') {
+        parsed.set(path, kb * 1024);
+      }
+    }
+
+    for (const [path, { resolve, reject }] of resolvers) {
+      const bytes = parsed.get(path);
+      if (bytes !== undefined) {
+        resolve(bytes);
+      } else {
+        // Path not in du output (permission denied, vanished, etc.) — fall back to JS.
+        try {
+          resolve(await computeSizeFallback(path, 8));
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err)));
+        }
+      }
+    }
+  }
+}
+
+/**
  * Returns the real byte size of `path` (recursive if it's a directory).
- * Shells out to `du -s -k` by default (matches CLEANUP.sh, fast on the
+ * Shells out to batched `du -s -k` calls (matches CLEANUP.sh, fast on the
  * macOS/Linux systems this is actually used on); falls back to a
  * concurrency-limited pure-Node walk if `du` is unavailable or fails on this
  * particular path (e.g. permission denied, or the path vanished mid-scan).
  */
 export async function computeSize(
   path: string,
-  opts: { concurrency?: number } = {},
+  opts: { concurrency?: number; batcher?: DuBatcher } = {},
 ): Promise<number> {
   if (await checkDuAvailable()) {
     try {
+      if (opts.batcher !== undefined) {
+        return await opts.batcher.sizeOf(path);
+      }
       const { stdout } = await execFileAsync('du', ['-s', '-k', path]);
       /* v8 ignore next -- String.split never returns an empty array, so index 0 always exists at runtime; the `?? ''` only satisfies noUncheckedIndexedAccess */
       const kb = Number.parseInt(stdout.trim().split(/\s+/)[0] ?? '', 10);
@@ -57,6 +181,11 @@ export async function computeSize(
     }
   }
   return computeSizeFallback(path, opts.concurrency ?? 8);
+}
+
+/** Creates a DuBatcher scoped to the given concurrency limit. */
+export function createDuBatcher(limit: LimitFunction): DuBatcher {
+  return new DuBatcher({ limit });
 }
 
 async function computeSizeFallback(path: string, concurrency: number): Promise<number> {

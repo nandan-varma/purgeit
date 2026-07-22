@@ -70,7 +70,7 @@ export async function* walk(
           if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
 
           const name = entry.name;
-          if (ruleSet.pruneMeta.has(name)) continue;
+          if (ruleSet.pruneMeta.has(name) || ruleSet.skipDirs.has(name)) continue;
 
           const path = join(dir, name);
 

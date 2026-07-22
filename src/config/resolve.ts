@@ -1,5 +1,4 @@
 import { cosmiconfig } from 'cosmiconfig';
-import { TypeScriptLoader } from 'cosmiconfig-typescript-loader';
 import type { PurgeitUserConfig } from './schema.js';
 import { assertPurgeitUserConfig } from './schema.js';
 
@@ -19,8 +18,18 @@ export interface LoadedConfig {
   readonly filepath: string | undefined;
 }
 
-function createExplorer(stopDir: string | undefined) {
-  const tsLoader = TypeScriptLoader();
+// biome-ignore lint/suspicious/noExplicitAny: cosmiconfig-typescript-loader's return type is opaque
+let tsLoaderCache: ((...args: any[]) => any) | undefined;
+
+async function tsLoader(filepath: string): Promise<string> {
+  if (tsLoaderCache === undefined) {
+    const mod = await import('cosmiconfig-typescript-loader');
+    tsLoaderCache = (mod.TypeScriptLoader ?? mod.default)();
+  }
+  return (await tsLoaderCache(filepath)) as string;
+}
+
+async function createExplorer(stopDir: string | undefined) {
   return cosmiconfig('purgeit', {
     searchPlaces: [
       'package.json',
@@ -54,7 +63,7 @@ export async function loadConfig(options: LoadConfigOptions = {}): Promise<Loade
     return { config: undefined, filepath: undefined };
   }
 
-  const explorer = createExplorer(options.stopDir);
+  const explorer = await createExplorer(options.stopDir);
   const result = options.configPath
     ? await explorer.load(options.configPath)
     : await explorer.search(options.cwd ?? process.cwd());

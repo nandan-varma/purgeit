@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { useMemo } from 'react';
 import { fmtSize, sortLabel } from '../format.js';
 import type { AppState } from '../state.js';
 import { theme } from '../theme.js';
@@ -15,10 +16,14 @@ export function Header({
 }) {
   const spinner = useSpinner(state.phase === 'scanning');
   const total = state.entries.reduce((sum, e) => sum + (e.size ?? 0), 0);
-  const selectedBytes = [...state.selected].reduce((sum, path) => {
-    const e = state.entries.find((x) => x.path === path);
-    return sum + (e?.size ?? 0);
-  }, 0);
+  const entriesByPath = useMemo(
+    () => new Map(state.entries.map((e) => [e.path, e])),
+    [state.entries],
+  );
+  const selectedBytes = useMemo(
+    () => [...state.selected].reduce((sum, path) => sum + (entriesByPath.get(path)?.size ?? 0), 0),
+    [state.selected, entriesByPath],
+  );
 
   return (
     // flexShrink={0}: the app root clamps total height to the terminal

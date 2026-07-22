@@ -13,7 +13,7 @@ import {
 } from '../rules/validators.js';
 import type { ResolvedRuleSet, ValidationWarning } from '../types.js';
 import { AsyncQueue } from './async-queue.js';
-import { computeSize } from './size.js';
+import { computeSize, createDuBatcher } from './size.js';
 import type { WalkMatch } from './walk.js';
 import { walk } from './walk.js';
 
@@ -168,6 +168,8 @@ export async function* scan(
   const signal = opts.signal;
   const limit = pLimit(opts.concurrency ?? 8);
   const queue = new AsyncQueue<ScanEvent>();
+  const duBatcher = createDuBatcher(limit);
+  duBatcher.bindAbortSignal(signal);
 
   let totalBytes = 0;
   let pendingSizes = 0;
@@ -193,9 +195,11 @@ export async function* scan(
     void limit(async () => {
       try {
         if (signal?.aborted) return;
-        const bytes = await computeSize(match.path);
+        const bytes = await computeSize(match.path, { batcher: duBatcher });
         totalBytes += bytes;
         queue.push({ type: 'size', path: match.path, bytes });
+      } catch {
+        // Size computation failed (e.g. aborted scan) — don't report it.
       } finally {
         pendingSizes--;
         maybeFinish();

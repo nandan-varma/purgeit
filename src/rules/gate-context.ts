@@ -2,11 +2,18 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { GateContext } from '../types.js';
 
+const globCache = new Map<string, RegExp>();
+
 /** Converts a shell-style glob (`*`/`?` wildcards only) to an anchored RegExp. */
 export function globToRegExp(pattern: string): RegExp {
-  const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-  const withWildcards = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
-  return new RegExp(`^${withWildcards}$`);
+  let re = globCache.get(pattern);
+  if (re === undefined) {
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const withWildcards = escaped.replace(/\*/g, '.*').replace(/\?/g, '.');
+    re = new RegExp(`^${withWildcards}$`);
+    globCache.set(pattern, re);
+  }
+  return re;
 }
 
 /** Builds a GateContext backed by real, synchronous fs calls scoped to `path`'s parent. */

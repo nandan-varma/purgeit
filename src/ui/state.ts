@@ -80,9 +80,11 @@ export function reducer(state: AppState, action: Action): AppState {
       return { ...state, entries: [...state.entries, action.entry] };
 
     case 'UPDATE_SIZE': {
-      const entries = state.entries.map((e) =>
-        e.path === action.path ? { ...e, size: action.bytes } : e,
-      );
+      const idx = state.entries.findIndex((e) => e.path === action.path);
+      if (idx === -1) return state;
+      const entries = state.entries.slice();
+      // biome-ignore lint/style/noNonNullAssertion: idx was checked above
+      entries[idx] = { ...state.entries[idx]!, size: action.bytes };
       return { ...state, entries };
     }
 

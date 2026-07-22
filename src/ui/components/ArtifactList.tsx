@@ -1,4 +1,5 @@
 import { Box, Text } from 'ink';
+import { useMemo } from 'react';
 import { computeVisibleRows, NARROW_TERMINAL_COLUMNS } from '../layout.js';
 import type { AppState } from '../state.js';
 import { sortedEntries } from '../state.js';
@@ -11,7 +12,11 @@ export function ArtifactList({ state }: { state: AppState }) {
   const { columns, rows } = useTerminalSize();
   const showProject = columns >= NARROW_TERMINAL_COLUMNS;
   const visibleRows = computeVisibleRows(rows);
-  const entries = sortedEntries(state);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: selective deps are intentional — only these fields affect sort order
+  const entries = useMemo(
+    () => sortedEntries(state),
+    [state.entries, state.sortKey, state.sortDir],
+  );
 
   // Center the viewport on the cursor so moving past the visible window
   // keeps the highlighted row visible instead of scrolling off-screen.
