@@ -24,8 +24,9 @@ Options:
       --no-gated             Disable gated-rule evaluation (always-safe only)
       --sort <size|path|name> Sort key for list/JSON output (default: size)
       --asc                  Ascending sort (default: descending)
-      --dry-run              Show what would be deleted; never deletes
-                              (default unless --delete is given)
+      --dry-run              Simulate deletion without touching files. In headless mode
+                              this is the default unless --delete is given; in a TTY
+                              the TUI still opens and confirmed deletions are simulated.
       --delete               Actually delete matched artifacts
   -y, --yes                  Skip the confirmation prompt (headless --delete only)
       --json                 Emit machine-readable JSON (disables the TUI)

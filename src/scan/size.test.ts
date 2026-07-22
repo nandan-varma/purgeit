@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tmpdir } from 'node:os';
 import pLimit from 'p-limit';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 
 // Real `execFile` exposes a `util.promisify.custom` implementation (resolves

@@ -1,34 +1,40 @@
-import { existsSync, readdirSync } from 'node:fs';
+import { access, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { ProjectTypeDetector } from '../types.js';
 import { globToRegExp } from './gate-context.js';
 
-function hasFile(dir: string, name: string): boolean {
-  return existsSync(join(dir, name));
+async function hasFile(dir: string, name: string): Promise<boolean> {
+  try {
+    await access(join(dir, name));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-function hasAnyFile(dir: string, names: readonly string[]): boolean {
-  return names.some((name) => hasFile(dir, name));
+async function hasAnyFile(dir: string, names: readonly string[]): Promise<boolean> {
+  const results = await Promise.all(names.map((name) => hasFile(dir, name)));
+  return results.some(Boolean);
 }
 
 /** Returns the name of the first top-level entry matching `pattern`, or undefined. */
-export function findTopLevelMatchName(
+export async function findTopLevelMatchName(
   dir: string,
   pattern: string,
   wantDir: boolean,
-): string | undefined {
+): Promise<string | undefined> {
   const re = globToRegExp(pattern);
   let entries: import('node:fs').Dirent[];
   try {
-    entries = readdirSync(dir, { withFileTypes: true });
+    entries = await readdir(dir, { withFileTypes: true });
   } catch {
     return undefined;
   }
   return entries.find((entry) => re.test(entry.name) && entry.isDirectory() === wantDir)?.name;
 }
 
-function hasTopLevelMatch(dir: string, pattern: string, wantDir: boolean): boolean {
-  return findTopLevelMatchName(dir, pattern, wantDir) !== undefined;
+async function hasTopLevelMatch(dir: string, pattern: string, wantDir: boolean): Promise<boolean> {
+  return (await findTopLevelMatchName(dir, pattern, wantDir)) !== undefined;
 }
 
 /** Ports CLEANUP.sh's `detect_project()` — labels only, purely for display. */
@@ -36,33 +42,38 @@ export const PROJECT_TYPE_DETECTORS: readonly ProjectTypeDetector[] = [
   {
     id: 'next',
     label: 'next',
-    detect: (dir) => hasAnyFile(dir, ['next.config.js', 'next.config.ts', 'next.config.mjs']),
+    detect: async (dir) => hasAnyFile(dir, ['next.config.js', 'next.config.ts', 'next.config.mjs']),
   },
-  { id: 'node', label: 'node', detect: (dir) => hasFile(dir, 'package.json') },
+  { id: 'node', label: 'node', detect: async (dir) => hasFile(dir, 'package.json') },
   {
     id: 'react-native',
     label: 'react-native',
-    detect: (dir) =>
-      hasFile(dir, 'ios/Podfile') ||
-      hasFile(dir, 'android/build.gradle') ||
-      hasFile(dir, 'android/settings.gradle'),
+    detect: async (dir) =>
+      (await hasFile(dir, 'ios/Podfile')) ||
+      (await hasFile(dir, 'android/build.gradle')) ||
+      (await hasFile(dir, 'android/settings.gradle')),
   },
-  { id: 'tauri', label: 'tauri', detect: (dir) => hasFile(dir, 'src-tauri/Cargo.toml') },
-  { id: 'rust', label: 'rust', detect: (dir) => hasFile(dir, 'Cargo.toml') },
+  { id: 'tauri', label: 'tauri', detect: async (dir) => hasFile(dir, 'src-tauri/Cargo.toml') },
+  { id: 'rust', label: 'rust', detect: async (dir) => hasFile(dir, 'Cargo.toml') },
   {
     id: 'python',
     label: 'python',
-    detect: (dir) => hasAnyFile(dir, ['requirements.txt', 'pyproject.toml', 'setup.py']),
+    detect: async (dir) => hasAnyFile(dir, ['requirements.txt', 'pyproject.toml', 'setup.py']),
   },
-  { id: 'spm', label: 'spm', detect: (dir) => hasFile(dir, 'Package.swift') },
-  { id: 'xcode', label: 'xcode', detect: (dir) => hasTopLevelMatch(dir, '*.xcodeproj', true) },
+  { id: 'spm', label: 'spm', detect: async (dir) => hasFile(dir, 'Package.swift') },
+  {
+    id: 'xcode',
+    label: 'xcode',
+    detect: async (dir) => hasTopLevelMatch(dir, '*.xcodeproj', true),
+  },
   {
     id: 'dotnet',
     label: 'dotnet',
-    detect: (dir) =>
-      hasTopLevelMatch(dir, '*.csproj', false) || hasTopLevelMatch(dir, '*.sln', false),
+    detect: async (dir) =>
+      (await hasTopLevelMatch(dir, '*.csproj', false)) ||
+      (await hasTopLevelMatch(dir, '*.sln', false)),
   },
-  { id: 'cmake', label: 'cmake', detect: (dir) => hasFile(dir, 'CMakeLists.txt') },
+  { id: 'cmake', label: 'cmake', detect: async (dir) => hasFile(dir, 'CMakeLists.txt') },
 ];
 
 /**
@@ -72,11 +83,14 @@ export const PROJECT_TYPE_DETECTORS: readonly ProjectTypeDetector[] = [
  * `extraDetectors` (from user config) are appended, in the order given, after
  * the built-in labels.
  */
-export function detectProjectTypes(
+export async function detectProjectTypes(
   dir: string,
   extraDetectors: readonly ProjectTypeDetector[] = [],
-): string[] {
-  const flags = new Map(PROJECT_TYPE_DETECTORS.map((d) => [d.id, d.detect(dir)] as const));
+): Promise<string[]> {
+  const detections = await Promise.all(
+    PROJECT_TYPE_DETECTORS.map(async (d) => [d.id, await d.detect(dir)] as const),
+  );
+  const flags = new Map(detections);
   const labels: string[] = [];
 
   if (flags.get('next')) {
@@ -89,7 +103,7 @@ export function detectProjectTypes(
   }
 
   for (const detector of extraDetectors) {
-    if (detector.detect(dir)) labels.push(detector.label);
+    if (await detector.detect(dir)) labels.push(detector.label);
   }
 
   return labels;

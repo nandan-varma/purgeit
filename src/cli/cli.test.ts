@@ -200,4 +200,12 @@ describe('runCli', () => {
       stderrSpy.mockRestore();
     }
   });
+
+  it('returns exit code 2 when the TUI throws a config error', async () => {
+    runTuiMock.mockRejectedValue(new Error('config error: bad config'));
+    const io = captureIO();
+    const code = await runCli(['--tui', '/tmp'], { ...io, cwd: '/tmp' });
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/config error: bad config/);
+  });
 });

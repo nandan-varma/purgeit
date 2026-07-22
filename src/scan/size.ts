@@ -149,7 +149,7 @@ class DuBatcher {
       } else {
         // Path not in du output (permission denied, vanished, etc.) — fall back to JS.
         try {
-          resolve(await computeSizeFallback(path, 8));
+          resolve(await computeSizeFallback(path, pLimit(8)));
           /* v8 ignore start -- defensive; computeSizeFallback catches all fs errors internally, so this catch is unreachable by design */
         } catch (err) {
           reject(err instanceof Error ? err : new Error(String(err)));
@@ -169,7 +169,7 @@ class DuBatcher {
  */
 export async function computeSize(
   path: string,
-  opts: { concurrency?: number; batcher?: DuBatcher } = {},
+  opts: { concurrency?: number; batcher?: DuBatcher; limit?: LimitFunction } = {},
 ): Promise<number> {
   if (await checkDuAvailable()) {
     try {
@@ -184,7 +184,7 @@ export async function computeSize(
       // fall through to the JS fallback below
     }
   }
-  return computeSizeFallback(path, opts.concurrency ?? 8);
+  return computeSizeFallback(path, opts.limit ?? pLimit(opts.concurrency ?? 8));
 }
 
 /** Creates a DuBatcher scoped to the given concurrency limit. */
@@ -192,9 +192,7 @@ export function createDuBatcher(limit: LimitFunction): DuBatcher {
   return new DuBatcher({ limit });
 }
 
-async function computeSizeFallback(path: string, concurrency: number): Promise<number> {
-  const limit = pLimit(concurrency);
-
+async function computeSizeFallback(path: string, limit: LimitFunction): Promise<number> {
   async function sizeOf(p: string): Promise<number> {
     let stat: import('node:fs').Stats;
     try {

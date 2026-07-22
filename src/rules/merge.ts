@@ -101,3 +101,23 @@ export function restrictRuleSetToTargets(
     targets: ruleSet.targets,
   };
 }
+
+/**
+ * Applies the CLI flags that mutate the resolved ruleset after config merging:
+ * `--no-gated` strips all gated rules, and `--targets` restricts matching to a
+ * set of tokens (literal names or target groups). Shared between the TUI and
+ * headless paths so both behave identically.
+ */
+export function applyCliFilters(
+  ruleSet: ResolvedRuleSet,
+  noGated: boolean,
+  targets: readonly string[],
+): ResolvedRuleSet {
+  if (noGated) {
+    ruleSet = { ...ruleSet, gated: new Map() };
+  }
+  if (targets.length > 0) {
+    ruleSet = restrictRuleSetToTargets(ruleSet, targets);
+  }
+  return ruleSet;
+}

@@ -12,6 +12,8 @@ Find and delete regenerable dev build artifacts (`node_modules`, `dist`, `target
 npx purgeit ~/dev
 ```
 
+> Running `purgeit` in a terminal opens the interactive TUI. For a non-interactive dry-run preview, use `purgeit --headless --dry-run` or `purgeit --json --dry-run`.
+
 ## Features
 
 - **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
@@ -37,7 +39,7 @@ purgeit [directory] [options]
       --no-gated             Disable gated rules (always-safe only)
       --sort <size|path|name> Sort key (default: size)
       --asc                  Ascending sort (default: descending)
-      --dry-run              Preview only (default unless --delete)
+      --dry-run              Simulate deletion without touching files. In headless mode this is the default unless --delete is given; in a TTY the TUI still opens and confirmed deletions are simulated.
       --delete               Actually delete matched artifacts
   -y, --yes                  Skip confirmation prompt (headless --delete only)
       --json                 Machine-readable JSON output

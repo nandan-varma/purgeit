@@ -8,77 +8,77 @@ describe('detectProjectTypes', () => {
   let root: string;
   afterEach(() => cleanupTree(root));
 
-  it('labels a Next.js project as "next", not "node"', () => {
+  it('labels a Next.js project as "next", not "node"', async () => {
     root = buildTree({ 'package.json': '{}', 'next.config.js': 'module.exports = {}' });
-    expect(detectProjectTypes(root)).toEqual(['next']);
+    expect(await detectProjectTypes(root)).toEqual(['next']);
   });
 
-  it('labels a plain Node project as "node"', () => {
+  it('labels a plain Node project as "node"', async () => {
     root = buildTree({ 'package.json': '{}' });
-    expect(detectProjectTypes(root)).toEqual(['node']);
+    expect(await detectProjectTypes(root)).toEqual(['node']);
   });
 
-  it('labels a React Native (iOS) project', () => {
+  it('labels a React Native (iOS) project', async () => {
     root = buildTree({ 'package.json': '{}', ios: { Podfile: 'platform :ios\n' } });
-    expect(detectProjectTypes(root)).toEqual(['node', 'react-native']);
+    expect(await detectProjectTypes(root)).toEqual(['node', 'react-native']);
   });
 
-  it('labels a React Native (Android) project', () => {
+  it('labels a React Native (Android) project', async () => {
     root = buildTree({ 'package.json': '{}', android: { 'build.gradle': '' } });
-    expect(detectProjectTypes(root)).toEqual(['node', 'react-native']);
+    expect(await detectProjectTypes(root)).toEqual(['node', 'react-native']);
   });
 
-  it('labels a Tauri project as both node and tauri', () => {
+  it('labels a Tauri project as both node and tauri', async () => {
     root = buildTree({ 'package.json': '{}', 'src-tauri': { 'Cargo.toml': '[package]\n' } });
-    expect(detectProjectTypes(root)).toEqual(['node', 'tauri']);
+    expect(await detectProjectTypes(root)).toEqual(['node', 'tauri']);
   });
 
-  it('labels a Rust project', () => {
+  it('labels a Rust project', async () => {
     root = buildTree({ 'Cargo.toml': '[package]\n' });
-    expect(detectProjectTypes(root)).toEqual(['rust']);
+    expect(await detectProjectTypes(root)).toEqual(['rust']);
   });
 
-  it('labels a Python project', () => {
+  it('labels a Python project', async () => {
     root = buildTree({ 'pyproject.toml': '' });
-    expect(detectProjectTypes(root)).toEqual(['python']);
+    expect(await detectProjectTypes(root)).toEqual(['python']);
   });
 
-  it('labels an SPM project', () => {
+  it('labels an SPM project', async () => {
     root = buildTree({ 'Package.swift': 'let package = Package(name: "x")' });
-    expect(detectProjectTypes(root)).toEqual(['spm']);
+    expect(await detectProjectTypes(root)).toEqual(['spm']);
   });
 
-  it('labels an Xcode project', () => {
+  it('labels an Xcode project', async () => {
     root = buildTree({ 'App.xcodeproj': { 'project.pbxproj': '' } });
-    expect(detectProjectTypes(root)).toEqual(['xcode']);
+    expect(await detectProjectTypes(root)).toEqual(['xcode']);
   });
 
-  it('labels a .NET project (csproj)', () => {
+  it('labels a .NET project (csproj)', async () => {
     root = buildTree({ 'App.csproj': '' });
-    expect(detectProjectTypes(root)).toEqual(['dotnet']);
+    expect(await detectProjectTypes(root)).toEqual(['dotnet']);
   });
 
-  it('labels a .NET project (sln)', () => {
+  it('labels a .NET project (sln)', async () => {
     root = buildTree({ 'App.sln': '' });
-    expect(detectProjectTypes(root)).toEqual(['dotnet']);
+    expect(await detectProjectTypes(root)).toEqual(['dotnet']);
   });
 
-  it('labels a CMake project', () => {
+  it('labels a CMake project', async () => {
     root = buildTree({ 'CMakeLists.txt': '' });
-    expect(detectProjectTypes(root)).toEqual(['cmake']);
+    expect(await detectProjectTypes(root)).toEqual(['cmake']);
   });
 
-  it('returns an empty list for an unrecognized directory', () => {
+  it('returns an empty list for an unrecognized directory', async () => {
     root = buildTree({ 'readme.txt': 'hello' });
-    expect(detectProjectTypes(root)).toEqual([]);
+    expect(await detectProjectTypes(root)).toEqual([]);
   });
 
-  it('returns an empty list when the directory does not exist', () => {
+  it('returns an empty list when the directory does not exist', async () => {
     root = buildTree({});
-    expect(detectProjectTypes(`${root}/does-not-exist`)).toEqual([]);
+    expect(await detectProjectTypes(`${root}/does-not-exist`)).toEqual([]);
   });
 
-  it('appends matching extra detectors from user config after built-ins', () => {
+  it('appends matching extra detectors from user config after built-ins', async () => {
     root = buildTree({ 'package.json': '{}', 'mkdocs.yml': '' });
     const extra = [
       {
@@ -87,6 +87,6 @@ describe('detectProjectTypes', () => {
         detect: (dir: string) => existsSync(join(dir, 'mkdocs.yml')),
       },
     ];
-    expect(detectProjectTypes(root, extra)).toEqual(['node', 'mkdocs']);
+    expect(await detectProjectTypes(root, extra)).toEqual(['node', 'mkdocs']);
   });
 });

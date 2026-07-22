@@ -30,7 +30,7 @@ export type ArtifactRule = AlwaysSafeRule | GatedRule;
 export interface ProjectTypeDetector {
   readonly id: string;
   readonly label: string;
-  detect(projectDir: string): boolean;
+  detect(projectDir: string): Promise<boolean> | boolean;
 }
 
 export interface ValidationWarning {

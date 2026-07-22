@@ -24,8 +24,8 @@ describe('deleteEntries', () => {
     const events = await collect([a, b]);
 
     expect(events[0]).toEqual({ type: 'deleting', path: a });
-    expect(events[1]).toEqual({ type: 'deleted', path: a, dryRun: false });
-    expect(events[2]).toEqual({ type: 'deleting', path: b });
+    expect(events[1]).toEqual({ type: 'deleting', path: b });
+    expect(events[2]).toEqual({ type: 'deleted', path: a, dryRun: false });
     expect(events[3]).toEqual({ type: 'deleted', path: b, dryRun: false });
     expect(events[4]).toEqual({ type: 'done', deleted: 2, failed: 0 });
 
@@ -103,6 +103,30 @@ describe('deleteEntries', () => {
     const events = await collect([a, b], { signal: controller.signal });
     expect(events).toEqual([{ type: 'done', deleted: 0, failed: 0 }]);
     expect(existsSync(a)).toBe(true);
+    expect(existsSync(b)).toBe(true);
+  });
+
+  it('stops mid-batch when the signal is aborted between chunks', async () => {
+    root = buildTree({ a: { f: 'x' }, b: { f: 'y' } });
+    const a = join(root, 'a');
+    const b = join(root, 'b');
+    const controller = new AbortController();
+    const events = [];
+    for await (const event of deleteEntries([a, b], {
+      signal: controller.signal,
+      concurrency: 1,
+    })) {
+      events.push(event);
+      if (event.type === 'deleted' && event.path === a) {
+        controller.abort();
+      }
+    }
+    expect(events).toEqual([
+      { type: 'deleting', path: a },
+      { type: 'deleted', path: a, dryRun: false },
+      { type: 'done', deleted: 1, failed: 0 },
+    ]);
+    expect(existsSync(a)).toBe(false);
     expect(existsSync(b)).toBe(true);
   });
 });

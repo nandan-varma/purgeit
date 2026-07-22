@@ -82,8 +82,8 @@ async function listProjects(
     return { projects: [], matches: [] };
   }
 
-  const projects: ProjectInfo[] = [];
   const matches: WalkMatch[] = [];
+  const projectTasks: Promise<ProjectInfo>[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const name = entry.name;
@@ -104,53 +104,63 @@ async function listProjects(
       continue;
     }
 
-    const labels = detectProjectTypes(path);
-    projects.push({
-      name,
-      path,
-      label: labels.join(','),
-      warnings: collectValidatorWarnings(path, labels),
-    });
+    projectTasks.push(
+      (async (): Promise<ProjectInfo> => {
+        const labels = await detectProjectTypes(path);
+        return {
+          name,
+          path,
+          label: labels.join(','),
+          warnings: await collectValidatorWarnings(path, labels),
+        };
+      })(),
+    );
   }
+
+  const projects = await Promise.all(projectTasks);
   return { projects, matches };
 }
 
-function collectValidatorWarnings(
+async function collectValidatorWarnings(
   projectPath: string,
   labels: readonly string[],
-): ValidationWarning[] {
-  const warnings: ValidationWarning[] = [];
+): Promise<ValidationWarning[]> {
   const has = (label: string) => labels.includes(label);
-  const push = (warning: ValidationWarning | undefined) => {
-    if (warning) warnings.push(warning);
-  };
+  const tasks: Promise<ValidationWarning | undefined>[] = [];
 
   if (has('node') || has('next')) {
-    push(validatePackageJson(join(projectPath, 'package.json')));
+    tasks.push(validatePackageJson(join(projectPath, 'package.json')));
   }
   if (has('next')) {
-    push(validateNextConfig(projectPath));
+    tasks.push(validateNextConfig(projectPath));
   }
   if (has('rust')) {
-    push(validateCargoToml(join(projectPath, 'Cargo.toml')));
+    tasks.push(validateCargoToml(join(projectPath, 'Cargo.toml')));
   }
   if (has('tauri')) {
-    push(validateCargoToml(join(projectPath, 'src-tauri', 'Cargo.toml')));
+    tasks.push(validateCargoToml(join(projectPath, 'src-tauri', 'Cargo.toml')));
   }
   if (has('spm')) {
-    push(validatePackageSwift(join(projectPath, 'Package.swift')));
+    tasks.push(validatePackageSwift(join(projectPath, 'Package.swift')));
   }
   if (has('xcode')) {
-    const xcodeprojName = findTopLevelMatchName(projectPath, '*.xcodeproj', true);
-    if (xcodeprojName !== undefined) {
-      push(validateXcodeproj(join(projectPath, xcodeprojName)));
-    }
+    tasks.push(
+      (async (): Promise<ValidationWarning | undefined> => {
+        const xcodeprojName = await findTopLevelMatchName(projectPath, '*.xcodeproj', true);
+        /* v8 ignore next 4 -- defensive: the xcode detector only labels a project when it finds an .xcodeproj, so this branch is unreachable with built-in detectors. */
+        if (xcodeprojName !== undefined) {
+          return validateXcodeproj(join(projectPath, xcodeprojName));
+        }
+        return undefined;
+      })(),
+    );
   }
   if (has('react-native')) {
-    push(validatePodfile(join(projectPath, 'ios', 'Podfile')));
+    tasks.push(validatePodfile(join(projectPath, 'ios', 'Podfile')));
   }
 
-  return warnings;
+  const results = await Promise.all(tasks);
+  return results.filter((w): w is ValidationWarning => w !== undefined);
 }
 
 /**
@@ -195,7 +205,7 @@ export async function* scan(
     void limit(async () => {
       try {
         if (signal?.aborted) return;
-        const bytes = await computeSize(match.path, { batcher: duBatcher });
+        const bytes = await computeSize(match.path, { batcher: duBatcher, limit });
         totalBytes += bytes;
         queue.push({ type: 'size', path: match.path, bytes });
       } catch {

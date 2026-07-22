@@ -3,6 +3,7 @@ import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry, ScanOptions } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
 import type { ResolvedRuleSet } from '../types.js';
+import type { ScanResult } from './result.js';
 import { type Action, type AppState, initialState, reducer, type SortKey } from './state.js';
 
 export interface UseScannerOptions {
@@ -14,6 +15,8 @@ export interface UseScannerOptions {
   readonly initialSortKey?: SortKey | undefined;
   /** Initial sort direction — mirrors headless's --asc. Defaults to 'desc'. */
   readonly initialSortDir?: 'asc' | 'desc' | undefined;
+  /** Called when the scan finishes with no entries so the caller can set the exit code. */
+  readonly onResult?: ((result: ScanResult | null) => void) | undefined;
 }
 
 export function useScanner(
@@ -45,6 +48,7 @@ export function useScanner(
     const pending = new Map<string, ScanEntry>();
 
     let cancelled = false;
+    let foundAny = false;
     const warnings: AppState['warnings'] = [];
 
     const run = async () => {
@@ -57,6 +61,7 @@ export function useScanner(
               if (minSizeBytes > 0) {
                 pending.set(event.entry.path, event.entry);
               } else {
+                foundAny = true;
                 dispatch({ type: 'ADD_ENTRY', entry: event.entry });
               }
               break;
@@ -65,6 +70,7 @@ export function useScanner(
               if (pendingEntry) {
                 pending.delete(event.path);
                 if (event.bytes >= minSizeBytes) {
+                  foundAny = true;
                   dispatch({ type: 'ADD_ENTRY', entry: { ...pendingEntry, size: event.bytes } });
                 }
               } else {
@@ -80,6 +86,9 @@ export function useScanner(
           }
         }
         if (!cancelled) {
+          if (!foundAny) {
+            uiOpts.onResult?.({ kind: 'empty' });
+          }
           dispatch({ type: 'SCAN_DONE', warnings });
         }
       } catch (err) {

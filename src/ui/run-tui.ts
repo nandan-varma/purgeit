@@ -1,9 +1,10 @@
 import { render } from 'ink';
 import React from 'react';
 import { loadConfig } from '../config/resolve.js';
-import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from '../rules/merge.js';
+import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import type { ScanOptions } from '../scan/scanner.js';
 import { App } from './App.js';
+import type { ScanResult } from './result.js';
 import type { SortKey } from './state.js';
 
 export interface TuiOptions {
@@ -31,19 +32,23 @@ export interface TuiOptions {
 }
 
 export async function runTui(opts: TuiOptions): Promise<number> {
-  const loaded = await loadConfig({
-    cwd: opts.root,
-    configPath: opts.configPath,
-    noConfig: opts.noConfig ?? false,
-  });
+  let loaded: Awaited<ReturnType<typeof loadConfig>>;
+  try {
+    loaded = await loadConfig({
+      cwd: opts.root,
+      configPath: opts.configPath,
+      noConfig: opts.noConfig ?? false,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`config error: ${message}`);
+  }
 
-  let ruleSet = mergeRuleSets(defaultRuleSet(), loaded.config);
-  if (opts.noGated) {
-    ruleSet = { ...ruleSet, gated: new Map() };
-  }
-  if (opts.targets && opts.targets.length > 0) {
-    ruleSet = restrictRuleSetToTargets(ruleSet, opts.targets);
-  }
+  const ruleSet = applyCliFilters(
+    mergeRuleSets(defaultRuleSet(), loaded.config),
+    opts.noGated ?? false,
+    opts.targets ?? [],
+  );
 
   let exitCode = 0;
   const { unmount, waitUntilExit } = render(
@@ -57,8 +62,9 @@ export async function runTui(opts: TuiOptions): Promise<number> {
       initialSortKey: opts.sort,
       initialSortDir: opts.ascending ? 'asc' : 'desc',
       dryRun: opts.dryRun ?? false,
-      onResult: (result) => {
-        if (result && result.failed > 0) exitCode = 1;
+      onResult: (result: ScanResult | null) => {
+        if (result?.kind === 'empty') exitCode = 1;
+        if (result?.kind === 'delete' && result.failed > 0) exitCode = 1;
       },
     }),
     // App itself handles Ctrl+C via useApp().exit() (see App.tsx's keymap),

@@ -2,7 +2,7 @@ import { basename, resolve } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
 import { formatBytes, formatErrorMessage, parseSizeString } from '../format.js';
-import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from '../rules/merge.js';
+import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
@@ -78,13 +78,11 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     return 2;
   }
 
-  let ruleSet = mergeRuleSets(defaultRuleSet(), loaded.config);
-  if (parsed.noGated) {
-    ruleSet = { ...ruleSet, gated: new Map() };
-  }
-  if (parsed.targets.length > 0) {
-    ruleSet = restrictRuleSetToTargets(ruleSet, parsed.targets);
-  }
+  const ruleSet = applyCliFilters(
+    mergeRuleSets(defaultRuleSet(), loaded.config),
+    parsed.noGated,
+    parsed.targets,
+  );
 
   const isExcluded = createExcludeMatcher(root, parsed.exclude);
 
@@ -176,7 +174,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   let failedCount = 0;
   for await (const event of deleteEntries(
     filtered.map((e) => e.path),
-    { signal: io.signal, dryRun: parsed.dryRun },
+    { signal: io.signal, dryRun: parsed.dryRun, concurrency: parsed.concurrency },
   )) {
     if (event.type === 'deleted') {
       stdout(`${event.dryRun ? '(dry-run) ' : ''}deleted: ${event.path}`);

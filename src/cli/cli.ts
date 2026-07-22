@@ -51,25 +51,30 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     const { runTui } = await import('../ui/run-tui.js');
     const cwd = io.cwd ?? process.cwd();
     const root = resolve(cwd, parsed.directory);
-    return runTui({
-      root,
-      signal: io.signal,
-      scanOpts: {
-        mode: parsed.full ? 'flat' : 'projects',
-        targetProject: parsed.project,
-        concurrency: parsed.concurrency,
-        maxDepth: parsed.depth,
-      },
-      configPath: parsed.configPath,
-      noConfig: parsed.noConfig,
-      noGated: parsed.noGated,
-      targets: parsed.targets,
-      exclude: parsed.exclude,
-      minSizeBytes,
-      sort: parsed.sort,
-      ascending: parsed.ascending,
-      dryRun: parsed.dryRun,
-    });
+    try {
+      return await runTui({
+        root,
+        signal: io.signal,
+        scanOpts: {
+          mode: parsed.full ? 'flat' : 'projects',
+          targetProject: parsed.project,
+          concurrency: parsed.concurrency,
+          maxDepth: parsed.depth,
+        },
+        configPath: parsed.configPath,
+        noConfig: parsed.noConfig,
+        noGated: parsed.noGated,
+        targets: parsed.targets,
+        exclude: parsed.exclude,
+        minSizeBytes,
+        sort: parsed.sort,
+        ascending: parsed.ascending,
+        dryRun: parsed.dryRun,
+      });
+    } catch (err) {
+      stderr(`purgeit: ${formatErrorMessage(err)}`);
+      return 2;
+    }
   }
 
   const headlessOpts = {

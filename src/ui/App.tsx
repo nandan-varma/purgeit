@@ -11,6 +11,7 @@ import { Header } from './components/Header.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { Legend } from './components/Legend.js';
 import { computeVisibleRows } from './layout.js';
+import type { ScanResult } from './result.js';
 import type { SortKey } from './state.js';
 import { theme } from './theme.js';
 import { useScanner } from './useScanner.js';
@@ -32,7 +33,7 @@ export interface AppProps {
   /** Simulate deletion without touching the filesystem — mirrors headless's --dry-run. */
   dryRun?: boolean | undefined;
   /** Called when the TUI exits so the caller can map the result to an exit code. */
-  onResult?: ((result: { deleted: number; failed: number } | null) => void) | undefined;
+  onResult?: ((result: ScanResult | null) => void) | undefined;
 }
 
 export function App({
@@ -52,6 +53,7 @@ export function App({
     minSizeBytes,
     initialSortKey,
     initialSortDir,
+    onResult,
   });
   const { exit } = useApp();
   const { rows } = useTerminalSize();
@@ -84,16 +86,17 @@ export function App({
         for await (const event of deleteEntries(selected, {
           signal: controller.signal,
           dryRun,
+          concurrency: scanOpts.concurrency ?? 8,
         })) {
           if (event.type === 'done') {
             deleted = event.deleted;
             failed = event.failed;
           }
         }
-        onResult?.({ deleted, failed });
+        onResult?.({ kind: 'delete', deleted, failed });
         dispatch({ type: 'DELETE_DONE', deleted, failed });
       } catch {
-        onResult?.({ deleted: 0, failed: selected.length });
+        onResult?.({ kind: 'delete', deleted: 0, failed: selected.length });
         dispatch({ type: 'DELETE_DONE', deleted: 0, failed: selected.length });
       }
     };
