@@ -10,7 +10,6 @@ export interface TuiOptions {
   root: string;
   signal?: AbortSignal | undefined;
   scanOpts: ScanOptions;
-  full?: boolean;
   /** Explicit config file path — mirrors headless's --config. */
   configPath?: string | undefined;
   /** Skip config resolution entirely — mirrors headless's --no-config. */
@@ -46,6 +45,7 @@ export async function runTui(opts: TuiOptions): Promise<number> {
     ruleSet = restrictRuleSetToTargets(ruleSet, opts.targets);
   }
 
+  let exitCode = 0;
   const { unmount, waitUntilExit } = render(
     React.createElement(App, {
       root: opts.root,
@@ -57,6 +57,9 @@ export async function runTui(opts: TuiOptions): Promise<number> {
       initialSortKey: opts.sort,
       initialSortDir: opts.ascending ? 'asc' : 'desc',
       dryRun: opts.dryRun ?? false,
+      onResult: (result) => {
+        if (result && result.failed > 0) exitCode = 1;
+      },
     }),
     // App itself handles Ctrl+C via useApp().exit() (see App.tsx's keymap),
     // so Ink's own built-in Ctrl+C listener is redundant and disabled here.
@@ -75,5 +78,5 @@ export async function runTui(opts: TuiOptions): Promise<number> {
   }
 
   await waitUntilExit();
-  return 0;
+  return exitCode;
 }

@@ -32,10 +32,11 @@ function sortEntries(
   entries: ScanEntry[],
   sortKey: ParsedCli['sort'],
   ascending: boolean,
+  sizeOf: (path: string) => number,
 ): ScanEntry[] {
   const dir = ascending ? 1 : -1;
   return [...entries].sort((a, b) => {
-    if (sortKey === 'size') return dir * ((a.size ?? 0) - (b.size ?? 0));
+    if (sortKey === 'size') return dir * (sizeOf(a.path) - sizeOf(b.path));
     if (sortKey === 'name') return dir * basename(a.path).localeCompare(basename(b.path));
     return dir * a.path.localeCompare(b.path);
   });
@@ -60,7 +61,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     try {
       minSizeBytes = parseSizeString(parsed.minSize);
     } catch (err) {
-      stderr(`purgeit: ${(err as Error).message}`);
+      stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
       return 2;
     }
   }
@@ -73,7 +74,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
       noConfig: parsed.noConfig,
     });
   } catch (err) {
-    stderr(`purgeit: ${(err as Error).message}`);
+    stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
     return 2;
   }
 
@@ -88,6 +89,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   const isExcluded = createExcludeMatcher(root, parsed.exclude);
 
   const found: ScanEntry[] = [];
+  const sizes = new Map<string, number>();
   const warnings: string[] = [];
 
   try {
@@ -100,12 +102,14 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     })) {
       if (event.type === 'found') {
         if (!isExcluded(event.entry.path)) found.push(event.entry);
+      } else if (event.type === 'size') {
+        sizes.set(event.path, event.bytes);
       } else if (event.type === 'warning') {
         warnings.push(`${event.warning.file}: ${event.warning.message}`);
       }
     }
   } catch (err) {
-    stderr(`purgeit: ${(err as Error).message}`);
+    stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
     return 2;
   }
 
@@ -113,12 +117,14 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     stderr(`warning: ${warning}`);
   }
 
+  const sizeOf = (path: string) => sizes.get(path) ?? 0;
   const filtered = sortEntries(
-    found.filter((e) => (e.size ?? 0) >= minSizeBytes),
+    found.filter((e) => sizeOf(e.path) >= minSizeBytes),
     parsed.sort,
     parsed.ascending,
+    sizeOf,
   );
-  const totalBytes = filtered.reduce((sum, e) => sum + (e.size ?? 0), 0);
+  const totalBytes = filtered.reduce((sum, e) => sum + sizeOf(e.path), 0);
 
   if (parsed.json) {
     stdout(
@@ -131,7 +137,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
             project: e.project,
             kind: e.kind,
             ruleName: e.ruleName,
-            size: e.size,
+            size: sizeOf(e.path),
           })),
           warnings,
         },
@@ -148,7 +154,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   }
 
   for (const entry of filtered) {
-    stdout(`${formatBytes(entry.size ?? 0).padStart(9)}  ${entry.path}`);
+    stdout(`${formatBytes(sizeOf(entry.path)).padStart(9)}  ${entry.path}`);
   }
   stdout('');
   stdout(`${filtered.length} item(s), ${formatBytes(totalBytes)} total`);

@@ -19,7 +19,7 @@ vi.mock('../scan/scanner.js', async () => {
           project: 'fake',
           kind: 'always-safe',
           ruleName: 'dist',
-          size: 1024,
+          size: null,
         },
       };
       yield {
@@ -32,6 +32,7 @@ vi.mock('../scan/scanner.js', async () => {
           size: null,
         },
       };
+      yield { type: 'size', path: '/fake/dist', bytes: 1024 };
       yield { type: 'done', totalBytes: 1024 };
     }),
   };

@@ -288,9 +288,8 @@ describe('scan (projects mode, default)', () => {
     });
     const events = await collect(root);
     const found = events.filter((e) => e.type === 'found');
-    // The 'found' event's entry is the same mutable object the 'size' event
-    // later updates in place, so by the time collect() resolves its size has
-    // already flipped from null to the computed byte count.
+    // found entries always have size: null — the computed size arrives
+    // separately via a 'size' event (no in-place mutation).
     expect(found).toEqual([
       {
         type: 'found',
@@ -299,10 +298,17 @@ describe('scan (projects mode, default)', () => {
           project: basename(root),
           kind: 'always-safe',
           ruleName: 'node_modules',
-          size: expect.any(Number),
+          size: null,
         },
       },
     ]);
+    const sizeEvents = events.filter((e) => e.type === 'size');
+    expect(sizeEvents).toHaveLength(1);
+    expect(sizeEvents[0]).toEqual({
+      type: 'size',
+      path: join(root, 'node_modules'),
+      bytes: expect.any(Number),
+    });
     expect(events.filter((e) => e.type === 'project-start')).toEqual([]);
   });
 
@@ -318,7 +324,7 @@ describe('scan (projects mode, default)', () => {
           project: basename(root),
           kind: 'gated',
           ruleName: 'Pods',
-          size: expect.any(Number),
+          size: null,
         },
       },
     ]);

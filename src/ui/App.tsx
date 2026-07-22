@@ -31,6 +31,8 @@ export interface AppProps {
   initialSortDir?: 'asc' | 'desc' | undefined;
   /** Simulate deletion without touching the filesystem — mirrors headless's --dry-run. */
   dryRun?: boolean | undefined;
+  /** Called when the TUI exits so the caller can map the result to an exit code. */
+  onResult?: ((result: { deleted: number; failed: number } | null) => void) | undefined;
 }
 
 export function App({
@@ -43,6 +45,7 @@ export function App({
   initialSortKey,
   initialSortDir,
   dryRun = false,
+  onResult,
 }: AppProps) {
   const [state, dispatch] = useScanner(root, ruleSet, scanOpts, {
     exclude,
@@ -87,8 +90,10 @@ export function App({
             failed = event.failed;
           }
         }
+        onResult?.({ deleted, failed });
         dispatch({ type: 'DELETE_DONE', deleted, failed });
       } catch {
+        onResult?.({ deleted: 0, failed: selected.length });
         dispatch({ type: 'DELETE_DONE', deleted: 0, failed: selected.length });
       }
     };
@@ -115,6 +120,7 @@ export function App({
     // finished ('done'/'error') — without this, unmount() is never called
     // and the process hangs forever after the summary is shown.
     if (input === 'q' || (key.ctrl && input === 'c')) {
+      onResult?.(null);
       dispatch({ type: 'QUIT' });
       exit();
       return;

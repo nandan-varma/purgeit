@@ -22,12 +22,11 @@ export interface ScanEntry {
   readonly project: string;
   readonly kind: 'always-safe' | 'gated';
   readonly ruleName: string;
-  size: number | null;
+  readonly size: number | null;
 }
 
 export type ScanEvent =
   | { readonly type: 'project-start'; readonly project: string; readonly label: string }
-  | { readonly type: 'project-skip'; readonly project: string }
   | { readonly type: 'found'; readonly entry: ScanEntry }
   | { readonly type: 'size'; readonly path: string; readonly bytes: number }
   | { readonly type: 'warning'; readonly warning: ValidationWarning }
@@ -195,7 +194,6 @@ export async function* scan(
       try {
         if (signal?.aborted) return;
         const bytes = await computeSize(match.path);
-        entry.size = bytes;
         totalBytes += bytes;
         queue.push({ type: 'size', path: match.path, bytes });
       } finally {
