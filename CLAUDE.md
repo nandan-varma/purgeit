@@ -48,17 +48,35 @@ config/                cosmiconfig-based resolution of purgeit.config.{js,ts,mjs
   resolve.ts             loadConfig() — searches upward from cwd unless --config/--no-config
 
 scan/                  scan(root, ruleSet, opts): AsyncGenerator<ScanEvent>
-  walk.ts                hand-rolled stack-based DFS (NOT fs { recursive: true } — needs selective pruning: never
-                        descend into VCS/prune-meta dirs, stop recursing the instant an always-safe or gated name
-                        matches, so a native module's own nested build/ inside node_modules can never be reached).
-                        Symlinked dirs are never followed.
+  async-queue.ts          AsyncQueue<T> — minimal pull-based queue bridging multiple concurrent p-limit-scheduled
+                        producers (directory reads in walk.ts, size computations in scanner.ts) into one ordered
+                        async generator for a consumer to `for await` over. Shared by both.
+  walk.ts                 Concurrently schedules directory reads (NOT fs { recursive: true } and NOT a strictly
+                        sequential DFS — needs selective pruning AND bounded parallelism: never descend into
+                        VCS/prune-meta dirs, stop recursing the instant an always-safe or gated name matches (so a
+                        native module's own nested build/ inside node_modules can never be reached), and read
+                        sibling directories concurrently up to a shared p-limit (default 8, same limiter scanner.ts
+                        uses for sizing, so total in-flight fs work stays bounded — this is what makes wide
+                        multi-project trees fast without hammering the filesystem). Symlinked dirs are never
+                        followed. Because sibling directory reads are concurrent, an abort only takes effect before
+                        the *next* directory read is scheduled — matches from an already-in-flight directory's
+                        synchronous entry loop still land (see walk.test.ts).
   size.ts                 computeSize() — du -s -k by default (feature-detected once), falls back to a p-limit(8)
                         pure-Node recursive stat-sum walk if du is unavailable.
+  exclude.ts               createExcludeMatcher(root, patterns) — glob-to-regex --exclude predicate, relative-to-root
+                        and POSIX-normalized so it works the same on Windows; shared verbatim by headless.ts and
+                        useScanner.ts so both honor --exclude identically.
   scanner.ts               scan() emits 'found' the instant a match is discovered (size: null) and an independent
-                        'size' event once computeSize() resolves — discovery is never blocked on sizing. An
-                        internal AsyncQueue bridges concurrent p-limit-scheduled size computations into one ordered
-                        stream. 'projects' mode (default) treats root's immediate children as projects; 'flat'
-                        mode (--full) treats root as one scan unit.
+                        'size' event once computeSize() resolves — discovery is never blocked on sizing. 'projects'
+                        mode (default) treats root's immediate children as projects; 'flat' mode (--full) treats
+                        root as one scan unit. listProjects() (projects mode only) checks each top-level child's
+                        *name* against the ruleset before treating it as a project: a name that's itself an
+                        always-safe/gated match (e.g. running purgeit directly inside a single project, where
+                        node_modules/dist/build shows up as an immediate child of the scanned root) is reported
+                        directly as a match instead — walk() only ever checks a directory's children against the
+                        ruleset, never the root path it's handed, so without this a project-shaped node_modules
+                        would be walked in full, resurfacing nested artifacts (e.g. under .pnpm) as spurious
+                        top-level "duplicates" while wastefully traversing the whole subtree.
 
 delete/deleter.ts       deleteEntries(paths, opts): AsyncGenerator<DeleteEvent> — dry-run support, per-path
                         failure aggregation (one bad path doesn't abort the batch), and isDangerousPath() as a
@@ -74,7 +92,11 @@ cli/                    args.ts (parseCliArgs) → cli.ts (runCli: TTY-dispatch)
   headless.ts              Non-interactive path: resolves config, scans, applies exclude/min-size/targets/
                         no-gated filters, then --json or a text preview, or --delete (confirms unless --yes).
 
-ui/                     App.tsx (useReducer + useInput keymap + phase machine) / state.ts (pure, no JSX) /
+ui/                     Note: `src/ui/format.ts` (fmtSize, for TUI display) is a distinct file from the
+                        top-level `src/format.ts` (formatBytes/parseSizeString, for headless output and
+                        --min-size parsing) — same domain, deliberately separate so `src/ui/` stays the only
+                        importer of anything TUI-flavored; don't merge them or import one from the other's side.
+                        App.tsx (useReducer + useInput keymap + phase machine) / state.ts (pure, no JSX) /
                         useScanner.ts (bridges scan()'s async generator into the reducer via useEffect + for
                         await, AbortController created on mount and aborted on unmount) / theme.ts (colors +
                         glyphs + fixed COLUMN_WIDTHS) / layout.ts (pure, framework-free sizing math:
@@ -126,6 +148,7 @@ Two entries in `tsup.config.ts`, in order: library (`src/index.ts` → `dist/ind
 - **TUI tests needing real Ink internals** (e.g. asserting `waitUntilExit()` actually resolves, not just that reducer state changed) can't use `ink-testing-library`'s `render()` since it doesn't expose `waitUntilExit`. Construct a minimal fake stdin/stdout (EventEmitter + `isTTY`/`setRawMode`/`read()`/`ref`/`unref`) and call `ink`'s real `render()` directly — see `App.test.tsx`'s quitting test.
 - **Asserting on ANSI color codes in `ink-testing-library` output** — Ink colorizes through a shared `chalk` singleton, and chalk auto-detects color support from the *real* `process.stdout`, not the fake streams `ink-testing-library` renders into. Under vitest (non-TTY) that means color output is silently disabled and any ANSI-code assertion vacuously passes. Set `chalk.level = 1` at the top of the test file before rendering to force it on (see `App.test.tsx`'s row-highlight-color test).
 - Manually driving the built TUI to reproduce a real bug requires a pty (`python3`'s `pty.fork()`, or `script`) — piped stdin can't enable raw mode, so `child_process.spawn` with plain pipes fails with "Raw mode is not supported." `pty.fork()` also doesn't set a window size by default, so `process.stdout.columns`/`.rows` read `0` inside it — an unset winsize produces a garbled character-per-line render that looks like a real bug but isn't one. Set it explicitly *before* the child writes anything: `fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack('HHHH', rows, cols, 0, 0))`, then `os.kill(pid, signal.SIGWINCH)` for any size change after startup.
+- **CI runs one extra check beyond the local verify command**: `.github/workflows/ci.yml`, after build, greps `src/` for `from 'react'`/`from 'ink'` outside `src/ui/` (the isolation boundary, enforced in CI not just convention) and then runs a headless smoke test — `npx tsx test/fixtures/ci-smoke-fixture.ts` builds a real fixture tree (a node_modules/dist pair plus a Pods+Podfile gated pair) and pipes its path into `node dist/cli.js <path> --json --dry-run`, asserting `entries.length >= 2`. This is the only place the built `dist/cli.js` is actually exercised end-to-end; it'll miss anything that passes unit tests but breaks in the tsup-built output.
 - **Diagnosing redraw/resize corruption needs a real terminal emulator, not a text dump.** Stripping ANSI codes from raw output and reading it as text only shows you *what Ink sent*, not what the terminal screen actually looks like after cursor-based overwrites — which is exactly where redraw-desync bugs (see "must never render more lines than the terminal has rows" above) live. Feed the pty's raw bytes through `pyte` (`pip install pyte`; `pyte.Screen(cols, rows)` + `pyte.ByteStream(screen).feed(data)`) and read `screen.display` — a real emulated grid — to see genuine leftover artifacts, mangled borders, etc. Call `screen.resize(rows, cols)` in lockstep with `TIOCSWINSZ` so the emulator's buffer matches what the real terminal would do.
 
 ### Releasing

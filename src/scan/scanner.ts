@@ -1,6 +1,7 @@
 import { readdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import pLimit from 'p-limit';
+import { createGateContext } from '../rules/gate-context.js';
 import { detectProjectTypes, findTopLevelMatchName } from '../rules/project-types.js';
 import {
   validateCargoToml,
@@ -11,6 +12,7 @@ import {
   validateXcodeproj,
 } from '../rules/validators.js';
 import type { ResolvedRuleSet, ValidationWarning } from '../types.js';
+import { AsyncQueue } from './async-queue.js';
 import { computeSize } from './size.js';
 import type { WalkMatch } from './walk.js';
 import { walk } from './walk.js';
@@ -37,59 +39,11 @@ export interface ScanOptions {
    * CLEANUP.sh; 'flat' treats root as a single scan unit (closer to npkill). */
   readonly mode?: 'projects' | 'flat';
   readonly targetProject?: string | undefined;
-  /** Max concurrent size computations. Default 8. */
+  /** Max concurrent filesystem operations (directory reads + size computations), shared
+   * across discovery and sizing so total in-flight work stays bounded. Default 8. */
   readonly concurrency?: number;
   /** Never descend more than this many levels below each scanned root. Default: unlimited. */
   readonly maxDepth?: number | undefined;
-}
-
-/** Minimal async pull-based queue bridging concurrent producers into a single async generator. */
-class AsyncQueue<T> {
-  private readonly buffered: T[] = [];
-  private readonly waiting: Array<(result: IteratorResult<T>) => void> = [];
-  private closed = false;
-
-  push(item: T): void {
-    /* v8 ignore next -- defensive guard: scan() never pushes after closing the queue */
-    if (this.closed) return;
-    const resolver = this.waiting.shift();
-    if (resolver) {
-      resolver({ value: item, done: false });
-    } else {
-      this.buffered.push(item);
-    }
-  }
-
-  close(): void {
-    /* v8 ignore next -- defensive guard: scan() only ever calls close() once */
-    if (this.closed) return;
-    this.closed = true;
-    // scan() always pushes a final 'done' item immediately before closing,
-    // which drains any pending waiter itself, so this loop never actually
-    // finds one still waiting in this file's usage — kept for the class's
-    // general correctness rather than narrowed to the one call site.
-    /* v8 ignore next 3 -- unreachable in this file's usage, see comment above */
-    for (const resolver of this.waiting.splice(0)) {
-      resolver({ value: undefined as unknown as T, done: true });
-    }
-  }
-
-  async *[Symbol.asyncIterator](): AsyncGenerator<T> {
-    for (;;) {
-      if (this.buffered.length > 0) {
-        // biome-ignore lint/style/noNonNullAssertion: length > 0 was just checked
-        yield this.buffered.shift()!;
-        continue;
-      }
-      if (this.closed) return;
-      const result = await new Promise<IteratorResult<T>>((resolve) => {
-        this.waiting.push(resolve);
-      });
-      /* v8 ignore next -- close() never actually resolves a pending waiter in this file's usage, see close()'s comment */
-      if (result.done) return;
-      yield result.value;
-    }
-  }
 }
 
 interface ProjectInfo {
@@ -99,19 +53,38 @@ interface ProjectInfo {
   readonly warnings: readonly ValidationWarning[];
 }
 
+interface TopLevelListing {
+  readonly projects: ProjectInfo[];
+  readonly matches: WalkMatch[];
+}
+
+/**
+ * Lists `root`'s immediate children for 'projects' mode. A child whose
+ * *name* is itself an always-safe/gated rule match (e.g. running purgeit
+ * directly inside a single project, where `node_modules`/`dist`/`build`
+ * shows up as an immediate child of the scanned root, not a project
+ * directory) is reported directly as a match instead of being treated as a
+ * project to recurse into — `walk()` only ever checks a directory's
+ * *children* against the ruleset, never the root path it's handed, so
+ * without this check that directory would be walked in full, surfacing
+ * nested artifacts from deep inside it (e.g. nested `node_modules` under
+ * `.pnpm`) as spurious top-level "duplicates" while wastefully traversing
+ * a potentially huge tree.
+ */
 async function listProjects(
   root: string,
   ruleSet: ResolvedRuleSet,
   targetProject: string | undefined,
-): Promise<ProjectInfo[]> {
+): Promise<TopLevelListing> {
   let entries: import('node:fs').Dirent[];
   try {
     entries = await readdir(root, { withFileTypes: true });
   } catch {
-    return [];
+    return { projects: [], matches: [] };
   }
 
   const projects: ProjectInfo[] = [];
+  const matches: WalkMatch[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const name = entry.name;
@@ -119,6 +92,19 @@ async function listProjects(
     if (targetProject !== undefined && name !== targetProject) continue;
 
     const path = join(root, name);
+
+    if (ruleSet.alwaysSafe.has(name)) {
+      matches.push({ path, kind: 'always-safe', ruleName: name });
+      continue;
+    }
+    const gate = ruleSet.gated.get(name);
+    if (gate !== undefined) {
+      if (gate(createGateContext(path))) {
+        matches.push({ path, kind: 'gated', ruleName: name });
+      }
+      continue;
+    }
+
     const labels = detectProjectTypes(path);
     projects.push({
       name,
@@ -127,7 +113,7 @@ async function listProjects(
       warnings: collectValidatorWarnings(path, labels),
     });
   }
-  return projects;
+  return { projects, matches };
 }
 
 function collectValidatorWarnings(
@@ -223,14 +209,20 @@ export async function* scan(
   async function runDiscovery(): Promise<void> {
     try {
       if (mode === 'flat') {
-        for await (const match of walk(root, ruleSet, { signal, maxDepth: opts.maxDepth })) {
+        for await (const match of walk(root, ruleSet, { signal, maxDepth: opts.maxDepth, limit })) {
           if (signal?.aborted) break;
           handleMatch(root, match);
         }
         return;
       }
 
-      const projects = await listProjects(root, ruleSet, opts.targetProject);
+      const { projects, matches } = await listProjects(root, ruleSet, opts.targetProject);
+      const rootLabel = basename(root);
+      for (const match of matches) {
+        if (signal?.aborted) break;
+        handleMatch(rootLabel, match);
+      }
+
       for (const project of projects) {
         if (signal?.aborted) break;
         queue.push({ type: 'project-start', project: project.name, label: project.label });
@@ -240,6 +232,7 @@ export async function* scan(
         for await (const match of walk(project.path, ruleSet, {
           signal,
           maxDepth: opts.maxDepth,
+          limit,
         })) {
           if (signal?.aborted) break;
           handleMatch(project.name, match);

@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import { defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
@@ -273,5 +273,69 @@ describe('scan (projects mode, default)', () => {
     expect(warnings.some((w) => w.type === 'warning' && /malformed/.test(w.warning.message))).toBe(
       true,
     );
+  });
+
+  it('reports a top-level always-safe name as a direct match instead of walking into it as a project', async () => {
+    // Running purgeit inside a single project (rather than a directory-of-
+    // projects) means node_modules shows up as an immediate child of the
+    // scanned root. It must be reported once, right here — not treated as
+    // its own "project" and walked into, which would otherwise wastefully
+    // traverse the whole tree and resurface nested node_modules dirs deep
+    // inside (e.g. under .pnpm) as spurious extra matches.
+    root = buildTree({
+      'package.json': '{}',
+      node_modules: { '.pnpm': { 'lodash@4.0.0': { node_modules: { lodash: null } } } },
+    });
+    const events = await collect(root);
+    const found = events.filter((e) => e.type === 'found');
+    // The 'found' event's entry is the same mutable object the 'size' event
+    // later updates in place, so by the time collect() resolves its size has
+    // already flipped from null to the computed byte count.
+    expect(found).toEqual([
+      {
+        type: 'found',
+        entry: {
+          path: join(root, 'node_modules'),
+          project: basename(root),
+          kind: 'always-safe',
+          ruleName: 'node_modules',
+          size: expect.any(Number),
+        },
+      },
+    ]);
+    expect(events.filter((e) => e.type === 'project-start')).toEqual([]);
+  });
+
+  it('reports a top-level gated name as a direct match when its gate passes', async () => {
+    root = buildTree({ Podfile: 'platform :ios\n', Pods: null });
+    const events = await collect(root);
+    const found = events.filter((e) => e.type === 'found');
+    expect(found).toEqual([
+      {
+        type: 'found',
+        entry: {
+          path: join(root, 'Pods'),
+          project: basename(root),
+          kind: 'gated',
+          ruleName: 'Pods',
+          size: expect.any(Number),
+        },
+      },
+    ]);
+  });
+
+  it('excludes a top-level gated name from both matches and projects when its gate fails', async () => {
+    root = buildTree({ build: null }); // no manifest sibling -> gate fails
+    const events = await collect(root);
+    expect(events.filter((e) => e.type === 'found')).toEqual([]);
+    expect(events.filter((e) => e.type === 'project-start')).toEqual([]);
+  });
+
+  it('stops promptly when passed an already-aborted signal, even with a top-level artifact match pending', async () => {
+    root = buildTree({ node_modules: null });
+    const controller = new AbortController();
+    controller.abort();
+    const events = await collect(root, { signal: controller.signal });
+    expect(events).toEqual([{ type: 'done', totalBytes: 0 }]);
   });
 });

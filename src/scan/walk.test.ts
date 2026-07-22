@@ -122,18 +122,31 @@ describe('walk', () => {
     expect(matches).toEqual([]);
   });
 
-  it('stops mid-directory-listing when the signal aborts partway through', async () => {
+  it('stops scheduling new directory reads once the signal aborts', async () => {
+    // Sibling directories are read concurrently, so with concurrency: 1 only
+    // the first is ever started — the second is still queued, provably not
+    // yet in flight, when abort() fires (same determinism trick as
+    // scanner.test.ts's abort tests).
     root = buildTree({ a: { node_modules: null }, b: { node_modules: null } });
     const controller = new AbortController();
     const matches = [];
-    for await (const match of walk(root, defaultRuleSet(), { signal: controller.signal })) {
+    for await (const match of walk(root, defaultRuleSet(), {
+      signal: controller.signal,
+      concurrency: 1,
+    })) {
       matches.push(match);
       controller.abort();
     }
     expect(matches.length).toBe(1);
   });
 
-  it('stops mid-entry-loop when abort fires between two matches in the same directory', async () => {
+  it('delivers all matches from an already-scheduled directory even if abort fires mid-loop', async () => {
+    // `dist` and `node_modules` are both entries of the same already-read
+    // directory (root itself) — that directory's entries are processed
+    // synchronously once its readdir resolves (no yield point between
+    // them), so aborting right after the first match doesn't stop the
+    // second from being queued too. Abort only prevents *new* directory
+    // reads from being scheduled, not the remainder of one already in flight.
     root = buildTree({ dist: null, node_modules: null });
     const controller = new AbortController();
     const matches = [];
@@ -141,6 +154,6 @@ describe('walk', () => {
       matches.push(match);
       controller.abort();
     }
-    expect(matches.length).toBe(1);
+    expect(matches.length).toBe(2);
   });
 });
