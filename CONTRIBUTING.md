@@ -28,6 +28,10 @@ The TUI (`src/ui/`) is tested via `ink-testing-library` and is excluded from the
 
 ## Publishing
 
+### Versioning
+
+This project follows [semver](https://semver.org/). While the major version is `0.x`, minor bumps may contain breaking changes (the API is not yet stable). A `1.0.0` release will signal API stability and commitment to backwards compatibility.
+
 ### Pre-publish checklist
 
 1. Verify `NPM_TOKEN` secret exists: `gh secret list --repo nandan-varma/purgeit`

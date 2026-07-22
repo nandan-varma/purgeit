@@ -1,6 +1,6 @@
 # purgeit
 
-[![npm version](https://img.shields.io/npm/v/@nandan-varma/purgeit.svg)](https://www.npmjs.com/package/@nandan-varma/purgeit)
+[![npm version](https://img.shields.io/npm/v/purgeit.svg)](https://www.npmjs.com/package/purgeit)
 [![CI](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml/badge.svg)](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -19,6 +19,7 @@ npx purgeit ~/dev
 - **Headless mode** — `--json`/`--delete` flags for scripting and CI
 - **Configurable rules** — extend built-in defaults with a `purgeit.config.ts`
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
+- **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
 
 ## CLI flags
 
@@ -72,6 +73,12 @@ export default {
 Config is resolved via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) — searches from cwd upward. Use `--config <path>` to specify explicitly, or `--no-config` for defaults only.
 
 `.js`/`.ts`/`.cjs`/`.mjs` config files are executed as code (same trust model as ESLint/Jest configs) — only run purgeit somewhere you trust the config files that could be found by that upward search.
+
+## Platform notes
+
+- **macOS / Linux** — directory sizes are computed via `du -s -k`, which is fast and matches the behavior of the original CLEANUP.sh script.
+- **Windows** — `du` is not available, so sizing uses a pure-Node.js recursive `stat` walk. This is correct but slower for very large trees. The TUI works best in [Windows Terminal](https://aka.ms/terminal); legacy `cmd.exe` may have limited Unicode box-drawing support.
+- **WSL** — full Unix environment, behaves identically to Linux.
 
 ## Development
 

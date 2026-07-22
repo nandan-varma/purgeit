@@ -1,0 +1,70 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
+
+## [Unreleased]
+
+### Added
+- Cross-platform CI matrix (macOS, Linux, Windows)
+- Cross-platform documentation in README
+- Expanded library API exports (`deleteEntries`, `Gate`, `GateContext`, `PurgeitUserConfig`, `GateCondition`, `UserGatedRule`, `createExcludeMatcher`)
+- `typescript` peer dependency now marked optional
+
+### Fixed
+- README badge now points to correct `purgeit` package name
+- `isDangerousPath` now correctly rejects Windows drive roots (e.g. `C:\`)
+- `skipDirs` entries now properly pruned during recursive walks, not just at top-level project listing
+- `chmod`-based permission tests guarded on Windows (no-op on NTFS)
+
+### Changed
+- Lazy-load `cosmiconfig-typescript-loader` (saves 1.7MB `jiti` install for non-TS config users)
+- Batch `du -s -k` calls via `DuBatcher` (reduces process forks from O(n) to O(n/32))
+- Memoize `sortedEntries` in ArtifactList (skip re-sort on every 80ms spinner tick)
+- O(1) `selectedBytes` lookup via path-to-entry Map in Header
+- Efficient `UPDATE_SIZE` reducer (single-element replacement instead of full array map)
+- Cache compiled glob regexes in gate-context
+
+## [0.0.7] - 2025-06-14
+
+### Fixed
+- Type safety, exit code, and dead code cleanup
+- Robustness hardening across scanner, walker, deleter, and formatter
+- Defensive `formatBytes` guard
+
+## [0.0.6] - 2025-06-14
+
+### Fixed
+- Honor `--dry-run`/`--config`/`--no-gated`/`--targets`/`--exclude`/`--min-size`/`--sort` in the TUI
+- Stop treating top-level artifact-named dirs as projects to walk into
+
+## [0.0.5] - 2025-06-13
+
+### Fixed
+- Cascading multi-box corruption after several resizes (root-caused with a real terminal emulator)
+- Resize-artifact and header-height-shift bugs, plus a broader wrap audit
+
+## [0.0.4] - 2025-06-13
+
+### Added
+- Resize handler + follow-up UI/UX audit (help, page nav, animated spinner, responsive columns)
+
+## [0.0.3] - 2025-06-12
+
+### Changed
+- Redesigned TUI as a real table with full-row selection highlighting
+- Renamed package to unscoped `purgeit` so `npx purgeit` works
+
+### Fixed
+- `q` never exited the process, sort keybindings were no-ops, and warnings were dropped
+
+## [0.0.1] - 2025-06-12
+
+### Added
+- Initial release: CLI dispatch, Ink TUI, headless runner, rule engine, config system, scanner, deleter
+- CI/CD pipeline with GitHub Actions
+- Interactive TUI with sortable table, multi-select, and confirmation flow
+- Headless mode with `--json`/`--delete` flags
+- Configurable rules via `purgeit.config.{ts,js,json}`
+- Two scan modes: projects (default) and flat (`--full`)
