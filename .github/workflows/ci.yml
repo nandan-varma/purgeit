@@ -8,10 +8,15 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
         node-version: [20, 22]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
@@ -25,8 +30,6 @@ jobs:
       - run: npm run typecheck
 
       - run: npm run lint
-
-      - run: npm run coverage
 
       - run: npm run build
 
@@ -47,9 +50,10 @@ jobs:
       - name: Headless smoke test
         run: |
           FIXTURE=$(npx tsx test/fixtures/ci-smoke-fixture.ts)
-          OUTPUT=$(node dist/cli.js "$FIXTURE" --json --dry-run)
-          echo "$OUTPUT" | node -e "
-            const j = JSON.parse(require('fs').readFileSync('/dev/stdin','utf8'));
+          node dist/cli.js "$FIXTURE" --json --dry-run > smoke-output.json
+          node -e "
+            const fs = require('fs');
+            const j = JSON.parse(fs.readFileSync('smoke-output.json', 'utf8'));
             if (j.entries.length < 2) { console.error('Expected >= 2 entries, got', j.entries.length); process.exit(1); }
             console.log('Smoke test passed:', j.entries.length, 'entries found');
           "

@@ -59,6 +59,7 @@ describe('deleteEntries', () => {
 
   it('continues past a real failure and aggregates deleted vs failed counts in one batch', async () => {
     if (process.getuid?.() === 0) return; // root bypasses permission checks
+    if (process.platform === 'win32') return; // chmod has no effect on NTFS
     root = buildTree({ locked: { child: { f: 'x' } }, real: { f: 'y' } });
     const { chmodSync } = await import('node:fs');
     const lockedDir = join(root, 'locked');

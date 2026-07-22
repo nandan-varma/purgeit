@@ -76,6 +76,9 @@
   "peerDependenciesMeta": {
     "cosmiconfig-typescript-loader": {
       "optional": true
+    },
+    "typescript": {
+      "optional": true
     }
   },
   "engines": {

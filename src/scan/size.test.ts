@@ -126,6 +126,7 @@ describe('computeSize', () => {
 
   it('fallback returns 0 for a directory it cannot list (readdir fails after lstat succeeds)', async () => {
     if (process.getuid?.() === 0) return; // root bypasses permission checks
+    if (process.platform === 'win32') return; // chmod has no effect on NTFS
     mockDuMissing();
     const { computeSize } = await import('./size.js');
     const { chmodSync } = await import('node:fs');

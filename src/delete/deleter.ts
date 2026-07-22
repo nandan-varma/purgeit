@@ -1,6 +1,6 @@
 import { rm } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { resolve, sep } from 'node:path';
+import { parse, resolve } from 'node:path';
 
 export interface DeleteOptions {
   readonly signal?: AbortSignal | undefined;
@@ -22,7 +22,9 @@ export type DeleteEvent =
  */
 function isDangerousPath(path: string): boolean {
   const resolved = resolve(path);
-  return resolved === sep || resolved === resolve(homedir());
+  // On Unix, resolved === '/' matches root. On Windows, 'C:\' has root 'C:\'
+  // so parse(resolved).root === resolved catches drive roots too.
+  return parse(resolved).root === resolved || resolved === resolve(homedir());
 }
 
 /**
