@@ -1,7 +1,7 @@
 import { basename, resolve } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
-import { formatBytes, parseSizeString } from '../format.js';
+import { formatBytes, formatErrorMessage, parseSizeString } from '../format.js';
 import { defaultRuleSet, mergeRuleSets, restrictRuleSetToTargets } from '../rules/merge.js';
 import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
@@ -61,7 +61,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     try {
       minSizeBytes = parseSizeString(parsed.minSize);
     } catch (err) {
-      stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
+      stderr(`purgeit: ${formatErrorMessage(err)}`);
       return 2;
     }
   }
@@ -74,7 +74,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
       noConfig: parsed.noConfig,
     });
   } catch (err) {
-    stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
+    stderr(`purgeit: ${formatErrorMessage(err)}`);
     return 2;
   }
 
@@ -109,7 +109,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
       }
     }
   } catch (err) {
-    stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
+    stderr(`purgeit: ${formatErrorMessage(err)}`);
     return 2;
   }
 

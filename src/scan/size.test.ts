@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { tmpdir } from 'node:os';
+import pLimit from 'p-limit';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 
 // Real `execFile` exposes a `util.promisify.custom` implementation (resolves
@@ -140,5 +142,70 @@ describe('computeSize', () => {
     } finally {
       chmodSync(lockedDir, 0o700); // restore so cleanupTree can remove it
     }
+  });
+
+  it('DuBatcher rejects all pending promises when du batch fails', async () => {
+    let call = 0;
+    execFileMock.mockImplementation((_cmd, _args, cb) => {
+      call++;
+      if (call === 1) {
+        cb(null, '4\t/tmp\n', ''); // availability probe succeeds
+      } else {
+        cb(Object.assign(new Error('du batch failed'), { code: 'EACCES' }));
+      }
+    });
+    const { computeSize, createDuBatcher } = await import('./size.js');
+    const batcher = createDuBatcher(pLimit(8));
+    root = buildTree({ a: 'x', b: 'y' });
+    const { join } = await import('node:path');
+    // Both calls go to the batcher; du fails on the batch, triggering the JS fallback
+    const [sizeA, sizeB] = await Promise.all([
+      computeSize(join(root, 'a'), { batcher }),
+      computeSize(join(root, 'b'), { batcher }),
+    ]);
+    expect(sizeA).toBe(1);
+    expect(sizeB).toBe(1);
+  });
+
+  it('DuBatcher falls back to JS when a path is missing from du output', async () => {
+    let call = 0;
+    execFileMock.mockImplementation((_cmd, _args, cb) => {
+      call++;
+      if (call === 1) {
+        cb(null, '4\t/tmp\n', ''); // availability probe succeeds
+      } else {
+        // Only return output for one path, omit the other
+        cb(null, '10\t/existing\n', '');
+      }
+    });
+    const { computeSize, createDuBatcher } = await import('./size.js');
+    const batcher = createDuBatcher(pLimit(8));
+    root = buildTree({ existing: 'x'.repeat(10240), missing: 'hi' });
+    const { join } = await import('node:path');
+    const bytes = await computeSize(join(root, 'missing'), { batcher });
+    expect(bytes).toBe(2);
+  });
+
+  it('DuBatcher clears pending timer when batch fills before timer fires', async () => {
+    execFileMock.mockImplementation((_cmd, args: string[], cb) => {
+      if (args.includes(tmpdir())) {
+        cb(null, '0\t/\n', '');
+        return;
+      }
+      const paths = args.slice(2);
+      cb(null, paths.map((p) => `1\t${p}\n`).join(''), '');
+    });
+    const { computeSize, createDuBatcher } = await import('./size.js');
+    const batcher = createDuBatcher(pLimit(8));
+    // Submit 33 items synchronously — the 32nd triggers flush() while the
+    // 10 ms timer from the 1st item is still pending, exercising the
+    // clearTimeout(flushTimer) branch in flush().
+    const promises: Promise<number>[] = [];
+    for (let i = 0; i < 33; i++) {
+      promises.push(computeSize(`/test/${i}`, { batcher }));
+    }
+    const results = await Promise.all(promises);
+    expect(results).toHaveLength(33);
+    expect(results.every((r) => r === 1024)).toBe(true);
   });
 });

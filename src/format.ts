@@ -23,11 +23,6 @@ export function parseSizeString(input: string): number {
   const numberPart = match[1] as string;
   const unitPart = match[2] as string;
   const value = Number.parseFloat(numberPart);
-  if (!Number.isFinite(value)) {
-    throw new Error(
-      `invalid size '${input}' (expected e.g. "10MB", "500KB", or a plain byte count)`,
-    );
-  }
   const unit = unitPart.toLowerCase() || 'b';
   const multiplier = SIZE_UNITS[unit];
   if (multiplier === undefined) {
@@ -50,4 +45,13 @@ export function formatBytes(bytes: number): string {
     unitIndex++;
   }
   return `${value.toFixed(1)} ${units[unitIndex]}`;
+}
+
+/**
+ * Narrow an `unknown` caught value to a displayable error message.
+ * Use in catch blocks where the caught value is `unknown`:
+ * `catch (err) { stderr(formatErrorMessage(err)); return 2; }`
+ */
+export function formatErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
 }

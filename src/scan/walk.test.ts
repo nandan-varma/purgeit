@@ -156,4 +156,21 @@ describe('walk', () => {
     }
     expect(matches.length).toBe(2);
   });
+
+  it('silently skips a gated directory whose gate throws', async () => {
+    root = buildTree({ Podfile: 'platform :ios\n', Pods: null });
+    const ruleSet = {
+      ...defaultRuleSet(),
+      gated: new Map([
+        [
+          'Pods',
+          () => {
+            throw new Error('gate exploded');
+          },
+        ],
+      ]),
+    };
+    const matches = await collect(root, ruleSet);
+    expect(matches).toEqual([]);
+  });
 });

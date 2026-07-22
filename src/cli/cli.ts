@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { parseSizeString } from '../format.js';
+import { formatErrorMessage, parseSizeString } from '../format.js';
 import { parseCliArgs, USAGE } from './args.js';
 import { runHeadless } from './headless.js';
 
@@ -28,7 +28,7 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     }
     parsed = early;
   } catch (err) {
-    stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
+    stderr(`purgeit: ${formatErrorMessage(err)}`);
     stderr(`\n${USAGE}`);
     return 2;
   }
@@ -43,7 +43,7 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       try {
         minSizeBytes = parseSizeString(parsed.minSize);
       } catch (err) {
-        stderr(`purgeit: ${err instanceof Error ? err.message : String(err)}`);
+        stderr(`purgeit: ${formatErrorMessage(err)}`);
         return 2;
       }
     }

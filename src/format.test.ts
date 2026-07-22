@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, parseSizeString } from './format.js';
+import { formatBytes, formatErrorMessage, parseSizeString } from './format.js';
 
 describe('parseSizeString', () => {
   it('parses a bare number as bytes', () => {
@@ -54,5 +54,23 @@ describe('formatBytes', () => {
     expect(formatBytes(-1)).toBe('0 B');
     expect(formatBytes(Number.NaN)).toBe('0 B');
     expect(formatBytes(Number.POSITIVE_INFINITY)).toBe('0 B');
+  });
+});
+
+describe('formatErrorMessage', () => {
+  it('returns message from an Error instance', () => {
+    expect(formatErrorMessage(new Error('boom'))).toBe('boom');
+  });
+
+  it('stringifies a non-Error value', () => {
+    expect(formatErrorMessage('raw string')).toBe('raw string');
+  });
+
+  it('stringifies null', () => {
+    expect(formatErrorMessage(null)).toBe('null');
+  });
+
+  it('stringifies undefined', () => {
+    expect(formatErrorMessage(undefined)).toBe('undefined');
   });
 });

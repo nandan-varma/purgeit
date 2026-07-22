@@ -23,7 +23,6 @@ export function defaultRuleSet(): ResolvedRuleSet {
 
 /** Sanity check: every GATED_NAMES entry has a default gate. */
 for (const name of GATED_NAMES) {
-  /* v8 ignore next 3 -- static invariant over hardcoded data; never actually false */
   if (!DEFAULT_GATES.has(name)) {
     throw new Error(`purgeit: GATED_NAMES entry '${name}' has no matching gate in DEFAULT_GATES`);
   }

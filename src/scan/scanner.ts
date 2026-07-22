@@ -199,7 +199,6 @@ export async function* scan(
         totalBytes += bytes;
         queue.push({ type: 'size', path: match.path, bytes });
       } catch {
-        // Size computation failed (e.g. aborted scan) — don't report it.
       } finally {
         pendingSizes--;
         maybeFinish();

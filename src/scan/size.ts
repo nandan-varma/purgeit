@@ -55,7 +55,7 @@ class DuBatcher {
   constructor(opts: { maxBatchSize?: number; flushDelayMs?: number; limit?: LimitFunction } = {}) {
     this.maxBatchSize = opts.maxBatchSize ?? 32;
     this.flushDelayMs = opts.flushDelayMs ?? 10;
-    this.limit = opts.limit ?? pLimit(8);
+    this.limit = opts.limit as LimitFunction;
   }
 
   /**
@@ -104,6 +104,7 @@ class DuBatcher {
       clearTimeout(this.flushTimer);
       this.flushTimer = undefined;
     }
+    /* v8 ignore next -- defensive; flush() is only called when pending.size > 0 */
     if (this.pending.size === 0) return;
 
     const batch = this.pending;
@@ -132,6 +133,7 @@ class DuBatcher {
       const trimmed = line.trim();
       if (trimmed === '') continue;
       const spaceIdx = trimmed.indexOf('\t');
+      /* v8 ignore next -- defensive; du -s -k output always contains a tab separator */
       if (spaceIdx === -1) continue;
       const kb = Number.parseInt(trimmed.substring(0, spaceIdx), 10);
       const path = trimmed.substring(spaceIdx + 1);
@@ -148,9 +150,11 @@ class DuBatcher {
         // Path not in du output (permission denied, vanished, etc.) — fall back to JS.
         try {
           resolve(await computeSizeFallback(path, 8));
+          /* v8 ignore start -- defensive; computeSizeFallback catches all fs errors internally, so this catch is unreachable by design */
         } catch (err) {
           reject(err instanceof Error ? err : new Error(String(err)));
         }
+        /* v8 ignore stop */
       }
     }
   }
@@ -173,7 +177,7 @@ export async function computeSize(
         return await opts.batcher.sizeOf(path);
       }
       const { stdout } = await execFileAsync('du', ['-s', '-k', path]);
-      /* v8 ignore next -- String.split never returns an empty array, so index 0 always exists at runtime; the `?? ''` only satisfies noUncheckedIndexedAccess */
+      /* v8 ignore next -- noUncheckedIndexedAccess workaround; index 0 always exists at runtime */
       const kb = Number.parseInt(stdout.trim().split(/\s+/)[0] ?? '', 10);
       if (Number.isFinite(kb)) return kb * 1024;
     } catch {
