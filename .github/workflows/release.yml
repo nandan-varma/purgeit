@@ -22,6 +22,11 @@ jobs:
 
       - run: npm ci
 
+      # Full verify before publish — prepublishOnly is belt-and-suspenders for
+      # local `npm publish`, but the workflow must not rely on it alone.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test
       - run: npm run build
 
       - run: npm publish --provenance --access public

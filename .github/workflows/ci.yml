@@ -31,11 +31,13 @@ jobs:
 
       - run: npm run lint
 
+      - run: npm test
+
       - run: npm run build
 
       # Scanner/rule-engine/config core must stay framework-agnostic so it's
       # usable as a plain library independent of the Ink TUI (see
-      # src/ui/README or CONTRIBUTING.md for the isolation rationale).
+      # CONTRIBUTING.md for the isolation rationale).
       - name: "Verify react/ink stay isolated to src/ui/"
         run: |
           if grep -rn "from 'react'" src --include='*.ts' --include='*.tsx' | grep -v '^src/ui/'; then
