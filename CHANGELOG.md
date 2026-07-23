@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-23
+
+### Fixed
+- Scans on real directory trees with more than `concurrency` (default 8) matches would hang forever. `DuBatcher`'s batch flush was scheduled on the same `p-limit` instance as the outer per-match task awaiting it, so once concurrency-many matches were in flight, every slot was held by a task blocked on a flush that could never itself acquire a slot to run — a `p-limit` reentrant deadlock. `DuBatcher` now uses its own independent limiter.
+
 ## [0.1.0] - 2026-07-22
 
 ### Fixed
