@@ -209,6 +209,23 @@ describe('scan (projects mode, default)', () => {
     expect(done && done.type === 'done' ? done.totalBytes : -1).toBe(summed);
   });
 
+  it('completes (does not deadlock) when matches outnumber the concurrency limit', async () => {
+    // Regression test: the DuBatcher's flush used to run on the *same*
+    // p-limit instance as the outer per-match computeSize() task awaiting
+    // it. Once concurrency-many matches were all mid-flight, every slot on
+    // that shared limiter was held by a task blocked on the batcher's
+    // flush, and the flush itself could never acquire a slot to run —
+    // hanging forever. Four matches with concurrency 2 reliably triggers
+    // it if the bug regresses (this test would time out).
+    root = buildTree({
+      proj: { node_modules: null, dist: null, coverage: null, '.cache': null },
+    });
+    const events = await collect(root, { concurrency: 2 });
+    expect(events.filter((e) => e.type === 'found')).toHaveLength(4);
+    expect(events.filter((e) => e.type === 'size')).toHaveLength(4);
+    expect(events.at(-1)).toEqual({ type: 'done', totalBytes: expect.any(Number) });
+  });
+
   it('runs the next.js validator and reports no warning for a well-formed project', async () => {
     root = buildTree({
       app: {

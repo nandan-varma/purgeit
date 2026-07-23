@@ -40,6 +40,16 @@ export function resetDuAvailabilityCache(): void {
  * Paths are accumulated and flushed when the batch reaches `maxBatchSize`
  * or after `flushDelayMs` milliseconds, whichever comes first. This reduces
  * process-fork overhead from O(n) to O(n/batchSize).
+ *
+ * The limiter that runs `runBatch()` (`this.limit`) must be a *separate*
+ * `p-limit` instance from the one callers use to schedule the outer
+ * `sizeOf()`-awaiting task (scanner.ts's per-match `computeSize()` call).
+ * If they shared one limiter, once `concurrency`-many outer tasks are all
+ * blocked awaiting `sizeOf()`, every slot on that limiter is held by a task
+ * that can only resolve once `runBatch()` runs — but `runBatch()` itself
+ * needs a free slot on that same limiter to start, so it can never run.
+ * That's a real deadlock, not just slow: a directory tree with more matches
+ * than `concurrency` hangs the scan forever (reproduced in size.test.ts).
  */
 class DuBatcher {
   private readonly maxBatchSize: number;
@@ -52,10 +62,10 @@ class DuBatcher {
   private flushTimer: ReturnType<typeof setTimeout> | undefined;
   private abortListener: (() => void) | undefined;
 
-  constructor(opts: { maxBatchSize?: number; flushDelayMs?: number; limit?: LimitFunction } = {}) {
+  constructor(opts: { maxBatchSize?: number; flushDelayMs?: number; limit: LimitFunction }) {
     this.maxBatchSize = opts.maxBatchSize ?? 32;
     this.flushDelayMs = opts.flushDelayMs ?? 10;
-    this.limit = opts.limit as LimitFunction;
+    this.limit = opts.limit;
   }
 
   /**
@@ -185,9 +195,13 @@ export async function computeSize(
   return computeSizeFallback(path, opts.limit ?? pLimit(opts.concurrency ?? 8));
 }
 
-/** Creates a DuBatcher scoped to the given concurrency limit. */
-export function createDuBatcher(limit: LimitFunction): DuBatcher {
-  return new DuBatcher({ limit });
+/**
+ * Creates a DuBatcher with its own dedicated concurrency limiter — deliberately
+ * *not* the caller's directory-walk/per-match limiter (see the deadlock note
+ * on `DuBatcher` above).
+ */
+export function createDuBatcher(concurrency = 8): DuBatcher {
+  return new DuBatcher({ limit: pLimit(concurrency) });
 }
 
 async function computeSizeFallback(path: string, limit: LimitFunction): Promise<number> {

@@ -178,7 +178,11 @@ export async function* scan(
   const signal = opts.signal;
   const limit = pLimit(opts.concurrency ?? 8);
   const queue = new AsyncQueue<ScanEvent>();
-  const duBatcher = createDuBatcher(limit);
+  // A separate limiter from `limit` — see the deadlock note on DuBatcher in
+  // size.ts: the outer per-match task below holds a `limit` slot for its
+  // whole lifetime while awaiting the batcher, so the batcher's own flush
+  // must not compete for slots on that same limiter.
+  const duBatcher = createDuBatcher(opts.concurrency ?? 8);
   duBatcher.bindAbortSignal(signal);
 
   let totalBytes = 0;

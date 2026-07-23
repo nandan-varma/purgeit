@@ -1,5 +1,4 @@
 import { tmpdir } from 'node:os';
-import pLimit from 'p-limit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 
@@ -155,7 +154,7 @@ describe('computeSize', () => {
       }
     });
     const { computeSize, createDuBatcher } = await import('./size.js');
-    const batcher = createDuBatcher(pLimit(8));
+    const batcher = createDuBatcher();
     root = buildTree({ a: 'x', b: 'y' });
     const { join } = await import('node:path');
     // Both calls go to the batcher; du fails on the batch, triggering the JS fallback
@@ -179,7 +178,7 @@ describe('computeSize', () => {
       }
     });
     const { computeSize, createDuBatcher } = await import('./size.js');
-    const batcher = createDuBatcher(pLimit(8));
+    const batcher = createDuBatcher();
     root = buildTree({ existing: 'x'.repeat(10240), missing: 'hi' });
     const { join } = await import('node:path');
     const bytes = await computeSize(join(root, 'missing'), { batcher });
@@ -196,7 +195,7 @@ describe('computeSize', () => {
       cb(null, paths.map((p) => `1\t${p}\n`).join(''), '');
     });
     const { computeSize, createDuBatcher } = await import('./size.js');
-    const batcher = createDuBatcher(pLimit(8));
+    const batcher = createDuBatcher();
     // Submit 33 items synchronously — the 32nd triggers flush() while the
     // 10 ms timer from the 1st item is still pending, exercising the
     // clearTimeout(flushTimer) branch in flush().
