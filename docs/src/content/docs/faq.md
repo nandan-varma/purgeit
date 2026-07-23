@@ -5,7 +5,7 @@ description: Common questions, edge cases, and how to recover from unexpected be
 
 ## Why is nothing selected by default?
 
-`purgeit` is designed to be safe. The TUI opens with every match unselected so you can review sizes and paths before deleting anything. Select rows with <kbd>Space</kbd> or <kbd>Enter</kbd>, then press <kbd>d</kbd> and confirm to delete.
+`purgeit` is designed to be safe. The TUI opens with every match unselected so you can review sizes and paths before deleting anything. Select rows with <kbd>Space</kbd>, then press <kbd>Enter</kbd> to review and confirm. See the [Interactive TUI reference](/tui/) for the full keymap.
 
 ## I ran `purgeit` and nothing was found
 

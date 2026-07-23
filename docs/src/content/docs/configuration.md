@@ -66,8 +66,10 @@ Declarative conditions:
 | Condition | Meaning |
 | --- | --- |
 | `{ file: 'X' }` | `X` exists in the same parent directory |
-| `{ glob: 'X' }` | A sibling entry matches the glob |
-| `{ grep: { file: 'X', pattern: 'Y' } }` | `X` exists and its contents match `Y` |
+| `{ glob: 'X' }` | A sibling entry matches the glob (`*`/`?` wildcards) |
+| `{ grep: { file: 'X', pattern: 'Y' } }` | `X` exists and its contents match `Y`, compiled as `new RegExp(Y, 'm')` |
+
+Multiple conditions in a `when` array are OR'd together — the gate passes if any one matches. For programmatic use (outside a JSON-serializable config file), see [`Gate`/`GateContext`](/api/#gated-rules-and-gatecontext) in the API reference.
 
 ### `gatedRemove`
 

@@ -21,6 +21,7 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Getting started', slug: 'getting-started' },
+            { label: 'Interactive TUI', slug: 'tui' },
             { label: 'CLI reference', slug: 'cli' },
             { label: 'Configuration', slug: 'configuration' },
             { label: 'Built-in rules', slug: 'rules' },

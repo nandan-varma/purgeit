@@ -26,7 +26,7 @@ In a terminal, `purgeit` opens an interactive TUI:
 purgeit ~/dev
 ```
 
-Use the keyboard to navigate, select artifacts, and delete them after confirming.
+Every row starts unselected. Use the keyboard to navigate, select artifacts, and delete them after an explicit confirmation — see the [Interactive TUI reference](/tui/) for the full keymap (also available in-app by pressing <kbd>?</kbd>).
 
 For a non-interactive dry-run preview, use headless mode:
 
@@ -52,8 +52,9 @@ By default, purgeit matches the most common regenerable directories:
 
 See the full [built-in rules reference](/rules/) for the complete list and gate conditions. You can extend or replace these rules with a [configuration file](/configuration/).
 
-## Exit codes
+## Next steps
 
-- `0` — success
-- `1` — nothing found or deletion had failures
-- `2` — usage or environment error
+- [Interactive TUI](/tui/) — full keymap and workflow for the default terminal experience
+- [CLI reference](/cli/) — every flag, exit codes, and headless/scripting examples
+- [Configuration](/configuration/) — customize the ruleset with `purgeit.config.ts`
+- [API reference](/api/) — use the scanner and rule engine as a library in your own tools
