@@ -61,6 +61,15 @@ describe('loadConfig', () => {
     expect(result.config).toEqual({ skipDirs: ['from-ts'] });
   });
 
+  it('reuses the cached TypeScript loader on a second .ts config load', async () => {
+    root = buildTree({
+      'purgeit.config.ts': "export default { skipDirs: ['from-ts'] };\n",
+    });
+    await loadConfig({ cwd: root, stopDir: root });
+    const result = await loadConfig({ cwd: root, stopDir: root });
+    expect(result.config).toEqual({ skipDirs: ['from-ts'] });
+  });
+
   it('returns undefined config when nothing is found within stopDir', async () => {
     root = buildTree({ project: null });
     const result = await loadConfig({ cwd: join(root, 'project'), stopDir: root });

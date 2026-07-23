@@ -33,4 +33,20 @@ describe('cli-main (bin entry)', () => {
     expect(runCliMock).toHaveBeenCalledOnce();
     expect(process.exitCode).toBe(3);
   });
+
+  it('force-quits with exit code 130 on a second SIGINT', async () => {
+    process.argv = ['node', 'purgeit'];
+    const exitSpy = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+
+    runCliMock.mockImplementation(async () => {
+      process.emit('SIGINT');
+      process.emit('SIGINT');
+      return 0;
+    });
+
+    await import('./cli-main.js');
+
+    expect(exitSpy).toHaveBeenCalledExactlyOnceWith(130);
+    exitSpy.mockRestore();
+  });
 });

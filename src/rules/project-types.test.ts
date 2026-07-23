@@ -82,6 +82,11 @@ describe('detectProjectTypes', () => {
     root = buildTree({ 'package.json': '{}', 'mkdocs.yml': '' });
     const extra = [
       {
+        id: 'sphinx',
+        label: 'sphinx',
+        detect: (dir: string) => existsSync(join(dir, 'conf.py')),
+      },
+      {
         id: 'mkdocs',
         label: 'mkdocs',
         detect: (dir: string) => existsSync(join(dir, 'mkdocs.yml')),

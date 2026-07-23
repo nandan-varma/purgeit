@@ -3,6 +3,11 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.test.{ts,tsx}'],
+    // Vitest 4 replaces the global `console` with a capturing proxy that
+    // lacks a `.Console` constructor; Ink's real render() (used in
+    // App.test.tsx's quitting test to exercise waitUntilExit()) calls
+    // `new console.Console(...)` via patch-console and throws without this.
+    disableConsoleIntercept: true,
     // Rule/scan tests spawn real `du` child processes and exercise the real
     // filesystem (temp-dir fixtures) rather than mocking it. Keeping file
     // parallelism off avoids exhausting posix_spawn on macOS, same rationale

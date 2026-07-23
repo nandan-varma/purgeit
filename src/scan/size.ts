@@ -145,6 +145,7 @@ class DuBatcher {
       if (spaceIdx === -1) continue;
       const kb = Number.parseInt(trimmed.substring(0, spaceIdx), 10);
       const path = trimmed.substring(spaceIdx + 1);
+      /* v8 ignore else -- defensive; du -s -k output always yields a finite kb and non-empty path once a tab separator was found */
       if (Number.isFinite(kb) && path !== '') {
         parsed.set(path, kb * 1024);
       }

@@ -147,10 +147,11 @@ async function collectValidatorWarnings(
     tasks.push(
       (async (): Promise<ValidationWarning | undefined> => {
         const xcodeprojName = await findTopLevelMatchName(projectPath, '*.xcodeproj', true);
-        /* v8 ignore next 4 -- defensive: the xcode detector only labels a project when it finds an .xcodeproj, so this branch is unreachable with built-in detectors. */
+        /* v8 ignore else -- defensive: the xcode detector only labels a project when it finds an .xcodeproj, so this fallthrough is unreachable with built-in detectors. */
         if (xcodeprojName !== undefined) {
           return validateXcodeproj(join(projectPath, xcodeprojName));
         }
+        /* v8 ignore next -- see above */
         return undefined;
       })(),
     );
