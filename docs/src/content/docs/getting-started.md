@@ -42,15 +42,17 @@ purgeit --json --dry-run ~/dev
 
 ## What gets cleaned
 
-By default, purgeit matches the most common regenerable directories:
+purgeit ships with 60+ built-in rules across 16 ecosystems — not just JavaScript. A sample:
 
-- `node_modules`, `dist`, `.next`, `.nuxt`, `out`, `target`
-- Framework caches: `.cache`, `.vite`, `.turbo`, `.swc`, `.angular`, `.svelte-kit`, `.astro`
-- Test artifacts: `coverage`, `.nyc_output`, `playwright-report`, `test-results`
-- Python artifacts: `__pycache__`, `.venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`
-- Gated directories (only when a sibling manifest exists): `Pods`, `build`, `.gradle`, `bin`, `obj`
+- **JavaScript/TypeScript**: `node_modules`, `dist`, `.next`, `.nuxt`, `.turbo`, `.vite`, `coverage`, and more
+- **Python**: `__pycache__`, `.venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `htmlcov`, and more
+- **Rust**, **Go**, **PHP**, **Ruby**, **Elixir**, **Haskell**, **Elm**, **Zig**, **Dart/Flutter**
+- **Apple**: `DerivedData`, `.build` (SPM), `Pods` (CocoaPods), `Carthage`
+- **Java/JVM**: `.gradle`, `target` (Maven), `.cxx` (Android NDK)
+- **.NET**: `bin`, `obj` (also covers Eclipse Java)
+- Gated directories — matched only when a sibling manifest proves they're real generated output, e.g. `Pods/` only next to a `Podfile`, `vendor/` only next to a `composer.json` or `go.mod`
 
-See the full [built-in rules reference](/rules/) for the complete list and gate conditions. You can extend or replace these rules with a [configuration file](/configuration/).
+Every one of these is rendered live, with descriptions and gate conditions, on the [built-in rules reference](/rules/) — generated directly from the same source the scan engine compiles against, so it can't go stale. You can extend, narrow, or replace the ruleset with a [configuration file](/configuration/).
 
 ## Next steps
 

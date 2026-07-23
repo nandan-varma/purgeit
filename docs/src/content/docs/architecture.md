@@ -48,6 +48,12 @@ A `ResolvedRuleSet` contains:
 
 User configs are merged with the built-in ruleset via `mergeRuleSets()`, then CLI flags (`--no-gated`, `--targets`) are applied via `applyCliFilters()`. See [Configuration](/configuration/) for the user-facing shape and [Built-in rules](/rules/) for what ships by default.
 
+### The rule catalog
+
+The built-in rules themselves live in `src/rules/catalog/` — one file per ecosystem, each exporting a plain array of `RuleDefinition`s (name, kind, ecosystem categories, human-readable description, and — for gated rules — a declarative `when` condition using the exact same `GateCondition` shape `purgeit.config.ts` uses). `default-rules.ts` derives `ALWAYS_SAFE_NAMES`/`GATED_NAMES`/`PRUNE_META_NAMES` from this catalog by filtering on `kind`; `gate-conditions.ts` derives the compiled `Gate` map by running each gated rule's `when` through the same `compileGateConditions()` a user config's declarative gates go through. Nothing scan-relevant is hand-duplicated between the catalog and the engine that consumes it.
+
+This exists so the rule *data* and the rule *matching logic* can't drift apart, and so the same data is usable outside the scan engine — `RULE_CATALOG` is exported from the public API (see [API reference](/api/#rule-catalog)), and [`/rules/`](/rules/) renders it directly rather than hand-maintaining a table that could go stale (which happened once: `.build` was documented as a Python artifact when it's actually Swift Package Manager's). Adding an ecosystem is mechanical: a new `catalog/<name>.ts` file, one line adding it to `catalog/index.ts`'s aggregation, and a new `RuleCategory` member in `catalog/types.ts` if needed.
+
 ## Safety model
 
 Safety is layered at every stage, not just at the final delete call:

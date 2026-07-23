@@ -1,0 +1,42 @@
+---
+title: Built-in rules
+description: The default artifact names and gated directories purgeit recognizes out of the box, across every ecosystem it supports.
+---
+
+import RuleAccordion from '../../components/RuleAccordion.astro';
+
+purgeit ships with a default ruleset ported from the original `CLEANUP.sh` and substantially expanded since. Every rule below is rendered directly from purgeit's source (`RULE_CATALOG` in `src/rules/catalog/`) — this page can't drift out of sync with what the CLI actually matches, because it's generated from the same data the scan engine compiles against.
+
+## Always-safe vs. gated
+
+Rules come in three kinds:
+
+- **always-safe** — deletable wherever the name appears in a project tree, no further proof needed. Once matched, the walker stops descending into it (no point looking for `node_modules` inside `node_modules`).
+- **gated** — the name alone is too generic to trust (`build`, `bin`, `vendor`, ...), so it's only reported when a sibling manifest in the *same parent directory* proves it's really generated output for a specific ecosystem — e.g. `Pods/` only counts next to a `Podfile`.
+- **pruned** (version control metadata) — never descended into at all, and never itself a deletion candidate.
+
+Expand a section below for that ecosystem's rules. Names repeated across sections (like `build` or `vendor`) are genuinely polyglot — gated on whichever ecosystem's manifest happens to be present, so one rule definition safely covers all of them.
+
+<RuleAccordion />
+
+## Customizing the ruleset
+
+You can extend, replace, or narrow these defaults with a [`purgeit.config.ts`](/configuration/).
+
+Restrict the CLI to a subset of rules:
+
+```bash
+purgeit --targets node_modules,dist
+```
+
+Disable all gated rules and only match always-safe directories:
+
+```bash
+purgeit --no-gated
+```
+
+Don't see your ecosystem, or want a rule removed? See [Configuration](/configuration/) for `alwaysSafe`/`gated`/`alwaysSafeRemove`/`gatedRemove`, or open an issue/PR — [Contributing](/contributing/) has the recipe for adding a new ecosystem to the catalog (one file, a handful of lines).
+
+## Where the defaults come from
+
+The built-in catalog lives in `src/rules/catalog/` — one file per ecosystem (`javascript.ts`, `python.ts`, `rust.ts`, `apple.ts`, `dotnet.ts`, `java-jvm.ts`, `ruby.ts`, `dart-flutter.ts`, `elixir.ts`, `haskell.ts`, `elm.ts`, `zig.ts`, `vcs.ts`), plus `shared.ts` for names used unqualified across multiple ecosystems (`build`, `vendor`). `default-rules.ts` and `gate-conditions.ts` derive the flat name lists and compiled gate predicates the scanner actually uses from this catalog — nothing scan-relevant is hand-duplicated. It's also exported from the package's public API (see [API reference](/api/#all-exports)) as `RULE_CATALOG`, so this same data is available to anything built on top of purgeit as a library, not just this page.

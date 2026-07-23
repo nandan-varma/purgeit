@@ -21,7 +21,8 @@ npx purgeit ~/dev
 - **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
 - **Interactive TUI** — a sortable table (size/type/name/project/path) with live sizes; selection is a full-row color highlight, not just a checkbox
 - **Headless mode** — `--json`/`--delete` flags for scripting and CI
-- **Configurable rules** — extend built-in defaults with a `purgeit.config.ts`
+- **60+ built-in rules across 16 ecosystems** — JavaScript/TypeScript, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple/Swift, Elixir, Haskell, Elm, Zig, Dart/Flutter, C/C++, not just `node_modules`. Full list: [purgeit.nandan.fyi/rules](https://purgeit.nandan.fyi/rules/)
+- **Configurable rules** — extend, narrow, or replace the defaults with a `purgeit.config.ts`
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
 - **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
 

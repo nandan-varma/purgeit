@@ -74,6 +74,56 @@ interface ResolvedRuleSet {
 
 `defaultRuleSet()` returns the built-in rules ([full list](/rules/)) with no user config layered in. `mergeRuleSets(base, config)` applies a `PurgeitUserConfig` on top (or replaces it entirely, per `config.extends`). `restrictRuleSetToTargets(ruleSet, names)` narrows a ruleset to only the given rule names, expanding any named target groups first — this is the lower-level helper; `applyCliFilters(ruleSet, noGated, targets)` is what the CLI actually calls, combining `--no-gated` and `--targets` in one step.
 
+## Rule catalog
+
+`defaultRuleSet()` gives you the *compiled* form ready for `scan()`. If you want the underlying data instead — names, ecosystem categories, human-readable descriptions, and each gated rule's declarative condition — `RULE_CATALOG` is the same source of truth the built-in ruleset (and the [rules docs page](/rules/)) are generated from:
+
+```ts
+import { RULE_CATALOG, CATEGORY_LABELS, CATEGORY_ORDER } from 'purgeit';
+
+for (const rule of RULE_CATALOG) {
+  if (rule.categories.includes('python')) {
+    console.log(rule.name, '—', rule.description);
+  }
+}
+```
+
+```ts
+type RuleCategory =
+  | 'javascript-typescript' | 'python' | 'rust' | 'go' | 'php' | 'ruby'
+  | 'java-jvm' | 'dotnet' | 'apple' | 'elixir' | 'haskell' | 'elm'
+  | 'zig' | 'dart-flutter' | 'cpp' | 'vcs';
+
+const CATEGORY_LABELS: Record<RuleCategory, string>; // e.g. 'java-jvm' -> 'Java / JVM (Gradle, Maven, Android, Eclipse)'
+const CATEGORY_ORDER: readonly RuleCategory[]; // fixed display order
+
+type RuleDefinition = AlwaysSafeRuleDefinition | GatedRuleDefinition | PruneMetaRuleDefinition;
+
+interface AlwaysSafeRuleDefinition {
+  kind: 'always-safe';
+  name: string;
+  categories: readonly RuleCategory[]; // usually one; a few (build, vendor, target) are genuinely polyglot
+  description: string;
+}
+
+interface GatedRuleDefinition {
+  kind: 'gated';
+  name: string;
+  categories: readonly RuleCategory[];
+  description: string;
+  when: GateCondition | readonly GateCondition[]; // same declarative shape as config's `gated[].when`
+}
+
+interface PruneMetaRuleDefinition {
+  kind: 'prune-meta'; // VCS metadata (.git, .hg, .svn) — never a deletion candidate
+  name: string;
+  categories: readonly RuleCategory[];
+  description: string;
+}
+```
+
+This is exactly what [`/rules/`](/rules/) renders — if you're building your own UI on top of purgeit (a dashboard, a different CLI, a config generator), `RULE_CATALOG` means you never have to hand-copy or re-derive the rule list yourself.
+
 ## Scan
 
 ```ts
@@ -253,10 +303,14 @@ interface GatedRule {
 | `restrictRuleSetToTargets` | function — `(ruleSet, names) => ResolvedRuleSet` |
 | `applyCliFilters` | function — `(ruleSet, noGated, targets) => ResolvedRuleSet` |
 | `createExcludeMatcher` | function — `(root, patterns) => (path: string) => boolean` |
+| `RULE_CATALOG` | value — `readonly RuleDefinition[]`, the full built-in rule catalog |
+| `CATEGORY_LABELS` | value — `Record<RuleCategory, string>` display labels |
+| `CATEGORY_ORDER` | value — `readonly RuleCategory[]` fixed display order |
 | `ScanEntry`, `ScanEvent`, `ScanOptions` | types |
 | `DeleteEvent`, `DeleteOptions` | types |
 | `ArtifactRule`, `Gate`, `GateContext`, `ResolvedRuleSet`, `ValidationWarning` | types |
 | `PurgeitUserConfig`, `UserGatedRule`, `GateCondition` | types |
 | `LoadConfigOptions`, `LoadedConfig` | types |
+| `RuleCategory`, `RuleDefinition`, `AlwaysSafeRuleDefinition`, `GatedRuleDefinition`, `PruneMetaRuleDefinition` | types |
 
 The Ink TUI (`src/ui/`) is intentionally not part of this package's public API — only `react`/`ink`-free code is exported, so this package can be used as a plain library with no UI dependency.

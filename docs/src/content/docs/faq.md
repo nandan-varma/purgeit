@@ -70,7 +70,7 @@ purgeit --targets frontend
 
 ## `Pods` or `build` are not showing up
 
-These are [gated rules](/rules/#gated-rules). They only appear when a sibling manifest file exists in the same directory. For example, `Pods/` is reported only next to a `Podfile`, and `build/` is reported next to a `package.json`, `pyproject.toml`, `CMakeLists.txt`, or several other manifests.
+These are [gated rules](/rules/#always-safe-vs-gated). They only appear when a sibling manifest file exists in the same directory. For example, `Pods/` is reported only next to a `Podfile`, and `build/` is reported next to a `package.json`, `pyproject.toml`, `CMakeLists.txt`, or several other manifests — expand the relevant section on the [built-in rules page](/rules/) to see every condition.
 
 To disable gated rules entirely, use `--no-gated`.
 
