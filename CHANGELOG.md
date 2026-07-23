@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-22
+
+### Fixed
+- `DuBatcher`'s flush timer is no longer `unref()`'d — it let Node exit before the batched `du` flush fired when the timer was the only remaining handle (short-lived headless scans), leaving `computeSize()` promises unsettled forever. Surfaced in CI as the smoke test exiting with code 13 (Node's unsettled top-level await detection) instead of completing the scan.
+- Docs site: removed global Open Graph/Twitter head overrides that clobbered Starlight's per-page `og:title`/`og:description`/`og:url`/`twitter:*` tags with the homepage's fixed values on every other page
+
+### Added
+- Docs site: sitewide `SoftwareApplication` JSON-LD structured data
+- Docs site: `robots.txt` pointing at the existing sitemap
+
+### Changed
+- `homepage` in `package.json` now points to the hosted docs site (`https://purgeit.nandan.fyi`)
+- Expanded npm `keywords` for discoverability
+- README links the hosted docs near the top
+
 ## [0.0.8] - 2026-07-22
 
 ### Added
