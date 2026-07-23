@@ -93,8 +93,6 @@ class DuBatcher {
           this.flushTimer = undefined;
           this.flush();
         }, this.flushDelayMs);
-        // Allow Node to exit even if the timer is still pending.
-        if (this.flushTimer.unref) this.flushTimer.unref();
       }
     });
   }
