@@ -3,6 +3,7 @@
 // is the single source of truth the scan engine itself compiles against (see
 // src/rules/catalog/index.ts), so this table can never drift from what the
 // CLI actually does, unlike a hand-maintained markdown table.
+import { Icon } from '@astrojs/starlight/components';
 import type { GateCondition } from '../../../src/config/schema.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, RULE_CATALOG } from '../../../src/rules/catalog/index.js';
 import type { RuleCategory, RuleDefinition } from '../../../src/rules/catalog/types.js';
@@ -23,6 +24,11 @@ const kindOrder: Record<RuleDefinition['kind'], number> = {
   gated: 1,
   'prune-meta': 2,
 };
+const kindLabel: Record<RuleDefinition['kind'], string> = {
+  'always-safe': 'safe',
+  gated: 'gated',
+  'prune-meta': 'pruned',
+};
 
 const byCategory = new Map<RuleCategory, RuleDefinition[]>();
 for (const rule of RULE_CATALOG) {
@@ -36,115 +42,338 @@ for (const list of byCategory.values()) {
   list.sort((a, b) => kindOrder[a.kind] - kindOrder[b.kind] || a.name.localeCompare(b.name));
 }
 
-const sections = CATEGORY_ORDER.map((category) => ({
-  category,
-  label: CATEGORY_LABELS[category],
-  rules: byCategory.get(category) ?? [],
-})).filter((section) => section.rules.length > 0);
+const sections = CATEGORY_ORDER.map((category, index) => {
+  const rules = byCategory.get(category) ?? [];
+  return {
+    category,
+    label: CATEGORY_LABELS[category],
+    rules,
+    safeCount: rules.filter((r) => r.kind === 'always-safe').length,
+    gatedCount: rules.filter((r) => r.kind === 'gated').length,
+    hue: (index * 137.5) % 360, // golden-angle spread — evenly distinct hues for any N
+  };
+}).filter((section) => section.rules.length > 0);
 
 const totalRules = RULE_CATALOG.length;
 ---
 
-<p class="rule-accordion-summary">
-  {totalRules} built-in rules across {sections.length} ecosystems, generated directly from
-  purgeit's source — see <a href="/rules/#always-safe-vs-gated">how always-safe and gated differ</a>.
-</p>
+<div class="rule-catalog">
+  <p class="rule-catalog-summary">
+    {totalRules} built-in rules across {sections.length} ecosystems, generated directly from
+    purgeit's source — see <a href="/rules/#always-safe-vs-gated">how always-safe and gated differ</a>.
+  </p>
 
-<div class="rule-accordion">
-  {
-    sections.map((section) => (
-      <details>
-        <summary>
-          {section.label} <span class="count">{section.rules.length}</span>
-        </summary>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">Name</th>
-              <th scope="col">Kind</th>
-              <th scope="col">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            {section.rules.map((rule) => (
-              <tr>
-                <td>
-                  <code>{rule.name}</code>
-                </td>
-                <td>
-                  <span class={`badge badge-${rule.kind}`}>
-                    {rule.kind === 'always-safe'
-                      ? 'safe'
-                      : rule.kind === 'gated'
-                        ? 'gated'
-                        : 'pruned'}
-                  </span>
-                </td>
-                <td>
-                  {rule.description}
-                  {rule.kind === 'gated' && (
-                    <>
-                      <br />
-                      <span class="gate-condition">
-                        Requires a sibling: {describeWhen(rule.when)}
-                      </span>
-                    </>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
-    ))
-  }
+  <div class="rule-toolbar">
+    <label class="search-field">
+      <Icon name="magnifier" size="1.1rem" />
+      <input
+        type="search"
+        id="rule-filter"
+        placeholder="Filter by name, description, or ecosystem…"
+        autocomplete="off"
+        aria-label="Filter rules"
+      />
+    </label>
+    <div class="toolbar-buttons">
+      <span id="rule-count" class="rule-count" aria-live="polite">{totalRules} rules</span>
+      <button type="button" id="rule-expand-all" class="toolbar-btn">Expand all</button>
+      <button type="button" id="rule-collapse-all" class="toolbar-btn">Collapse all</button>
+    </div>
+  </div>
+
+  <p id="rule-empty-state" class="rule-empty-state" hidden>No rules match your search.</p>
+
+  <div class="rule-sections">
+    {
+      sections.map((section) => (
+        <details class="rule-section" data-category={section.category} style={`--hue: ${section.hue}`}>
+          <summary>
+            <span class="section-label">{section.label}</span>
+            <span class="section-stats">
+              {section.safeCount > 0 && (
+                <span class="mini-stat mini-safe">{section.safeCount} safe</span>
+              )}
+              {section.gatedCount > 0 && (
+                <span class="mini-stat mini-gated">{section.gatedCount} gated</span>
+              )}
+            </span>
+          </summary>
+          <div class="rule-list">
+            {section.rules.map((rule) => {
+              const gateText = rule.kind === 'gated' ? describeWhen(rule.when) : '';
+              const searchText = [
+                rule.name,
+                rule.description,
+                section.label,
+                gateText,
+                kindLabel[rule.kind],
+              ]
+                .join(' ')
+                .toLowerCase();
+              return (
+                <div class="rule-row" data-rule={rule.name} data-search={searchText}>
+                  <div class="rule-row-head">
+                    <code class="rule-name">{rule.name}</code>
+                    <span class={`badge badge-${rule.kind}`}>{kindLabel[rule.kind]}</span>
+                  </div>
+                  <div class="rule-row-body">
+                    <p class="rule-description">{rule.description}</p>
+                    {rule.kind === 'gated' && (
+                      <p class="gate-condition">
+                        <Icon name="right-arrow" size="0.85rem" />
+                        Requires a sibling: {gateText}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </details>
+      ))
+    }
+  </div>
 </div>
 
 <style>
-  .rule-accordion-summary {
+  .rule-catalog-summary {
     color: var(--sl-color-gray-3);
     font-size: var(--sl-text-sm);
   }
 
-  .rule-accordion details {
-    margin-block-end: 0.5rem;
+  /* Toolbar: search field + live count + expand/collapse */
+  .rule-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin-block: 1rem;
+    position: sticky;
+    top: 0.5rem;
+    z-index: 1;
+    background: var(--sl-color-bg);
+    padding-block: 0.5rem;
   }
 
-  .rule-accordion summary {
+  .search-field {
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1 1 16rem;
+    min-width: 12rem;
+    height: 2.35rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.5rem;
+    background: var(--sl-color-bg-nav);
+    color: var(--sl-color-gray-2);
+    transition: border-color 0.15s ease;
+  }
+
+  .search-field :global(svg) {
+    flex-shrink: 0;
+  }
+
+  .search-field:focus-within {
+    border-color: var(--sl-color-accent);
+  }
+
+  .search-field input {
+    all: unset;
+    flex: 1;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-text);
+  }
+
+  .search-field input::placeholder {
+    color: var(--sl-color-gray-3);
+  }
+
+  .toolbar-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-inline-start: auto;
+  }
+
+  .rule-count {
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-xs);
+    white-space: nowrap;
+  }
+
+  .toolbar-btn {
+    box-sizing: border-box;
+    height: 2.35rem;
+    font: inherit;
+    font-size: var(--sl-text-xs);
+    font-weight: 600;
+    color: var(--sl-color-gray-2);
+    background: var(--sl-color-bg-nav);
+    border: 1px solid var(--sl-color-hairline);
+    border-radius: 0.4rem;
+    padding-inline: 0.75rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+
+  .toolbar-btn:hover {
+    border-color: var(--sl-color-text-accent);
+    color: var(--sl-color-text-accent);
+  }
+
+  .rule-empty-state {
+    color: var(--sl-color-gray-3);
+    font-style: italic;
+    padding-block: 1rem;
+  }
+
+  /* Section cards */
+  .rule-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .rule-section {
+    border: 1px solid var(--sl-color-hairline);
+    border-inline-start: 4px solid hsl(var(--hue) 75% 50%);
+    border-radius: 0.5rem;
+    background: var(--sl-color-bg-nav);
+    overflow: clip;
+  }
+
+  .rule-section > summary {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.9rem;
     font-weight: 600;
     cursor: pointer;
+    list-style: none;
+    background: hsl(var(--hue) 75% 50% / 8%);
   }
 
-  .rule-accordion summary .count {
-    color: var(--sl-color-gray-3);
-    font-weight: 400;
-    font-size: var(--sl-text-sm);
+  .rule-section > summary:hover {
+    background: hsl(var(--hue) 75% 50% / 14%);
   }
 
-  .rule-accordion table {
-    width: 100%;
-    margin-block-start: 0.75rem;
-    border-collapse: collapse;
-    font-size: var(--sl-text-sm);
+  .rule-section > summary::-webkit-details-marker {
+    display: none;
   }
 
-  .rule-accordion th,
-  .rule-accordion td {
-    text-align: start;
-    vertical-align: top;
-    padding: 0.4rem 0.6rem;
+  /* Starlight's own marker::before is already a flex item of this summary
+     (generated content on a flex container becomes a flex item per spec)
+     with its own margin — deliberately not touching it here, and instead
+     spacing .section-label/.section-stats off it directly, so there's no
+     specificity fight with Starlight's stylesheet over the marker's box. */
+
+  .rule-section[open] > summary {
     border-bottom: 1px solid var(--sl-color-hairline);
   }
 
-  .rule-accordion th {
+  .section-label {
+    margin-inline-start: 0.5rem;
+    color: var(--sl-color-white);
+  }
+
+  .section-stats {
+    display: flex;
+    gap: 0.4rem;
+    margin-inline-start: auto;
+    padding-inline-start: 0.75rem;
+    font-weight: 400;
+  }
+
+  .mini-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    font-size: var(--sl-text-xs);
+    white-space: nowrap;
+  }
+
+  .mini-stat::before {
+    content: '';
+    inline-size: 0.45em;
+    block-size: 0.45em;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .mini-safe {
+    color: var(--sl-color-green);
+  }
+
+  .mini-gated {
+    color: var(--sl-color-orange);
+  }
+
+  /* Rule rows */
+  .rule-list {
+    background: var(--sl-color-bg);
+  }
+
+  .rule-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: 1rem;
+    row-gap: 0.2rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--sl-color-hairline-light);
+    transition: background-color 0.1s ease;
+  }
+
+  .rule-row:last-child {
+    border-bottom: none;
+  }
+
+  .rule-row:hover {
+    background: var(--sl-color-bg-nav);
+  }
+
+  .rule-row-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 0 0 auto;
+    min-width: 9rem;
+  }
+
+  .rule-name {
+    white-space: nowrap;
+  }
+
+  .rule-row-body {
+    flex: 1 1 16rem;
+    min-width: 0;
+  }
+
+  .rule-description {
+    margin: 0;
+    font-size: var(--sl-text-sm);
+  }
+
+  .gate-condition {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin: 0.2rem 0 0;
     color: var(--sl-color-gray-3);
-    font-weight: 600;
+    font-size: var(--sl-text-xs);
+  }
+
+  .gate-condition svg {
+    flex-shrink: 0;
+    opacity: 0.6;
   }
 
   .badge {
     display: inline-block;
     border-radius: 0.25rem;
-    padding: 0.1rem 0.5rem;
+    padding: 0.05rem 0.45rem;
     font-size: var(--sl-text-xs);
     font-weight: 600;
     white-space: nowrap;
@@ -165,8 +394,76 @@ const totalRules = RULE_CATALOG.length;
     color: var(--sl-color-gray-2);
   }
 
-  .gate-condition {
-    color: var(--sl-color-gray-3);
-    font-size: var(--sl-text-xs);
+  @media (max-width: 640px) {
+    .rule-row-head {
+      min-width: 100%;
+    }
+
+    .toolbar-buttons {
+      margin-inline-start: 0;
+      width: 100%;
+      justify-content: space-between;
+    }
   }
 </style>
+
+<script>
+  function setUp(root: HTMLElement) {
+    const input = root.querySelector<HTMLInputElement>('#rule-filter');
+    const countEl = root.querySelector<HTMLElement>('#rule-count');
+    const emptyState = root.querySelector<HTMLElement>('#rule-empty-state');
+    const expandAllBtn = root.querySelector<HTMLButtonElement>('#rule-expand-all');
+    const collapseAllBtn = root.querySelector<HTMLButtonElement>('#rule-collapse-all');
+    const sections = Array.from(root.querySelectorAll<HTMLDetailsElement>('.rule-section'));
+    if (!input || !countEl || !emptyState) return;
+
+    // A polyglot rule (build, vendor, target, bin) renders one .rule-row per
+    // ecosystem section it belongs to, so counting DOM rows overcounts vs.
+    // the "N built-in rules" figure stated in the page intro. Dedupe by
+    // rule name so the toolbar count always agrees with that figure.
+    const allRows = Array.from(root.querySelectorAll<HTMLElement>('.rule-row'));
+    const totalRules = new Set(allRows.map((row) => row.dataset.rule)).size;
+
+    function applyFilter() {
+      const query = (input?.value ?? '').trim().toLowerCase();
+      const visibleNames = new Set<string>();
+      let visibleSections = 0;
+
+      for (const section of sections) {
+        const rows = Array.from(section.querySelectorAll<HTMLElement>('.rule-row'));
+        let sectionMatches = 0;
+        for (const row of rows) {
+          const haystack = row.dataset.search ?? '';
+          const match = query === '' || haystack.includes(query);
+          row.hidden = !match;
+          if (match) {
+            sectionMatches++;
+            if (row.dataset.rule) visibleNames.add(row.dataset.rule);
+          }
+        }
+        section.hidden = sectionMatches === 0;
+        if (sectionMatches > 0) visibleSections++;
+        if (query !== '' && sectionMatches > 0) section.open = true;
+      }
+
+      countEl!.textContent =
+        query === ''
+          ? `${totalRules} rules`
+          : `${visibleNames.size} of ${totalRules} rules`;
+      emptyState!.hidden = !(query !== '' && visibleNames.size === 0);
+      if (expandAllBtn) expandAllBtn.hidden = visibleSections === 0;
+      if (collapseAllBtn) collapseAllBtn.hidden = visibleSections === 0;
+    }
+
+    input.addEventListener('input', applyFilter);
+
+    expandAllBtn?.addEventListener('click', () => {
+      for (const section of sections) if (!section.hidden) section.open = true;
+    });
+    collapseAllBtn?.addEventListener('click', () => {
+      for (const section of sections) section.open = false;
+    });
+  }
+
+  document.querySelectorAll<HTMLElement>('.rule-catalog').forEach(setUp);
+</script>
