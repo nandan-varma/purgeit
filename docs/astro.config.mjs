@@ -45,39 +45,33 @@ export default defineConfig({
         baseUrl: 'https://github.com/nandan-varma/purgeit/edit/main/docs/',
       },
       head: [
+        // Starlight already generates per-page <title>, canonical, og:*, and
+        // twitter:* tags from each page's own frontmatter (see
+        // @astrojs/starlight/utils/head.ts) — don't add fixed og:title/
+        // og:description/twitter:* entries here, they'd clobber every
+        // non-home page's tags with the homepage's values (config.head wins
+        // over the per-page defaults in Starlight's head-merge).
         {
-          tag: 'meta',
-          attrs: { property: 'og:title', content: 'purgeit' },
-        },
-        {
-          tag: 'meta',
-          attrs: {
-            property: 'og:description',
-            content: 'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
-          },
-        },
-        {
-          tag: 'meta',
-          attrs: { property: 'og:type', content: 'website' },
-        },
-        {
-          tag: 'meta',
-          attrs: { property: 'og:url', content: 'https://purgeit.nandan.fyi' },
-        },
-        {
-          tag: 'meta',
-          attrs: { name: 'twitter:card', content: 'summary_large_image' },
-        },
-        {
-          tag: 'meta',
-          attrs: { name: 'twitter:title', content: 'purgeit' },
-        },
-        {
-          tag: 'meta',
-          attrs: {
-            name: 'twitter:description',
-            content: 'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
-          },
+          tag: 'script',
+          attrs: { type: 'application/ld+json' },
+          content: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'SoftwareApplication',
+            name: 'purgeit',
+            description:
+              'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
+            applicationCategory: 'DeveloperApplication',
+            operatingSystem: 'macOS, Linux, Windows',
+            url: 'https://purgeit.nandan.fyi',
+            downloadUrl: 'https://www.npmjs.com/package/purgeit',
+            codeRepository: 'https://github.com/nandan-varma/purgeit',
+            license: 'https://opensource.org/licenses/MIT',
+            offers: {
+              '@type': 'Offer',
+              price: '0',
+              priceCurrency: 'USD',
+            },
+          }),
         },
       ],
       lastUpdated: true,

@@ -4,7 +4,7 @@
   "description": "Interactive, safe, configurable CLI to find and delete regenerable dev build artifacts (node_modules, dist, target, Pods, ...) across your projects",
   "license": "MIT",
   "author": "Nandan Varma",
-  "homepage": "https://github.com/nandan-varma/purgeit#readme",
+  "homepage": "https://purgeit.nandan.fyi",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nandan-varma/purgeit.git"
@@ -17,10 +17,23 @@
     "node_modules",
     "cleanup",
     "disk-space",
+    "disk-cleanup",
     "npkill",
     "dev-tools",
     "monorepo",
-    "build-artifacts"
+    "build-artifacts",
+    "artifact-cleaner",
+    "storage",
+    "tui",
+    "terminal-ui",
+    "interactive-cli",
+    "target",
+    "pods",
+    "cocoapods",
+    "gradle",
+    "cargo",
+    "rust",
+    "xcode"
   ],
   "type": "module",
   "sideEffects": false,

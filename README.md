@@ -6,6 +6,8 @@
 
 Find and delete regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across your projects. Interactive TUI by default; scriptable via flags for CI/cron.
 
+📖 **[Full documentation](https://purgeit.nandan.fyi)** — getting started, CLI reference, configuration, built-in rules, architecture, API reference.
+
 ## Quick start
 
 ```bash
