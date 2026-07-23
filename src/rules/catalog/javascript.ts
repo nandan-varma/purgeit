@@ -1,0 +1,155 @@
+import type { RuleDefinition } from './types.js';
+
+/** JavaScript/TypeScript ecosystem: npm/yarn/pnpm, common frameworks, and legacy package managers. */
+export const javascriptRules: readonly RuleDefinition[] = [
+  {
+    kind: 'always-safe',
+    name: 'node_modules',
+    categories: ['javascript-typescript'],
+    description: 'npm / yarn / pnpm dependencies',
+  },
+  {
+    kind: 'always-safe',
+    name: '.next',
+    categories: ['javascript-typescript'],
+    description: 'Next.js build output',
+  },
+  {
+    kind: 'always-safe',
+    name: '.nuxt',
+    categories: ['javascript-typescript'],
+    description: 'Nuxt dev/type-generation cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.output',
+    categories: ['javascript-typescript'],
+    description: 'Nuxt 3 build output (Nitro)',
+  },
+  {
+    kind: 'always-safe',
+    name: '.astro',
+    categories: ['javascript-typescript'],
+    description: 'Astro build cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.docusaurus',
+    categories: ['javascript-typescript'],
+    description: 'Docusaurus build cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.angular',
+    categories: ['javascript-typescript'],
+    description: 'Angular CLI build cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.svelte-kit',
+    categories: ['javascript-typescript'],
+    description: 'SvelteKit build output',
+  },
+  {
+    kind: 'always-safe',
+    name: 'dist',
+    categories: ['javascript-typescript'],
+    description: "Generic build output (also used by many other ecosystems' bundlers)",
+  },
+  {
+    kind: 'always-safe',
+    name: 'out',
+    categories: ['javascript-typescript'],
+    description: 'Generic build output (e.g. Next.js static export)',
+  },
+  {
+    kind: 'always-safe',
+    name: '.turbo',
+    categories: ['javascript-typescript'],
+    description: 'Turborepo cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.cache',
+    categories: ['javascript-typescript'],
+    description: 'Generic framework cache (Parcel, Gatsby, and others)',
+  },
+  {
+    kind: 'always-safe',
+    name: '.swc',
+    categories: ['javascript-typescript'],
+    description: 'SWC compiler cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.vite',
+    categories: ['javascript-typescript'],
+    description: 'Vite cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.parcel-cache',
+    categories: ['javascript-typescript'],
+    description: 'Parcel cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.expo',
+    categories: ['javascript-typescript'],
+    description: 'Expo cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.contentlayer',
+    categories: ['javascript-typescript'],
+    description: 'Contentlayer generated content cache',
+  },
+  {
+    kind: 'always-safe',
+    name: '.serverless',
+    categories: ['javascript-typescript'],
+    description: 'Serverless Framework packaged build artifacts',
+  },
+  {
+    kind: 'always-safe',
+    name: 'storybook-static',
+    categories: ['javascript-typescript'],
+    description: 'Storybook build output',
+  },
+  {
+    kind: 'always-safe',
+    name: 'playwright-report',
+    categories: ['javascript-typescript'],
+    description: 'Playwright HTML report output',
+  },
+  {
+    kind: 'always-safe',
+    name: 'test-results',
+    categories: ['javascript-typescript'],
+    description: 'Playwright test results',
+  },
+  {
+    kind: 'always-safe',
+    name: 'coverage',
+    categories: ['javascript-typescript'],
+    description: 'Test coverage reports (Istanbul/nyc/Jest/Vitest, also SimpleCov for Ruby)',
+  },
+  {
+    kind: 'always-safe',
+    name: '.nyc_output',
+    categories: ['javascript-typescript'],
+    description: 'nyc raw coverage data',
+  },
+  {
+    kind: 'always-safe',
+    name: 'bower_components',
+    categories: ['javascript-typescript'],
+    description: 'Bower dependencies (legacy)',
+  },
+  {
+    kind: 'always-safe',
+    name: 'jspm_packages',
+    categories: ['javascript-typescript'],
+    description: 'JSPM dependencies (legacy)',
+  },
+];

@@ -36,9 +36,28 @@ Lint rules `noUnusedImports`, `noUnusedVariables`, and `useExhaustiveDependencie
 
 ```
 rules/ (pure data + predicates, no fs except gate evaluation)
-  default-rules.ts    ALWAYS_SAFE_NAMES / GATED_NAMES / PRUNE_META_NAMES — ported from a bash prototype
+  catalog/              RULE_CATALOG — the single source of truth for every built-in rule (name,
+                        kind, ecosystem categories, human-readable description, and — for gated
+                        rules — a declarative `when` GateCondition, the same shape user configs
+                        use). One file per ecosystem (javascript.ts, python.ts, rust.ts, apple.ts,
+                        dotnet.ts, java-jvm.ts, ruby.ts, dart-flutter.ts, elixir.ts, haskell.ts,
+                        elm.ts, zig.ts, vcs.ts) plus shared.ts for names that are genuinely
+                        polyglot (`build`, `vendor` — gated on whichever ecosystem's manifest is
+                        actually present, tagged with all the categories they cover). types.ts
+                        holds RuleCategory/CATEGORY_LABELS/CATEGORY_ORDER. index.ts aggregates
+                        everything into RULE_CATALOG and is re-exported from the package's public
+                        API (src/index.ts) so docs — or any other consumer — render rule tables
+                        directly from it instead of hand-copying, which is what caused a real
+                        inaccuracy before (`.build` was documented as a Python artifact; it's
+                        actually Swift Package Manager's). To add an ecosystem: new
+                        `catalog/<name>.ts` exporting `readonly RuleDefinition[]`, add it to the
+                        spread in `catalog/index.ts`, add its RuleCategory to `types.ts`.
+  default-rules.ts    ALWAYS_SAFE_NAMES / GATED_NAMES / PRUNE_META_NAMES — derived from
+                        RULE_CATALOG by filtering on `kind`, not hand-maintained
   gate-context.ts      createGateContext() — sync fs probes (siblingFile/siblingGlob/siblingGrep) scoped to a match's parent dir
-  gate-conditions.ts   Gate predicates (Pods+Podfile, build+{manifest}, .gradle+{gradle file}, bin/obj+{.csproj/.sln})
+  gate-conditions.ts   DEFAULT_GATES — compiles each gated RULE_CATALOG entry's declarative
+                        `when` via the same compileGateConditions() user configs go through
+                        (config/schema.ts), rather than hand-written Gate closures
   project-types.ts     detectProjectTypes() — display labels only (next/node/rust/xcode/...), no effect on matching
   validators.ts        warn-only manifest sanity checks (corrupted package.json, etc.)
   merge.ts              defaultRuleSet() + mergeRuleSets(base, userConfig) + restrictRuleSetToTargets()

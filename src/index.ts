@@ -4,6 +4,16 @@ export type { GateCondition, PurgeitUserConfig, UserGatedRule } from './config/s
 export type { DeleteEvent, DeleteOptions } from './delete/deleter.js';
 export { deleteEntries } from './delete/deleter.js';
 export {
+  type AlwaysSafeRuleDefinition,
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  type GatedRuleDefinition,
+  type PruneMetaRuleDefinition,
+  RULE_CATALOG,
+  type RuleCategory,
+  type RuleDefinition,
+} from './rules/catalog/index.js';
+export {
   applyCliFilters,
   defaultRuleSet,
   mergeRuleSets,

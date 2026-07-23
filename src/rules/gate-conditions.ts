@@ -1,50 +1,20 @@
-import type { Gate, GateContext } from '../types.js';
+import { compileGateConditions } from '../config/schema.js';
+import type { Gate } from '../types.js';
+import { RULE_CATALOG } from './catalog/index.js';
+import type { GatedRuleDefinition } from './catalog/types.js';
 
-function anySiblingFile(ctx: GateContext, names: readonly string[]): boolean {
-  return names.some((name) => ctx.siblingFile(name));
+function isGatedRule(rule: (typeof RULE_CATALOG)[number]): rule is GatedRuleDefinition {
+  return rule.kind === 'gated';
 }
-
-function anySiblingGlob(ctx: GateContext, patterns: readonly string[]): boolean {
-  return patterns.some((pattern) => ctx.siblingGlob(pattern));
-}
-
-/** `Pods/` is deletable only next to a `Podfile` — ports gate_allows()'s Pods case. */
-export const podsGate: Gate = (ctx) => ctx.siblingFile('Podfile');
 
 /**
- * `build/` is too generic a name to trust on its own — ports gate_allows()'s
- * build case: deletable only next to a manifest that plausibly produces it
- * (CocoaPods, Xcode, CMake, Node, Python, or Gradle).
+ * Default GATED_NAMES → Gate mapping, compiled from each gated rule's
+ * declarative `when` condition in RULE_CATALOG (see `catalog/*.ts`). Using
+ * the same declarative `GateCondition` shape user configs use means the
+ * built-in gates are compiled through the exact same code path as
+ * user-defined ones, and stay introspectable for docs instead of living
+ * only as opaque closures.
  */
-export const buildGate: Gate = (ctx) =>
-  ctx.siblingFile('Podfile') ||
-  anySiblingGlob(ctx, ['*.xcodeproj', '*.xcworkspace']) ||
-  anySiblingFile(ctx, [
-    'CMakeLists.txt',
-    'package.json',
-    'pyproject.toml',
-    'requirements.txt',
-    'build.gradle',
-    'build.gradle.kts',
-  ]);
-
-/** `.gradle/` is deletable only next to a Gradle project/settings file. */
-export const gradleGate: Gate = (ctx) =>
-  anySiblingFile(ctx, [
-    'build.gradle',
-    'build.gradle.kts',
-    'settings.gradle',
-    'settings.gradle.kts',
-  ]);
-
-/** `bin/`/`obj/` are deletable only next to a .NET project/solution file. */
-export const binObjGate: Gate = (ctx) => anySiblingGlob(ctx, ['*.csproj', '*.sln']);
-
-/** Default GATED_NAMES → Gate mapping, ported from CLEANUP.sh's `gate_allows()`. */
-export const DEFAULT_GATES: ReadonlyMap<string, Gate> = new Map([
-  ['Pods', podsGate],
-  ['build', buildGate],
-  ['.gradle', gradleGate],
-  ['bin', binObjGate],
-  ['obj', binObjGate],
-]);
+export const DEFAULT_GATES: ReadonlyMap<string, Gate> = new Map(
+  RULE_CATALOG.filter(isGatedRule).map((rule) => [rule.name, compileGateConditions(rule.when)]),
+);
