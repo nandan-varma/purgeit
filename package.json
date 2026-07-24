@@ -1,6 +1,6 @@
 {
   "name": "purgeit",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Interactive, safe, configurable CLI to find and delete regenerable dev build artifacts (node_modules, dist, target, Pods, ...) across your projects",
   "license": "MIT",
   "author": "Nandan Varma",
