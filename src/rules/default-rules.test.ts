@@ -20,6 +20,7 @@ describe('default rule name lists', () => {
       '.dart_tool', // Dart/Flutter
       '.yardoc', // Ruby
       '.elixir_ls', // Elixir
+      'registry', // Cargo (~/.cargo/registry/)
     ]) {
       expect(ALWAYS_SAFE_NAMES).toContain(expected);
     }

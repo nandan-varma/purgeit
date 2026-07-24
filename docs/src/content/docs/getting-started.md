@@ -46,7 +46,8 @@ purgeit ships with 60+ built-in rules across 16 ecosystems — not just JavaScri
 
 - **JavaScript/TypeScript**: `node_modules`, `dist`, `.next`, `.nuxt`, `.turbo`, `.vite`, `coverage`, and more
 - **Python**: `__pycache__`, `.venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `htmlcov`, and more
-- **Rust**, **Go**, **PHP**, **Ruby**, **Elixir**, **Haskell**, **Elm**, **Zig**, **Dart/Flutter**
+- **Rust**: `target`, `registry` (Cargo's `~/.cargo/registry/` crate cache — point purgeit at `~/.cargo` to reclaim it)
+- **Go**, **PHP**, **Ruby**, **Elixir**, **Haskell**, **Elm**, **Zig**, **Dart/Flutter**
 - **Apple**: `DerivedData`, `.build` (SPM), `Pods` (CocoaPods), `Carthage`
 - **Java/JVM**: `.gradle`, `target` (Maven), `.cxx` (Android NDK)
 - **.NET**: `bin`, `obj` (also covers Eclipse Java)

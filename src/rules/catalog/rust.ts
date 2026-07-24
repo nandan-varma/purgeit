@@ -7,4 +7,10 @@ export const rustRules: readonly RuleDefinition[] = [
     categories: ['rust', 'java-jvm'],
     description: "Cargo build output — also Maven's default build output directory",
   },
+  {
+    kind: 'always-safe',
+    name: 'registry',
+    categories: ['rust'],
+    description: 'Cargo crate registry cache (~/.cargo/registry/), regenerable via cargo build',
+  },
 ];
