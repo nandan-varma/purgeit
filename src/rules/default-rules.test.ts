@@ -19,6 +19,7 @@ describe('default rule name lists', () => {
       'zig-out', // Zig
       '.dart_tool', // Dart/Flutter
       '.yardoc', // Ruby
+      '.elixir_ls', // Elixir
     ]) {
       expect(ALWAYS_SAFE_NAMES).toContain(expected);
     }

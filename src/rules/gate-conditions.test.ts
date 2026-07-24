@@ -111,6 +111,11 @@ describe('build gate (polyglot)', () => {
     expect(gateFor('build')(ctxFor(root, 'build'))).toBe(true);
   });
 
+  it('allows build next to Cargo.toml (Rust)', () => {
+    root = buildTree({ 'Cargo.toml': '[package]\n', build: null });
+    expect(gateFor('build')(ctxFor(root, 'build'))).toBe(true);
+  });
+
   it('rejects a bare build directory with no manifest', () => {
     root = buildTree({ build: null });
     expect(gateFor('build')(ctxFor(root, 'build'))).toBe(false);
@@ -131,7 +136,17 @@ describe('vendor gate (polyglot)', () => {
     expect(gateFor('vendor')(ctxFor(root, 'vendor'))).toBe(true);
   });
 
-  it('rejects vendor with no composer.json or go.mod', () => {
+  it('allows vendor next to Cargo.toml (Rust)', () => {
+    root = buildTree({ 'Cargo.toml': '[package]\n', vendor: null });
+    expect(gateFor('vendor')(ctxFor(root, 'vendor'))).toBe(true);
+  });
+
+  it('allows vendor next to Gemfile (Ruby)', () => {
+    root = buildTree({ Gemfile: '', vendor: null });
+    expect(gateFor('vendor')(ctxFor(root, 'vendor'))).toBe(true);
+  });
+
+  it('rejects vendor with no composer.json, go.mod, Cargo.toml, or Gemfile', () => {
     root = buildTree({ vendor: null });
     expect(gateFor('vendor')(ctxFor(root, 'vendor'))).toBe(false);
   });
@@ -191,8 +206,28 @@ describe('bin/obj gates (.NET, plus Eclipse for bin)', () => {
     expect(gateFor('bin')(ctxFor(root, 'bin'))).toBe(true);
   });
 
+  it('allows bin next to a .vbproj', () => {
+    root = buildTree({ 'App.vbproj': '', bin: null });
+    expect(gateFor('bin')(ctxFor(root, 'bin'))).toBe(true);
+  });
+
+  it('allows bin next to a .fsproj', () => {
+    root = buildTree({ 'App.fsproj': '', bin: null });
+    expect(gateFor('bin')(ctxFor(root, 'bin'))).toBe(true);
+  });
+
   it('allows obj next to a .sln', () => {
     root = buildTree({ 'App.sln': '', obj: null });
+    expect(gateFor('obj')(ctxFor(root, 'obj'))).toBe(true);
+  });
+
+  it('allows obj next to a .vbproj', () => {
+    root = buildTree({ 'App.vbproj': '', obj: null });
+    expect(gateFor('obj')(ctxFor(root, 'obj'))).toBe(true);
+  });
+
+  it('allows obj next to a .fsproj', () => {
+    root = buildTree({ 'App.fsproj': '', obj: null });
     expect(gateFor('obj')(ctxFor(root, 'obj'))).toBe(true);
   });
 

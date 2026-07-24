@@ -12,14 +12,20 @@ export const dotnetRules: readonly RuleDefinition[] = [
     name: 'bin',
     categories: ['dotnet', 'java-jvm'],
     description:
-      ".NET build output next to a project/solution file — also Eclipse's default Java output directory next to a .classpath",
-    when: [{ glob: '*.csproj' }, { glob: '*.sln' }, { file: '.classpath' }],
+      ".NET build output next to a C#/VB#/F# project or solution file — also Eclipse's default Java output directory next to a .classpath",
+    when: [
+      { glob: '*.csproj' },
+      { glob: '*.vbproj' },
+      { glob: '*.fsproj' },
+      { glob: '*.sln' },
+      { file: '.classpath' },
+    ],
   },
   {
     kind: 'gated',
     name: 'obj',
     categories: ['dotnet'],
-    description: '.NET intermediate build output next to a project/solution file',
-    when: [{ glob: '*.csproj' }, { glob: '*.sln' }],
+    description: '.NET intermediate build output next to a C#/VB#/F# project or solution file',
+    when: [{ glob: '*.csproj' }, { glob: '*.vbproj' }, { glob: '*.fsproj' }, { glob: '*.sln' }],
   },
 ];

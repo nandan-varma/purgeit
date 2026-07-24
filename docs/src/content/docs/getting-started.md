@@ -50,7 +50,7 @@ purgeit ships with 60+ built-in rules across 16 ecosystems — not just JavaScri
 - **Apple**: `DerivedData`, `.build` (SPM), `Pods` (CocoaPods), `Carthage`
 - **Java/JVM**: `.gradle`, `target` (Maven), `.cxx` (Android NDK)
 - **.NET**: `bin`, `obj` (also covers Eclipse Java)
-- Gated directories — matched only when a sibling manifest proves they're real generated output, e.g. `Pods/` only next to a `Podfile`, `vendor/` only next to a `composer.json` or `go.mod`
+- Gated directories — matched only when a sibling manifest proves they're real generated output, e.g. `Pods/` only next to a `Podfile`, `vendor/` only next to a `composer.json`, `go.mod`, `Cargo.toml`, or `Gemfile`
 
 Every one of these is rendered live, with descriptions and gate conditions, on the [built-in rules reference](/rules/) — generated directly from the same source the scan engine compiles against, so it can't go stale. You can extend, narrow, or replace the ruleset with a [configuration file](/configuration/).
 
