@@ -10,5 +10,6 @@ export async function loadProvider(id: CloudProviderId): Promise<CloudProvider> 
     const { createAwsProvider } = await import('./aws/provider.js');
     return createAwsProvider();
   }
-  throw new Error(`purgeit: cloud provider '${id}' is not yet supported`);
+  const { createGcpProvider } = await import('./gcp/provider.js');
+  return createGcpProvider();
 }

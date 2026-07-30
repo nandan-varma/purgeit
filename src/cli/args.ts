@@ -25,12 +25,14 @@ Options:
                               cloud resources (tagged CloudFormation stacks / labeled
                               Compute Engine+GKE resources) instead of local directories
                               — cannot be combined with local-only options below.
-      --region <region>       Cloud region (aws/gcp only)
+      --region <region>       AWS region (--provider aws only; gcp always discovers
+                              across every zone/location in the project)
       --aws-profile <name>    AWS credential profile (--provider aws only)
-      --gcp-project <id>      GCP project id (--provider gcp only)
+      --gcp-project <id>      GCP project id, required for --provider gcp
       --tag <key=value>       Tag/label filter, repeatable (aws/gcp only; default from
                               config's cloud.tagKey/tagValue, else purgeit-managed=true)
-      --with-cost             Fetch cost estimates during cloud discovery (aws/gcp only)
+      --with-cost             Fetch billed cost estimates during discovery
+                              (--provider aws only; not yet supported for gcp)
       --config <path>        Explicit config file (skips search)
       --no-config            Ignore any discovered config file (defaults only)
       --no-gated             Disable gated-rule evaluation (always-safe only, local only)
@@ -206,6 +208,14 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
   }
   if (provider !== 'gcp' && values['gcp-project'] !== undefined) {
     throw new Error('--gcp-project requires --provider gcp');
+  }
+  if (provider !== 'aws' && values.region !== undefined) {
+    throw new Error(
+      '--region requires --provider aws (gcp always discovers across every zone/location in the project)',
+    );
+  }
+  if (provider === 'gcp' && values['with-cost']) {
+    throw new Error('--with-cost is not yet supported for --provider gcp');
   }
 
   const tags = (values.tag ?? []).map(parseTag);

@@ -145,6 +145,18 @@ describe('parseCliArgs', () => {
     ).toThrow(/--gcp-project requires --provider gcp/);
   });
 
+  it('rejects --region with --provider gcp (gcp always scans every zone/location)', () => {
+    expect(() =>
+      parseCliArgs(['--provider', 'gcp', '--tag', 'env=dev', '--region', 'us-central1']),
+    ).toThrow(/--region requires --provider aws/);
+  });
+
+  it('rejects --with-cost with --provider gcp (not yet supported)', () => {
+    expect(() => parseCliArgs(['--provider', 'gcp', '--tag', 'env=dev', '--with-cost'])).toThrow(
+      /--with-cost is not yet supported for --provider gcp/,
+    );
+  });
+
   it('rejects a malformed --tag', () => {
     expect(() => parseCliArgs(['--provider', 'aws', '--tag', 'no-equals-sign'])).toThrow(
       /invalid --tag/,

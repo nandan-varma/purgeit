@@ -75,6 +75,8 @@
     "@aws-sdk/client-cloudformation": "^3.1098.0",
     "@aws-sdk/client-cost-explorer": "^3.1098.0",
     "@biomejs/biome": "^2.5.5",
+    "@google-cloud/compute": "^6.15.0",
+    "@google-cloud/container": "^6.10.0",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@vitest/coverage-v8": "^4.1.10",
@@ -90,6 +92,8 @@
   "peerDependencies": {
     "@aws-sdk/client-cloudformation": ">=3.0.0",
     "@aws-sdk/client-cost-explorer": ">=3.0.0",
+    "@google-cloud/compute": ">=4.0.0",
+    "@google-cloud/container": ">=5.0.0",
     "cosmiconfig-typescript-loader": ">=6.0.0",
     "typescript": ">=5.0"
   },
@@ -98,6 +102,12 @@
       "optional": true
     },
     "@aws-sdk/client-cost-explorer": {
+      "optional": true
+    },
+    "@google-cloud/compute": {
+      "optional": true
+    },
+    "@google-cloud/container": {
       "optional": true
     },
     "cosmiconfig-typescript-loader": {

@@ -7,7 +7,8 @@ describe('loadProvider', () => {
     expect(provider.id).toBe('aws');
   });
 
-  it('throws for a provider not yet supported', async () => {
-    await expect(loadProvider('gcp')).rejects.toThrow(/not yet supported/);
+  it('loads the gcp provider', async () => {
+    const provider = await loadProvider('gcp');
+    expect(provider.id).toBe('gcp');
   });
 });
