@@ -32,6 +32,8 @@ export default defineConfig({
           items: [
             { label: 'Architecture', slug: 'architecture' },
             { label: 'API reference', slug: 'api' },
+            { label: 'Cloud cleanup (AWS & GCP)', slug: 'cloud' },
+            { label: 'Scheduled cleanup', slug: 'scheduled-cleanup' },
           ],
         },
         {

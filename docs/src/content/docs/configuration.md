@@ -99,6 +99,27 @@ Named groups of rule names. You can then use `--targets <group-name>` on the CLI
 purgeit --targets frontend
 ```
 
+### `cloud`
+
+Default settings for `--provider aws|gcp` scanning (see [Cloud cleanup](/cloud/)) — every field is optional and overridden by its corresponding CLI flag when passed.
+
+```ts
+export default {
+  cloud: {
+    aws: { profile: 'dev', region: 'us-east-1' },
+    gcp: { project: 'my-gcp-project' },
+    tagKey: 'purgeit-managed',
+    tagValue: 'true',
+    maxAgeDays: 30,
+  },
+};
+```
+
+- `aws.profile` / `aws.region` — fallback for `--aws-profile`/`--region`.
+- `gcp.project` — fallback for `--gcp-project`.
+- `tagKey` / `tagValue` — fallback tag filter used only when no `--tag` flag is passed at all (a single pair; use `--tag` for multiple AND'd tags).
+- `maxAgeDays` — a default `--max-age` for your own [scheduled cleanup](/scheduled-cleanup/) scripts to read; purgeit itself doesn't apply it automatically.
+
 ## Common patterns
 
 ### Replace the entire ruleset
