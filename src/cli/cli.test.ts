@@ -6,6 +6,9 @@ vi.mock('../ui/run-tui.js', () => ({ runTui: runTuiMock }));
 const runHeadlessCloudMock = vi.fn();
 vi.mock('./headless-cloud.js', () => ({ runHeadlessCloud: runHeadlessCloudMock }));
 
+const runSkillsCommandMock = vi.fn();
+vi.mock('./skills.js', () => ({ runSkillsCommand: runSkillsCommandMock }));
+
 // vi.spyOn can't redefine a live ESM namespace export, so readFile is
 // wrapped as a mock at module-load time instead — see the failing-readFile
 // test below, which is the only one that overrides its behavior.
@@ -32,6 +35,7 @@ describe('runCli', () => {
   afterEach(() => {
     runTuiMock.mockReset();
     runHeadlessCloudMock.mockReset();
+    runSkillsCommandMock.mockReset();
   });
 
   it('--help prints USAGE and returns 0', async () => {
@@ -259,5 +263,17 @@ describe('runCli', () => {
     } finally {
       if (isTTYDescriptor) Object.defineProperty(process.stdout, 'isTTY', isTTYDescriptor);
     }
+  });
+
+  it('dispatches "skills" to runSkillsCommand before any flag parsing, never the TUI/headless paths', async () => {
+    runSkillsCommandMock.mockResolvedValue(0);
+    const code = await runCli(['skills', 'get', 'core']);
+    expect(code).toBe(0);
+    expect(runSkillsCommandMock).toHaveBeenCalledWith(
+      ['get', 'core'],
+      expect.objectContaining({ stdout: expect.any(Function), stderr: expect.any(Function) }),
+    );
+    expect(runTuiMock).not.toHaveBeenCalled();
+    expect(runHeadlessCloudMock).not.toHaveBeenCalled();
   });
 });

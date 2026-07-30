@@ -26,10 +26,23 @@ npx purgeit ~/dev
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
 - **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
 
+## For AI agents
+
+purgeit ships its own agentic-skill content, served by the CLI itself so it always matches the
+installed version instead of going stale in a tool description:
+
+```bash
+npx purgeit skills list             # see what's available
+npx purgeit skills get core         # safety rules, CLI and library usage — start here
+npx purgeit skills get core --full  # + the complete CLI flag / library API reference
+npx purgeit skills get cloud        # AWS/GCP cloud cleanup skill
+```
+
 ## CLI flags
 
 ```
 purgeit [directory] [options]
+purgeit skills <list|get> [name] [--full]
   -d, --directory <path>     Root directory to scan (default: cwd)
       --full                 Flat scan mode
       --project <name>       Limit to a single project (projects mode only)

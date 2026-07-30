@@ -1,10 +1,14 @@
 import { parseArgs } from 'node:util';
 
 export const USAGE = `Usage: purgeit [directory] [options]
+       purgeit skills <list|get> [name] [--full]
 
 Find and delete regenerable dev build artifacts (node_modules, dist, target,
 Pods, ...) across your projects. Interactive by default in a terminal;
 scriptable via flags otherwise.
+
+'purgeit skills' serves this CLI's own agentic-skill content for AI agents
+(always matches the installed version) — run 'purgeit skills list'.
 
 Options:
   -d, --directory <path>     Root directory to scan (default: cwd)

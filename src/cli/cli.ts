@@ -4,6 +4,7 @@ import { formatErrorMessage, parseDuration, parseSizeString } from '../format.js
 import { parseCliArgs, USAGE } from './args.js';
 import { runHeadless } from './headless.js';
 import { runHeadlessCloud } from './headless-cloud.js';
+import { runSkillsCommand } from './skills.js';
 
 export interface CliIO {
   stdout?: (text: string) => void;
@@ -15,6 +16,13 @@ export interface CliIO {
 export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
   const stdout = io.stdout ?? ((text: string) => process.stdout.write(`${text}\n`));
   const stderr = io.stderr ?? ((text: string) => process.stderr.write(`${text}\n`));
+
+  // Checked before parseCliArgs so 'skills' is never mistaken for a
+  // directory positional — a subcommand, not a flag, so it lives outside
+  // the rest of the flag-based parsing surface entirely.
+  if (argv[0] === 'skills') {
+    return runSkillsCommand(argv.slice(1), { stdout, stderr });
+  }
 
   let parsed: Awaited<ReturnType<typeof parseCliArgs>>;
   try {
