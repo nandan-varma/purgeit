@@ -72,10 +72,13 @@
     "react": "^19.2.8"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudformation": "^3.1098.0",
+    "@aws-sdk/client-cost-explorer": "^3.1098.0",
     "@biomejs/biome": "^2.5.5",
     "@types/node": "^26.1.1",
     "@types/react": "^19.2.17",
     "@vitest/coverage-v8": "^4.1.10",
+    "aws-sdk-client-mock": "^4.1.0",
     "cosmiconfig-typescript-loader": "^6.3.0",
     "ink-testing-library": "^4.0.0",
     "react-devtools-core": "^7.0.1",
@@ -85,10 +88,18 @@
     "vitest": "^4.1.10"
   },
   "peerDependencies": {
+    "@aws-sdk/client-cloudformation": ">=3.0.0",
+    "@aws-sdk/client-cost-explorer": ">=3.0.0",
     "cosmiconfig-typescript-loader": ">=6.0.0",
     "typescript": ">=5.0"
   },
   "peerDependenciesMeta": {
+    "@aws-sdk/client-cloudformation": {
+      "optional": true
+    },
+    "@aws-sdk/client-cost-explorer": {
+      "optional": true
+    },
     "cosmiconfig-typescript-loader": {
       "optional": true
     },
