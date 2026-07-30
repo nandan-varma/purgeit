@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { formatErrorMessage, parseSizeString } from '../format.js';
+import { formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
 import { parseCliArgs, USAGE } from './args.js';
 import { runHeadless } from './headless.js';
 
@@ -48,6 +48,16 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       }
     }
 
+    let minAgeMs: number | undefined;
+    let maxAgeMs: number | undefined;
+    try {
+      if (parsed.minAge !== undefined) minAgeMs = parseDuration(parsed.minAge);
+      if (parsed.maxAge !== undefined) maxAgeMs = parseDuration(parsed.maxAge);
+    } catch (err) {
+      stderr(`purgeit: ${formatErrorMessage(err)}`);
+      return 2;
+    }
+
     const { runTui } = await import('../ui/run-tui.js');
     const cwd = io.cwd ?? process.cwd();
     const root = resolve(cwd, parsed.directory);
@@ -67,6 +77,8 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
         targets: parsed.targets,
         exclude: parsed.exclude,
         minSizeBytes,
+        minAgeMs,
+        maxAgeMs,
         sort: parsed.sort,
         ascending: parsed.ascending,
         dryRun: parsed.dryRun,

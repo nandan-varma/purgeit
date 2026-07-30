@@ -23,6 +23,8 @@ function baseArgs(overrides: Partial<ParsedCli> = {}): ParsedCli {
     exclude: [],
     targets: [],
     minSize: undefined,
+    minAge: undefined,
+    maxAge: undefined,
     depth: undefined,
     configPath: undefined,
     noConfig: true,

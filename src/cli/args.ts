@@ -18,6 +18,8 @@ Options:
                               to restrict matching to (e.g. --targets
                               node_modules,dist, or a group from config)
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
+      --min-age <duration>    Skip matches newer than this age (e.g. 7d, 24h)
+      --max-age <duration>    Skip matches older than this age (e.g. 30d)
       --depth <n>             Max recursion depth safety valve (default: unlimited)
       --config <path>        Explicit config file (skips search)
       --no-config            Ignore any discovered config file (defaults only)
@@ -49,6 +51,8 @@ export interface ParsedCli {
   exclude: string[];
   targets: string[];
   minSize: string | undefined;
+  minAge: string | undefined;
+  maxAge: string | undefined;
   depth: number | undefined;
   configPath: string | undefined;
   noConfig: boolean;
@@ -87,6 +91,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
       exclude: { type: 'string', multiple: true },
       targets: { type: 'string' },
       'min-size': { type: 'string' },
+      'min-age': { type: 'string' },
+      'max-age': { type: 'string' },
       depth: { type: 'string' },
       config: { type: 'string' },
       'no-config': { type: 'boolean' },
@@ -142,6 +148,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
       .map((t) => t.trim())
       .filter((t) => t.length > 0),
     minSize: values['min-size'],
+    minAge: values['min-age'],
+    maxAge: values['max-age'],
     depth: values.depth !== undefined ? parsePositiveInt('depth', values.depth) : undefined,
     configPath: values.config,
     noConfig: values['no-config'] ?? false,

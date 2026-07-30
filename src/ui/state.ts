@@ -22,6 +22,7 @@ export interface AppState {
 export type Action =
   | { type: 'ADD_ENTRY'; entry: ScanEntry }
   | { type: 'UPDATE_SIZE'; path: string; bytes: number }
+  | { type: 'UPDATE_LAST_MODIFIED'; path: string; mtimeMs: number }
   | { type: 'SCAN_DONE'; warnings: ValidationWarning[] }
   | { type: 'MOVE_CURSOR'; delta: number }
   | { type: 'SET_CURSOR'; index: number }
@@ -85,6 +86,15 @@ export function reducer(state: AppState, action: Action): AppState {
       const entries = state.entries.slice();
       // biome-ignore lint/style/noNonNullAssertion: idx was checked above
       entries[idx] = { ...state.entries[idx]!, size: action.bytes };
+      return { ...state, entries };
+    }
+
+    case 'UPDATE_LAST_MODIFIED': {
+      const idx = state.entries.findIndex((e) => e.path === action.path);
+      if (idx === -1) return state;
+      const entries = state.entries.slice();
+      // biome-ignore lint/style/noNonNullAssertion: idx was checked above
+      entries[idx] = { ...state.entries[idx]!, lastModified: action.mtimeMs };
       return { ...state, entries };
     }
 

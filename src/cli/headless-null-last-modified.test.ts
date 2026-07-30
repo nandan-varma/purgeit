@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ParsedCli } from './args.js';
 
-// Companion to headless-null-size.test.ts: Array.prototype.sort on a
-// 2-element array calls the comparator exactly once, with `a`/`b` bound to
-// the original array order — so a single ordering only ever exercises the
-// null-size fallback from one side of `(a.size ?? 0) - (b.size ?? 0)`.
-// Yielding the resolved entry first and the null one second here covers the
-// other side (a resolved, b null) that the sibling file's ordering can't reach.
+// An entry can legitimately never receive a 'lastModified' event (e.g. its
+// stat() call fails and is swallowed — see scanner.ts's handleMatch — or the
+// scan is aborted before it resolves). This exercises the
+// `lastModified === undefined` fallback in --min-age/--max-age filtering and
+// the `?? null` fallback in JSON output — a real stat() failure would be
+// hard to reproduce deterministically, so the scanner is mocked to yield
+// exactly that shape instead.
 vi.mock('../scan/scanner.js', async () => {
   const actual = await vi.importActual<typeof import('../scan/scanner.js')>('../scan/scanner.js');
   return {
@@ -15,24 +16,15 @@ vi.mock('../scan/scanner.js', async () => {
       yield {
         type: 'found',
         entry: {
-          path: '/fake/dist',
-          project: 'fake',
-          kind: 'always-safe',
-          ruleName: 'dist',
-          size: null,
-        },
-      };
-      yield {
-        type: 'found',
-        entry: {
           path: '/fake/node_modules',
           project: 'fake',
           kind: 'always-safe',
           ruleName: 'node_modules',
           size: null,
+          lastModified: null,
         },
       };
-      yield { type: 'size', path: '/fake/dist', bytes: 1024 };
+      yield { type: 'size', path: '/fake/node_modules', bytes: 1024 };
       yield { type: 'done', totalBytes: 1024 };
     }),
   };
@@ -79,13 +71,27 @@ function captureIO() {
   };
 }
 
-describe('runHeadless sorting with the resolved entry discovered first', () => {
-  it('still sorts the null-size entry consistently', async () => {
+describe('runHeadless with an unresolved (null) lastModified', () => {
+  it('is excluded by a --min-age filter since its age can never be known', async () => {
     const io = captureIO();
-    const code = await runHeadless(baseArgs(), io);
+    const code = await runHeadless(baseArgs({ minAge: '1d' }), io);
+    expect(code).toBe(1);
+    expect(io.out).toContain('Nothing to clean.');
+  });
+
+  it('is excluded by a --max-age filter too', async () => {
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ maxAge: '1d' }), io);
+    expect(code).toBe(1);
+    expect(io.out).toContain('Nothing to clean.');
+  });
+
+  it('reports lastModified as null in JSON output when no age filter is set', async () => {
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ json: true }), io);
     expect(code).toBe(0);
-    const lines = io.out.filter((l) => l.includes('/fake/'));
-    expect(lines[0]).toContain('dist');
-    expect(lines[1]).toContain('node_modules');
+    const payload = JSON.parse(io.out.join(''));
+    expect(payload.entries).toHaveLength(1);
+    expect(payload.entries[0].lastModified).toBeNull();
   });
 });

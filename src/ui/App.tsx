@@ -26,6 +26,10 @@ export interface AppProps {
   exclude?: readonly string[] | undefined;
   /** Skip matches below this size in bytes — mirrors headless's --min-size. */
   minSizeBytes?: number | undefined;
+  /** Skip matches newer than this age in ms — mirrors headless's --min-age. */
+  minAgeMs?: number | undefined;
+  /** Skip matches older than this age in ms — mirrors headless's --max-age. */
+  maxAgeMs?: number | undefined;
   /** Initial sort key — mirrors headless's --sort. Defaults to 'size'. */
   initialSortKey?: SortKey | undefined;
   /** Initial sort direction — mirrors headless's --asc. Defaults to 'desc'. */
@@ -43,6 +47,8 @@ export function App({
   signal,
   exclude,
   minSizeBytes,
+  minAgeMs,
+  maxAgeMs,
   initialSortKey,
   initialSortDir,
   dryRun = false,
@@ -51,6 +57,8 @@ export function App({
   const [state, dispatch] = useScanner(root, ruleSet, scanOpts, {
     exclude,
     minSizeBytes,
+    minAgeMs,
+    maxAgeMs,
     initialSortKey,
     initialSortDir,
     onResult,

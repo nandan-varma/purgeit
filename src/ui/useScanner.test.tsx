@@ -130,4 +130,97 @@ describe('useScanner', () => {
     expect(onResult).not.toHaveBeenCalled();
     expect(lastFrame()).toContain('ready');
   });
+
+  it('updates lastModified on an already-added entry', async () => {
+    scanMock.mockImplementation(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/node_modules',
+          project: '/root',
+          kind: 'always-safe',
+          ruleName: 'node_modules',
+          size: null,
+          lastModified: null,
+        },
+      };
+      yield { type: 'lastModified', path: '/root/node_modules', mtimeMs: 12345 };
+      yield { type: 'done', totalBytes: 0 };
+    });
+    const onResult = vi.fn();
+    const { lastFrame } = inkRender(<Harness onResult={onResult} />);
+    await flush();
+    expect(lastFrame()).toContain('ready');
+  });
+
+  it('filters out an entry newer than --min-age', async () => {
+    scanMock.mockImplementation(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/fresh',
+          project: '/root',
+          kind: 'always-safe',
+          ruleName: 'fresh',
+          size: null,
+          lastModified: null,
+        },
+      };
+      yield { type: 'lastModified', path: '/root/fresh', mtimeMs: Date.now() };
+      yield { type: 'done', totalBytes: 0 };
+    });
+    const onResult = vi.fn();
+    const { lastFrame } = inkRender(
+      <Harness onResult={onResult} options={{ minAgeMs: 86_400_000 }} />,
+    );
+    await flush();
+    expect(onResult).toHaveBeenCalledWith({ kind: 'empty' });
+    expect(lastFrame()).toContain('done');
+  });
+
+  it('keeps an entry older than --min-age and excludes one older than --max-age', async () => {
+    const old = Date.now() - 2 * 86_400_000;
+    scanMock.mockImplementation(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/stale',
+          project: '/root',
+          kind: 'always-safe',
+          ruleName: 'stale',
+          size: null,
+          lastModified: null,
+        },
+      };
+      yield { type: 'lastModified', path: '/root/stale', mtimeMs: old };
+      yield { type: 'done', totalBytes: 0 };
+    });
+    const onResult = vi.fn();
+    const kept = inkRender(<Harness onResult={onResult} options={{ minAgeMs: 86_400_000 }} />);
+    await flush();
+    expect(onResult).not.toHaveBeenCalled();
+    expect(kept.lastFrame()).toContain('ready');
+
+    scanMock.mockReset();
+    scanMock.mockImplementation(async function* () {
+      yield {
+        type: 'found',
+        entry: {
+          path: '/root/stale',
+          project: '/root',
+          kind: 'always-safe',
+          ruleName: 'stale',
+          size: null,
+          lastModified: null,
+        },
+      };
+      yield { type: 'lastModified', path: '/root/stale', mtimeMs: old };
+      yield { type: 'done', totalBytes: 0 };
+    });
+    const onResult2 = vi.fn();
+    const excluded = inkRender(<Harness onResult={onResult2} options={{ maxAgeMs: 86_400_000 }} />);
+    await flush();
+    expect(onResult2).toHaveBeenCalledWith({ kind: 'empty' });
+    expect(excluded.lastFrame()).toContain('done');
+  });
 });

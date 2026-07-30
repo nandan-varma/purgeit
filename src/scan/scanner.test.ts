@@ -316,6 +316,7 @@ describe('scan (projects mode, default)', () => {
           kind: 'always-safe',
           ruleName: 'node_modules',
           size: null,
+          lastModified: null,
         },
       },
     ]);
@@ -342,6 +343,7 @@ describe('scan (projects mode, default)', () => {
           kind: 'gated',
           ruleName: 'Pods',
           size: null,
+          lastModified: null,
         },
       },
     ]);

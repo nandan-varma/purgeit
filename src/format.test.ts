@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatErrorMessage, parseSizeString } from './format.js';
+import { formatBytes, formatErrorMessage, parseDuration, parseSizeString } from './format.js';
 
 describe('parseSizeString', () => {
   it('parses a bare number as bytes', () => {
@@ -31,6 +31,32 @@ describe('parseSizeString', () => {
 
   it('throws on an unrecognized unit', () => {
     expect(() => parseSizeString('5XB')).toThrow(/invalid size unit/);
+  });
+});
+
+describe('parseDuration', () => {
+  it('parses a bare number as days', () => {
+    expect(parseDuration('7')).toBe(7 * 86_400_000);
+  });
+
+  it('parses s/m/h/d/w (case-insensitive)', () => {
+    expect(parseDuration('30s')).toBe(30 * 1000);
+    expect(parseDuration('45M')).toBe(45 * 60_000);
+    expect(parseDuration('24h')).toBe(24 * 3_600_000);
+    expect(parseDuration('7D')).toBe(7 * 86_400_000);
+    expect(parseDuration('2w')).toBe(2 * 604_800_000);
+  });
+
+  it('allows a space between number and unit, and decimals', () => {
+    expect(parseDuration('1.5 d')).toBe(Math.round(1.5 * 86_400_000));
+  });
+
+  it('throws on an unparseable string', () => {
+    expect(() => parseDuration('not-a-duration')).toThrow(/invalid duration/);
+  });
+
+  it('throws on an unrecognized unit', () => {
+    expect(() => parseDuration('5x')).toThrow(/invalid duration unit/);
   });
 });
 

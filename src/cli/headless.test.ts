@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
@@ -13,6 +13,8 @@ function baseArgs(overrides: Partial<ParsedCli> = {}): ParsedCli {
     exclude: [],
     targets: [],
     minSize: undefined,
+    minAge: undefined,
+    maxAge: undefined,
     depth: undefined,
     configPath: undefined,
     noConfig: true,
@@ -107,6 +109,52 @@ describe('runHeadless', () => {
     const lines = io.out.filter((l) => l.includes(root));
     expect(lines.some((l) => l.includes('dist'))).toBe(true);
     expect(lines.some((l) => l.includes('node_modules'))).toBe(false);
+  });
+
+  it('rejects an invalid --min-age string with exit code 2', async () => {
+    root = buildTree({});
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, minAge: 'not-a-duration' }), io);
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/invalid duration/);
+  });
+
+  it('rejects an invalid --max-age string with exit code 2', async () => {
+    root = buildTree({});
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, maxAge: 'not-a-duration' }), io);
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/invalid duration/);
+  });
+
+  it('filters out freshly modified matches below --min-age', async () => {
+    root = buildTree({ node_modules: null });
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, minAge: '1d' }), io);
+    expect(code).toBe(1);
+    expect(io.out).toContain('Nothing to clean.');
+  });
+
+  it('keeps a match older than --min-age and reports its lastModified in JSON', async () => {
+    root = buildTree({ node_modules: null });
+    const old = new Date(Date.now() - 2 * 86_400_000);
+    utimesSync(join(root, 'node_modules'), old, old);
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, minAge: '1d', json: true }), io);
+    expect(code).toBe(0);
+    const payload = JSON.parse(io.out.join(''));
+    expect(payload.entries).toHaveLength(1);
+    expect(payload.entries[0].lastModified).toBeTypeOf('number');
+  });
+
+  it('filters out a match older than --max-age', async () => {
+    root = buildTree({ node_modules: null });
+    const old = new Date(Date.now() - 2 * 86_400_000);
+    utimesSync(join(root, 'node_modules'), old, old);
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, maxAge: '1d' }), io);
+    expect(code).toBe(1);
+    expect(io.out).toContain('Nothing to clean.');
   });
 
   it('excludes matches via --exclude glob', async () => {

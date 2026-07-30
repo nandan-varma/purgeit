@@ -31,6 +31,7 @@ vi.mock('../scan/scanner.js', async () => {
           kind: 'always-safe',
           ruleName: 'node_modules',
           size: 1_000_000,
+          lastModified: null,
         },
       };
       yield {
@@ -41,6 +42,7 @@ vi.mock('../scan/scanner.js', async () => {
           kind: 'always-safe',
           ruleName: 'dist',
           size: 500,
+          lastModified: null,
         },
       };
       yield {
@@ -217,6 +219,7 @@ describe('App with CLI-forwarded options', () => {
           kind: 'always-safe',
           ruleName: 'node_modules',
           size: 100,
+          lastModified: null,
         },
       };
       yield {
@@ -227,6 +230,7 @@ describe('App with CLI-forwarded options', () => {
           kind: 'always-safe',
           ruleName: 'dist',
           size: 100,
+          lastModified: null,
         },
       };
       yield { type: 'done', totalBytes: 100 };
@@ -251,6 +255,7 @@ describe('App with CLI-forwarded options', () => {
           kind: 'always-safe',
           ruleName: 'node_modules',
           size: null,
+          lastModified: null,
         },
       };
       yield {
@@ -261,6 +266,7 @@ describe('App with CLI-forwarded options', () => {
           kind: 'always-safe',
           ruleName: 'dist',
           size: null,
+          lastModified: null,
         },
       };
       yield { type: 'size', path: '/root/small/node_modules', bytes: 100 };

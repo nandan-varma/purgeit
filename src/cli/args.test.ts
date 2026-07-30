@@ -21,6 +21,8 @@ describe('parseCliArgs', () => {
       exclude: [],
       targets: [],
       minSize: undefined,
+      minAge: undefined,
+      maxAge: undefined,
       depth: undefined,
       configPath: undefined,
       noConfig: false,
@@ -60,6 +62,14 @@ describe('parseCliArgs', () => {
     const parsed = parseCliArgs(['--targets', 'node_modules, dist ,, python']);
     if (typeof parsed !== 'string')
       expect(parsed.targets).toEqual(['node_modules', 'dist', 'python']);
+  });
+
+  it('parses --min-age and --max-age as pass-through strings', () => {
+    const parsed = parseCliArgs(['--min-age', '7d', '--max-age', '30d']);
+    if (typeof parsed !== 'string') {
+      expect(parsed.minAge).toBe('7d');
+      expect(parsed.maxAge).toBe('30d');
+    }
   });
 
   it('parses --depth and --concurrency as positive integers', () => {

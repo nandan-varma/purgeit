@@ -29,7 +29,26 @@ export const COLUMN_WIDTHS = {
   kind: 6,
   name: 18,
   project: 14,
+  age: 5,
 } as const;
 
 /** Gap between adjacent table columns — pass to Box's `columnGap`, keep row/header widths in sync with it. */
 export const COLUMN_GAP = 1;
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Maps an artifact's last-modified age to a "warmth" color: red for touched
+ * within the last day (be careful), yellow for touched within the last
+ * week, undefined (neutral/dim) for the ordinary middle ground, green for
+ * anything untouched for 30+ days (a strong candidate for cleanup). `null`
+ * (age not yet resolved, or unknown) is also neutral.
+ */
+export function ageColor(lastModified: number | null): string | undefined {
+  if (lastModified === null) return undefined;
+  const age = Date.now() - lastModified;
+  if (age < DAY_MS) return theme.danger;
+  if (age < 7 * DAY_MS) return theme.warning;
+  if (age >= 30 * DAY_MS) return theme.safe;
+  return undefined;
+}

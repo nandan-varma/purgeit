@@ -1,22 +1,22 @@
 import { basename } from 'node:path';
 import { Box, Text } from 'ink';
 import type { ScanEntry } from '../../scan/scanner.js';
-import { fmtSize } from '../format.js';
+import { fmtAge, fmtSize } from '../format.js';
 import { MIN_PATH_WIDTH } from '../layout.js';
-import { COLUMN_GAP, COLUMN_WIDTHS, glyphs, theme } from '../theme.js';
+import { ageColor, COLUMN_GAP, COLUMN_WIDTHS, glyphs, theme } from '../theme.js';
 
 export function Row({
   entry,
   cursor,
   index,
   selected,
-  showProject,
+  showWideColumns,
 }: {
   entry: ScanEntry;
   cursor: number;
   index: number;
   selected: boolean;
-  showProject: boolean;
+  showWideColumns: boolean;
 }) {
   const isCursor = index === cursor;
   // Selection wins over cursor when both are true — a green row is the
@@ -28,13 +28,14 @@ export function Row({
   // path in 'flat' mode (see scan/scanner.ts) — basename() normalizes both
   // to something short enough for a fixed-width column.
   const project = entry.project ? `(${basename(entry.project)})` : '';
+  const ageColorValue = ageColor(entry.lastModified);
 
   // Ink Box defaults to flexShrink: 1, so a "fixed" width column would
   // otherwise still get squeezed (and its Text wrapped, since only the path
   // column opts into truncation) whenever content briefly outgrows the
   // terminal — most visibly right after a resize, where Ink's own
   // synchronous internal layout recalculation can run a beat before
-  // useTerminalSize's React state update (and therefore showProject/etc.)
+  // useTerminalSize's React state update (and therefore showWideColumns/etc.)
   // catches up. flexShrink={0} keeps every column here at its intended
   // width no matter what; overflow="hidden" on the row makes the worst case
   // "briefly clipped at the edge", not "wrapped into a multi-line mess".
@@ -49,6 +50,16 @@ export function Row({
       <Box width={COLUMN_WIDTHS.size} flexShrink={0}>
         <Text bold>{fmtSize(entry.size).padStart(COLUMN_WIDTHS.size)}</Text>
       </Box>
+      {showWideColumns && (
+        <Box width={COLUMN_WIDTHS.age} flexShrink={0}>
+          <Text
+            {...(ageColorValue !== undefined ? { color: ageColorValue } : {})}
+            dimColor={dim && ageColorValue === undefined}
+          >
+            {fmtAge(entry.lastModified)}
+          </Text>
+        </Box>
+      )}
       <Box width={COLUMN_WIDTHS.kind} flexShrink={0}>
         {entry.kind === 'gated' ? (
           <Text color={theme.gated}>gated</Text>
@@ -59,7 +70,7 @@ export function Row({
       <Box width={COLUMN_WIDTHS.name} flexShrink={0}>
         <Text wrap="truncate-end">{entry.ruleName}</Text>
       </Box>
-      {showProject && (
+      {showWideColumns && (
         <Box width={COLUMN_WIDTHS.project} flexShrink={0}>
           <Text dimColor={dim} wrap="truncate-end">
             {project}

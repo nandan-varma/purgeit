@@ -1,7 +1,7 @@
 import { basename, resolve } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
-import { formatBytes, formatErrorMessage, parseSizeString } from '../format.js';
+import { formatBytes, formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
 import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
@@ -66,6 +66,16 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     }
   }
 
+  let minAgeMs: number | undefined;
+  let maxAgeMs: number | undefined;
+  try {
+    if (parsed.minAge !== undefined) minAgeMs = parseDuration(parsed.minAge);
+    if (parsed.maxAge !== undefined) maxAgeMs = parseDuration(parsed.maxAge);
+  } catch (err) {
+    stderr(`purgeit: ${formatErrorMessage(err)}`);
+    return 2;
+  }
+
   let loaded: Awaited<ReturnType<typeof loadConfig>>;
   try {
     loaded = await loadConfig({
@@ -88,6 +98,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
 
   const found: ScanEntry[] = [];
   const sizes = new Map<string, number>();
+  const lastModifieds = new Map<string, number>();
   const warnings: string[] = [];
 
   try {
@@ -102,6 +113,8 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
         if (!isExcluded(event.entry.path)) found.push(event.entry);
       } else if (event.type === 'size') {
         sizes.set(event.path, event.bytes);
+      } else if (event.type === 'lastModified') {
+        lastModifieds.set(event.path, event.mtimeMs);
       } else if (event.type === 'warning') {
         warnings.push(`${event.warning.file}: ${event.warning.message}`);
       }
@@ -116,8 +129,18 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   }
 
   const sizeOf = (path: string) => sizes.get(path) ?? 0;
+  const lastModifiedOf = (path: string) => lastModifieds.get(path);
+  const passesAge = (path: string): boolean => {
+    if (minAgeMs === undefined && maxAgeMs === undefined) return true;
+    const lastModified = lastModifiedOf(path);
+    if (lastModified === undefined) return false;
+    const age = Date.now() - lastModified;
+    if (minAgeMs !== undefined && age < minAgeMs) return false;
+    if (maxAgeMs !== undefined && age > maxAgeMs) return false;
+    return true;
+  };
   const filtered = sortEntries(
-    found.filter((e) => sizeOf(e.path) >= minSizeBytes),
+    found.filter((e) => sizeOf(e.path) >= minSizeBytes && passesAge(e.path)),
     parsed.sort,
     parsed.ascending,
     sizeOf,
@@ -136,6 +159,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
             kind: e.kind,
             ruleName: e.ruleName,
             size: sizeOf(e.path),
+            lastModified: lastModifiedOf(e.path) ?? null,
           })),
           warnings,
         },

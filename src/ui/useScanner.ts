@@ -11,6 +11,10 @@ export interface UseScannerOptions {
   readonly exclude?: readonly string[] | undefined;
   /** Skip matches below this size in bytes — mirrors headless's --min-size. */
   readonly minSizeBytes?: number | undefined;
+  /** Skip matches newer than this age in ms — mirrors headless's --min-age. */
+  readonly minAgeMs?: number | undefined;
+  /** Skip matches older than this age in ms — mirrors headless's --max-age. */
+  readonly maxAgeMs?: number | undefined;
   /** Initial sort key — mirrors headless's --sort. Defaults to 'size'. */
   readonly initialSortKey?: SortKey | undefined;
   /** Initial sort direction — mirrors headless's --asc. Defaults to 'desc'. */
@@ -27,6 +31,8 @@ export function useScanner(
 ): [AppState, React.Dispatch<Action>] {
   const exclude = uiOpts.exclude ?? [];
   const minSizeBytes = uiOpts.minSizeBytes ?? 0;
+  const minAgeMs = uiOpts.minAgeMs;
+  const maxAgeMs = uiOpts.maxAgeMs;
   const initialSortKey = uiOpts.initialSortKey ?? 'size';
   const initialSortDir = uiOpts.initialSortDir ?? 'desc';
 
@@ -41,11 +47,29 @@ export function useScanner(
   useEffect(() => {
     const controller = new AbortController();
     const isExcluded = createExcludeMatcher(root, exclude);
-    // Entries discovered but awaiting their first size resolution before we
-    // know whether --min-size lets them through — kept out of the reducer
-    // entirely until then, rather than added-then-removed, so a match below
-    // the threshold never flashes into the visible list.
+    const needsSize = minSizeBytes > 0;
+    const needsAge = minAgeMs !== undefined || maxAgeMs !== undefined;
+    // Entries discovered but awaiting size/lastModified resolution before we
+    // know whether --min-size/--min-age/--max-age let them through — kept
+    // out of the reducer entirely until then, rather than added-then-removed,
+    // so a filtered-out match never flashes into the visible list.
     const pending = new Map<string, ScanEntry>();
+
+    function isReady(entry: ScanEntry): boolean {
+      if (needsSize && entry.size === null) return false;
+      if (needsAge && entry.lastModified === null) return false;
+      return true;
+    }
+    function passesFilters(entry: ScanEntry): boolean {
+      if (needsSize && (entry.size ?? 0) < minSizeBytes) return false;
+      if (needsAge) {
+        if (entry.lastModified === null) return false;
+        const age = Date.now() - entry.lastModified;
+        if (minAgeMs !== undefined && age < minAgeMs) return false;
+        if (maxAgeMs !== undefined && age > maxAgeMs) return false;
+      }
+      return true;
+    }
 
     let cancelled = false;
     let foundAny = false;
@@ -58,7 +82,7 @@ export function useScanner(
           switch (event.type) {
             case 'found':
               if (isExcluded(event.entry.path)) break;
-              if (minSizeBytes > 0) {
+              if (needsSize || needsAge) {
                 pending.set(event.entry.path, event.entry);
               } else {
                 foundAny = true;
@@ -68,13 +92,40 @@ export function useScanner(
             case 'size': {
               const pendingEntry = pending.get(event.path);
               if (pendingEntry) {
-                pending.delete(event.path);
-                if (event.bytes >= minSizeBytes) {
-                  foundAny = true;
-                  dispatch({ type: 'ADD_ENTRY', entry: { ...pendingEntry, size: event.bytes } });
+                const updated = { ...pendingEntry, size: event.bytes };
+                if (isReady(updated)) {
+                  pending.delete(event.path);
+                  if (passesFilters(updated)) {
+                    foundAny = true;
+                    dispatch({ type: 'ADD_ENTRY', entry: updated });
+                  }
+                } else {
+                  pending.set(event.path, updated);
                 }
               } else {
                 dispatch({ type: 'UPDATE_SIZE', path: event.path, bytes: event.bytes });
+              }
+              break;
+            }
+            case 'lastModified': {
+              const pendingEntry = pending.get(event.path);
+              if (pendingEntry) {
+                const updated = { ...pendingEntry, lastModified: event.mtimeMs };
+                if (isReady(updated)) {
+                  pending.delete(event.path);
+                  if (passesFilters(updated)) {
+                    foundAny = true;
+                    dispatch({ type: 'ADD_ENTRY', entry: updated });
+                  }
+                } else {
+                  pending.set(event.path, updated);
+                }
+              } else {
+                dispatch({
+                  type: 'UPDATE_LAST_MODIFIED',
+                  path: event.path,
+                  mtimeMs: event.mtimeMs,
+                });
               }
               break;
             }

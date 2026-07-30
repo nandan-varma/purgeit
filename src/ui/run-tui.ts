@@ -23,6 +23,10 @@ export interface TuiOptions {
   exclude?: readonly string[] | undefined;
   /** Skip matches below this size in bytes — mirrors headless's --min-size. */
   minSizeBytes?: number | undefined;
+  /** Skip matches newer than this age in ms — mirrors headless's --min-age. */
+  minAgeMs?: number | undefined;
+  /** Skip matches older than this age in ms — mirrors headless's --max-age. */
+  maxAgeMs?: number | undefined;
   /** Initial sort key — mirrors headless's --sort. */
   sort?: SortKey | undefined;
   /** Initial sort direction — mirrors headless's --asc. */
@@ -59,6 +63,8 @@ export async function runTui(opts: TuiOptions): Promise<number> {
       signal: opts.signal,
       exclude: opts.exclude,
       minSizeBytes: opts.minSizeBytes,
+      minAgeMs: opts.minAgeMs,
+      maxAgeMs: opts.maxAgeMs,
       initialSortKey: opts.sort,
       initialSortDir: opts.ascending ? 'asc' : 'desc',
       dryRun: opts.dryRun ?? false,

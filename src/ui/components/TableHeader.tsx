@@ -2,7 +2,7 @@ import { Box, Text } from 'ink';
 import { MIN_PATH_WIDTH } from '../layout.js';
 import { COLUMN_GAP, COLUMN_WIDTHS, theme } from '../theme.js';
 
-export function TableHeader({ showProject }: { showProject: boolean }) {
+export function TableHeader({ showWideColumns }: { showWideColumns: boolean }) {
   return (
     <Box flexDirection="column">
       {/* Same column boxes (columnGap, flexShrink) as Row.tsx so labels
@@ -16,6 +16,13 @@ export function TableHeader({ showProject }: { showProject: boolean }) {
             {'SIZE'.padStart(COLUMN_WIDTHS.size)}
           </Text>
         </Box>
+        {showWideColumns && (
+          <Box width={COLUMN_WIDTHS.age} flexShrink={0}>
+            <Text bold color={theme.accent}>
+              AGE
+            </Text>
+          </Box>
+        )}
         <Box width={COLUMN_WIDTHS.kind} flexShrink={0}>
           <Text bold color={theme.accent}>
             TYPE
@@ -26,7 +33,7 @@ export function TableHeader({ showProject }: { showProject: boolean }) {
             NAME
           </Text>
         </Box>
-        {showProject && (
+        {showWideColumns && (
           <Box width={COLUMN_WIDTHS.project} flexShrink={0}>
             <Text bold color={theme.accent}>
               PROJECT

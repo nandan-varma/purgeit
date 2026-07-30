@@ -10,7 +10,7 @@ import { TableHeader } from './TableHeader.js';
 
 export function ArtifactList({ state }: { state: AppState }) {
   const { columns, rows } = useTerminalSize();
-  const showProject = columns >= NARROW_TERMINAL_COLUMNS;
+  const showWideColumns = columns >= NARROW_TERMINAL_COLUMNS;
   const visibleRows = computeVisibleRows(rows);
   // biome-ignore lint/correctness/useExhaustiveDependencies: selective deps are intentional — only these fields affect sort order
   const entries = useMemo(
@@ -27,7 +27,7 @@ export function ArtifactList({ state }: { state: AppState }) {
 
   return (
     <Box flexDirection="column">
-      <TableHeader showProject={showProject} />
+      <TableHeader showWideColumns={showWideColumns} />
       {start > 0 && (
         <Text color={theme.accent} dimColor>
           ↑ {start} more above
@@ -40,7 +40,7 @@ export function ArtifactList({ state }: { state: AppState }) {
           cursor={state.cursor}
           index={start + i}
           selected={state.selected.has(entry.path)}
-          showProject={showProject}
+          showWideColumns={showWideColumns}
         />
       ))}
       {hiddenAfter > 0 && (

@@ -1,4 +1,4 @@
-import { readdir } from 'node:fs/promises';
+import { readdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import pLimit from 'p-limit';
 import { createGateContext } from '../rules/gate-context.js';
@@ -23,12 +23,15 @@ export interface ScanEntry {
   readonly kind: 'always-safe' | 'gated';
   readonly ruleName: string;
   readonly size: number | null;
+  /** Epoch ms of the matched directory's own mtime, resolved asynchronously like `size` — null until its 'lastModified' event arrives. */
+  readonly lastModified: number | null;
 }
 
 export type ScanEvent =
   | { readonly type: 'project-start'; readonly project: string; readonly label: string }
   | { readonly type: 'found'; readonly entry: ScanEntry }
   | { readonly type: 'size'; readonly path: string; readonly bytes: number }
+  | { readonly type: 'lastModified'; readonly path: string; readonly mtimeMs: number }
   | { readonly type: 'warning'; readonly warning: ValidationWarning }
   | { readonly type: 'done'; readonly totalBytes: number };
 
@@ -187,11 +190,15 @@ export async function* scan(
   duBatcher.bindAbortSignal(signal);
 
   let totalBytes = 0;
-  let pendingSizes = 0;
+  // Counts both the size-computation task and the lastModified stat() below
+  // per match — 'done' must wait for both, not just size, or a slow stat()
+  // could resolve after the queue has already closed and be silently dropped
+  // (AsyncQueue.push is a no-op once closed).
+  let pendingTasks = 0;
   let discoveryDone = false;
 
   function maybeFinish(): void {
-    if (discoveryDone && pendingSizes === 0) {
+    if (discoveryDone && pendingTasks === 0) {
       queue.push({ type: 'done', totalBytes });
       queue.close();
     }
@@ -204,9 +211,10 @@ export async function* scan(
       kind: match.kind,
       ruleName: match.ruleName,
       size: null,
+      lastModified: null,
     };
     queue.push({ type: 'found', entry });
-    pendingSizes++;
+    pendingTasks++;
     void limit(async () => {
       try {
         if (signal?.aborted) return;
@@ -215,10 +223,20 @@ export async function* scan(
         queue.push({ type: 'size', path: match.path, bytes });
       } catch {
       } finally {
-        pendingSizes--;
+        pendingTasks--;
         maybeFinish();
       }
     });
+    pendingTasks++;
+    void stat(match.path)
+      .then((stats) => {
+        queue.push({ type: 'lastModified', path: match.path, mtimeMs: stats.mtimeMs });
+      })
+      .catch(() => {})
+      .finally(() => {
+        pendingTasks--;
+        maybeFinish();
+      });
   }
 
   async function runDiscovery(): Promise<void> {

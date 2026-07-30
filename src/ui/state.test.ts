@@ -9,6 +9,7 @@ function entry(overrides: Partial<ScanEntry>): ScanEntry {
     kind: 'always-safe',
     ruleName: 'node_modules',
     size: 0,
+    lastModified: null,
     ...overrides,
   };
 }
@@ -74,6 +75,28 @@ describe('reducer TOGGLE_SELECT', () => {
   it('is a no-op when the cursor is out of range (e.g. empty entries)', () => {
     const state = { ...initialState(), phase: 'ready' as const, entries: [], cursor: 0 };
     const next = reducer(state, { type: 'TOGGLE_SELECT' });
+    expect(next).toBe(state);
+  });
+});
+
+describe('reducer UPDATE_LAST_MODIFIED', () => {
+  it('sets lastModified on the matching entry', () => {
+    const state = { ...initialState(), entries: [entry({ path: '/root/node_modules' })] };
+    const next = reducer(state, {
+      type: 'UPDATE_LAST_MODIFIED',
+      path: '/root/node_modules',
+      mtimeMs: 12345,
+    });
+    expect(next.entries[0]?.lastModified).toBe(12345);
+  });
+
+  it('is a no-op when the path is not found', () => {
+    const state = { ...initialState(), entries: [entry({ path: '/root/node_modules' })] };
+    const next = reducer(state, {
+      type: 'UPDATE_LAST_MODIFIED',
+      path: '/root/does-not-exist',
+      mtimeMs: 12345,
+    });
     expect(next).toBe(state);
   });
 });

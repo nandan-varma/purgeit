@@ -33,6 +33,40 @@ export function parseSizeString(input: string): number {
   return Math.round(value * multiplier);
 }
 
+const DURATION_UNITS: Record<string, number> = {
+  s: 1000,
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+  w: 604_800_000,
+};
+
+/**
+ * Parses a human duration string like "7d", "24h", "30m" into milliseconds.
+ * A bare number is treated as days (the natural scale for "how old is this
+ * artifact"). Throws on anything unparseable — `--min-age`/`--max-age`
+ * should fail loudly on a typo rather than silently matching nothing.
+ */
+export function parseDuration(input: string): number {
+  const trimmed = input.trim();
+  const match = /^(\d*\.?\d+)\s*([a-zA-Z]*)$/.exec(trimmed);
+  if (!match) {
+    throw new Error(`invalid duration '${input}' (expected e.g. "7d", "24h", "30m")`);
+  }
+  // Regex guarantees both captures are strings — assert to eliminate ?? branches
+  const numberPart = match[1] as string;
+  const unitPart = match[2] as string;
+  const value = Number.parseFloat(numberPart);
+  const unit = unitPart.toLowerCase() || 'd';
+  const multiplier = DURATION_UNITS[unit];
+  if (multiplier === undefined) {
+    throw new Error(
+      `invalid duration unit '${unitPart}' in '${input}' (expected one of s, m, h, d, w)`,
+    );
+  }
+  return Math.round(value * multiplier);
+}
+
 /** Formats a byte count as a human-readable string (e.g. "4.2 MB"). */
 export function formatBytes(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return '0 B';

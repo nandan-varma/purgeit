@@ -184,6 +184,40 @@ describe('runCli', () => {
     expect(runTuiMock).not.toHaveBeenCalled();
   });
 
+  it('forwards --min-age/--max-age through to the TUI as milliseconds', async () => {
+    runTuiMock.mockResolvedValue(0);
+    const code = await runCli(['--tui', '--min-age', '1d', '--max-age', '30d', '/tmp'], {});
+    expect(code).toBe(0);
+    expect(runTuiMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        minAgeMs: 86_400_000,
+        maxAgeMs: 30 * 86_400_000,
+      }),
+    );
+  });
+
+  it('rejects an invalid --min-age before launching the TUI, without calling runTui', async () => {
+    const io = captureIO();
+    const code = await runCli(['--tui', '--min-age', 'not-a-duration', '/tmp'], {
+      ...io,
+      cwd: '/tmp',
+    });
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/invalid duration/);
+    expect(runTuiMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid --max-age before launching the TUI, without calling runTui', async () => {
+    const io = captureIO();
+    const code = await runCli(['--tui', '--max-age', 'not-a-duration', '/tmp'], {
+      ...io,
+      cwd: '/tmp',
+    });
+    expect(code).toBe(2);
+    expect(io.err[0]).toMatch(/invalid duration/);
+    expect(runTuiMock).not.toHaveBeenCalled();
+  });
+
   it('uses process.stdout/stderr when io is not provided', async () => {
     const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
     const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);

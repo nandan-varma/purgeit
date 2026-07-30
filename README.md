@@ -19,7 +19,7 @@ npx purgeit ~/dev
 ## Features
 
 - **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
-- **Interactive TUI** — a sortable table (size/type/name/project/path) with live sizes; selection is a full-row color highlight, not just a checkbox
+- **Interactive TUI** — a sortable table (size/age/type/name/project/path) with live sizes and a color-coded "warmth" age indicator; selection is a full-row color highlight, not just a checkbox
 - **Headless mode** — `--json`/`--delete` flags for scripting and CI
 - **60+ built-in rules across 16 ecosystems** — JavaScript/TypeScript, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple/Swift, Elixir, Haskell, Elm, Zig, Dart/Flutter, C/C++, not just `node_modules`. Full list: [purgeit.nandan.fyi/rules](https://purgeit.nandan.fyi/rules/)
 - **Configurable rules** — extend, narrow, or replace the defaults with a `purgeit.config.ts`
@@ -36,6 +36,8 @@ purgeit [directory] [options]
       --exclude <glob>       Exclude paths matching glob (repeatable)
       --targets <names>      Comma-separated rule names to restrict matching
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
+      --min-age <duration>   Skip matches newer than this age (e.g. 7d, 24h)
+      --max-age <duration>   Skip matches older than this age (e.g. 30d)
       --depth <n>            Max recursion depth
       --config <path>        Explicit config file
       --no-config            Ignore config file (defaults only)
