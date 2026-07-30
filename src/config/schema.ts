@@ -34,6 +34,19 @@ export interface PurgeitUserConfig {
   readonly skipDirs?: readonly string[];
   readonly pruneNames?: readonly string[];
   readonly targets?: Readonly<Record<string, readonly string[]>>;
+  /** Cloud resource discovery settings — used only when scanning with `--provider aws|gcp`. */
+  readonly cloud?: PurgeitCloudConfig;
+}
+
+export interface PurgeitCloudConfig {
+  readonly aws?: { readonly profile?: string; readonly region?: string };
+  readonly gcp?: { readonly project?: string };
+  /** Tag/label key required on a resource for it to be discovered. Default: 'purgeit-managed' — valid as both an AWS tag key and a GCP label key. */
+  readonly tagKey?: string;
+  /** Tag/label value required alongside tagKey. Default: 'true'. */
+  readonly tagValue?: string;
+  /** Default --max-age (in days) for scheduled/cron cloud cleanup recipes. */
+  readonly maxAgeDays?: number;
 }
 
 function compileGateCondition(condition: GateCondition): Gate {
@@ -104,6 +117,55 @@ export function assertPurgeitUserConfig(
     }
     for (const [key, value] of Object.entries(cfg.targets as Record<string, unknown>)) {
       assertOptionalStringArray(value, `targets.${key}`, source, true);
+    }
+  }
+
+  assertOptionalCloudConfig(cfg.cloud, source);
+}
+
+function assertOptionalStringField(value: unknown, field: string, source: string): void {
+  if (value !== undefined && typeof value !== 'string') {
+    throw new TypeError(`purgeit: invalid config at ${source} — "${field}" must be a string`);
+  }
+}
+
+function assertOptionalCloudConfig(value: unknown, source: string): void {
+  if (value === undefined) return;
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError(`purgeit: invalid config at ${source} — "cloud" must be an object`);
+  }
+  const cloud = value as Record<string, unknown>;
+
+  if (cloud.aws !== undefined) {
+    if (typeof cloud.aws !== 'object' || cloud.aws === null || Array.isArray(cloud.aws)) {
+      throw new TypeError(`purgeit: invalid config at ${source} — "cloud.aws" must be an object`);
+    }
+    const aws = cloud.aws as Record<string, unknown>;
+    assertOptionalStringField(aws.profile, 'cloud.aws.profile', source);
+    assertOptionalStringField(aws.region, 'cloud.aws.region', source);
+  }
+
+  if (cloud.gcp !== undefined) {
+    if (typeof cloud.gcp !== 'object' || cloud.gcp === null || Array.isArray(cloud.gcp)) {
+      throw new TypeError(`purgeit: invalid config at ${source} — "cloud.gcp" must be an object`);
+    }
+    const gcp = cloud.gcp as Record<string, unknown>;
+    assertOptionalStringField(gcp.project, 'cloud.gcp.project', source);
+  }
+
+  assertOptionalStringField(cloud.tagKey, 'cloud.tagKey', source);
+  assertOptionalStringField(cloud.tagValue, 'cloud.tagValue', source);
+
+  if (cloud.maxAgeDays !== undefined) {
+    if (typeof cloud.maxAgeDays !== 'number' || !Number.isFinite(cloud.maxAgeDays)) {
+      throw new TypeError(
+        `purgeit: invalid config at ${source} — "cloud.maxAgeDays" must be a number`,
+      );
+    }
+    if (cloud.maxAgeDays < 0) {
+      throw new TypeError(
+        `purgeit: invalid config at ${source} — "cloud.maxAgeDays" must be non-negative`,
+      );
     }
   }
 }

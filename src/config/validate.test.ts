@@ -31,7 +31,50 @@ describe('assertPurgeitUserConfig', () => {
       skipDirs: ['archive'],
       pruneNames: ['.jj'],
       targets: { python: ['__pycache__', '.venv'] },
+      cloud: {
+        aws: { profile: 'dev', region: 'us-east-1' },
+        gcp: { project: 'my-gcp-project' },
+        tagKey: 'purgeit-managed',
+        tagValue: 'true',
+        maxAgeDays: 30,
+      },
     }));
+
+  it('accepts an empty "cloud" object', () => ok({ cloud: {} }));
+
+  it('rejects a non-object "cloud"', () => {
+    bad({ cloud: 'nope' }, /"cloud" must be an object/);
+    bad({ cloud: [] }, /"cloud" must be an object/);
+  });
+
+  it('rejects a non-object "cloud.aws"', () => {
+    bad({ cloud: { aws: 'nope' } }, /"cloud\.aws" must be an object/);
+    bad({ cloud: { aws: [] } }, /"cloud\.aws" must be an object/);
+  });
+
+  it('rejects a non-string "cloud.aws.profile"/"cloud.aws.region"', () => {
+    bad({ cloud: { aws: { profile: 1 } } }, /"cloud\.aws\.profile" must be a string/);
+    bad({ cloud: { aws: { region: 1 } } }, /"cloud\.aws\.region" must be a string/);
+  });
+
+  it('rejects a non-object "cloud.gcp"', () => {
+    bad({ cloud: { gcp: 'nope' } }, /"cloud\.gcp" must be an object/);
+    bad({ cloud: { gcp: [] } }, /"cloud\.gcp" must be an object/);
+  });
+
+  it('rejects a non-string "cloud.gcp.project"', () =>
+    bad({ cloud: { gcp: { project: 1 } } }, /"cloud\.gcp\.project" must be a string/));
+
+  it('rejects a non-string "cloud.tagKey"/"cloud.tagValue"', () => {
+    bad({ cloud: { tagKey: 1 } }, /"cloud\.tagKey" must be a string/);
+    bad({ cloud: { tagValue: 1 } }, /"cloud\.tagValue" must be a string/);
+  });
+
+  it('rejects a non-number "cloud.maxAgeDays"', () =>
+    bad({ cloud: { maxAgeDays: 'nope' } }, /"cloud\.maxAgeDays" must be a number/));
+
+  it('rejects a negative "cloud.maxAgeDays"', () =>
+    bad({ cloud: { maxAgeDays: -1 } }, /"cloud\.maxAgeDays" must be non-negative/));
 
   it('rejects a non-object', () => {
     bad(null, /expected an object/);

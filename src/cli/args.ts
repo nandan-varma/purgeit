@@ -21,9 +21,19 @@ Options:
       --min-age <duration>    Skip matches newer than this age (e.g. 7d, 24h)
       --max-age <duration>    Skip matches older than this age (e.g. 30d)
       --depth <n>             Max recursion depth safety valve (default: unlimited)
+      --provider <local|aws|gcp> Resource domain to scan (default: local). aws/gcp scan
+                              cloud resources (tagged CloudFormation stacks / labeled
+                              Compute Engine+GKE resources) instead of local directories
+                              — cannot be combined with local-only options below.
+      --region <region>       Cloud region (aws/gcp only)
+      --aws-profile <name>    AWS credential profile (--provider aws only)
+      --gcp-project <id>      GCP project id (--provider gcp only)
+      --tag <key=value>       Tag/label filter, repeatable (aws/gcp only; default from
+                              config's cloud.tagKey/tagValue, else purgeit-managed=true)
+      --with-cost             Fetch cost estimates during cloud discovery (aws/gcp only)
       --config <path>        Explicit config file (skips search)
       --no-config            Ignore any discovered config file (defaults only)
-      --no-gated             Disable gated-rule evaluation (always-safe only)
+      --no-gated             Disable gated-rule evaluation (always-safe only, local only)
       --sort <size|path|name> Sort key for list/JSON output (default: size)
       --asc                  Ascending sort (default: descending)
       --dry-run              Simulate deletion without touching files. In headless mode
@@ -43,6 +53,7 @@ Options:
 Exit codes: 0 success, 1 nothing found / deletion had failures, 2 usage or environment error`;
 
 export type SortKey = 'size' | 'path' | 'name';
+export type CliProvider = 'local' | 'aws' | 'gcp';
 
 export interface ParsedCli {
   directory: string;
@@ -54,6 +65,13 @@ export interface ParsedCli {
   minAge: string | undefined;
   maxAge: string | undefined;
   depth: number | undefined;
+  provider: CliProvider;
+  region: string | undefined;
+  awsProfile: string | undefined;
+  gcpProject: string | undefined;
+  /** Raw "key=value" tag/label filters from repeatable --tag; parsed and format-validated here. */
+  tags: { key: string; value: string }[];
+  withCost: boolean;
   configPath: string | undefined;
   noConfig: boolean;
   noGated: boolean;
@@ -70,6 +88,7 @@ export interface ParsedCli {
 }
 
 const SORT_KEYS: readonly SortKey[] = ['size', 'path', 'name'];
+const PROVIDERS: readonly CliProvider[] = ['local', 'aws', 'gcp'];
 
 function parsePositiveInt(flag: string, value: string): number {
   const parsed = Number(value);
@@ -77,6 +96,14 @@ function parsePositiveInt(flag: string, value: string): number {
     throw new Error(`invalid --${flag} '${value}' (expected an integer >= 1)`);
   }
   return parsed;
+}
+
+function parseTag(raw: string): { key: string; value: string } {
+  const eq = raw.indexOf('=');
+  if (eq <= 0 || eq === raw.length - 1) {
+    throw new Error(`invalid --tag '${raw}' (expected 'key=value')`);
+  }
+  return { key: raw.slice(0, eq), value: raw.slice(eq + 1) };
 }
 
 /** Parses argv into a ParsedCli, or returns 'help'/'version' for those flags. Throws on bad input. */
@@ -94,6 +121,12 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
       'min-age': { type: 'string' },
       'max-age': { type: 'string' },
       depth: { type: 'string' },
+      provider: { type: 'string' },
+      region: { type: 'string' },
+      'aws-profile': { type: 'string' },
+      'gcp-project': { type: 'string' },
+      tag: { type: 'string', multiple: true },
+      'with-cost': { type: 'boolean' },
       config: { type: 'string' },
       'no-config': { type: 'boolean' },
       'no-gated': { type: 'boolean' },
@@ -138,6 +171,45 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     throw new Error('--config and --no-config cannot be combined');
   }
 
+  const provider = (values.provider ?? 'local') as CliProvider;
+  if (!PROVIDERS.includes(provider)) {
+    throw new Error(`invalid --provider '${values.provider}' (expected local | aws | gcp)`);
+  }
+
+  const directoryExplicit = values.directory !== undefined || positionals[0] !== undefined;
+  if (provider !== 'local') {
+    const localOnly: string[] = [];
+    if (directoryExplicit) localOnly.push('a directory argument');
+    if (values.full) localOnly.push('--full');
+    if (values.project !== undefined) localOnly.push('--project');
+    if (values.depth !== undefined) localOnly.push('--depth');
+    if ((values.targets ?? '').trim().length > 0) localOnly.push('--targets');
+    if (values['min-size'] !== undefined) localOnly.push('--min-size');
+    if (values.exclude !== undefined && values.exclude.length > 0) localOnly.push('--exclude');
+    if (values['no-gated']) localOnly.push('--no-gated');
+    if (localOnly.length > 0) {
+      throw new Error(`--provider ${provider} cannot be combined with ${localOnly.join(', ')}`);
+    }
+  } else {
+    const cloudOnly: string[] = [];
+    if (values.region !== undefined) cloudOnly.push('--region');
+    if (values['aws-profile'] !== undefined) cloudOnly.push('--aws-profile');
+    if (values['gcp-project'] !== undefined) cloudOnly.push('--gcp-project');
+    if (values.tag !== undefined && values.tag.length > 0) cloudOnly.push('--tag');
+    if (values['with-cost']) cloudOnly.push('--with-cost');
+    if (cloudOnly.length > 0) {
+      throw new Error(`${cloudOnly.join(', ')} requires --provider aws|gcp`);
+    }
+  }
+  if (provider !== 'aws' && values['aws-profile'] !== undefined) {
+    throw new Error('--aws-profile requires --provider aws');
+  }
+  if (provider !== 'gcp' && values['gcp-project'] !== undefined) {
+    throw new Error('--gcp-project requires --provider gcp');
+  }
+
+  const tags = (values.tag ?? []).map(parseTag);
+
   return {
     directory: values.directory ?? positionals[0] ?? '.',
     full: values.full ?? false,
@@ -151,6 +223,12 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     minAge: values['min-age'],
     maxAge: values['max-age'],
     depth: values.depth !== undefined ? parsePositiveInt('depth', values.depth) : undefined,
+    provider,
+    region: values.region,
+    awsProfile: values['aws-profile'],
+    gcpProject: values['gcp-project'],
+    tags,
+    withCost: values['with-cost'] ?? false,
     configPath: values.config,
     noConfig: values['no-config'] ?? false,
     noGated: values['no-gated'] ?? false,

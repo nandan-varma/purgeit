@@ -1,8 +1,23 @@
 export type { LoadConfigOptions, LoadedConfig } from './config/resolve.js';
 export { loadConfig } from './config/resolve.js';
-export type { GateCondition, PurgeitUserConfig, UserGatedRule } from './config/schema.js';
+export type {
+  GateCondition,
+  PurgeitCloudConfig,
+  PurgeitUserConfig,
+  UserGatedRule,
+} from './config/schema.js';
 export type { DeleteEvent, DeleteOptions } from './delete/deleter.js';
 export { deleteEntries } from './delete/deleter.js';
+export type {
+  CloudDeleteEvent,
+  CloudDeleteOptions,
+  CloudDiscoveryOptions,
+  CloudProvider,
+  CloudProviderId,
+  CloudResource,
+  CloudScanEvent,
+  CostEstimate,
+} from './providers/types.js';
 export {
   type AlwaysSafeRuleDefinition,
   CATEGORY_LABELS,

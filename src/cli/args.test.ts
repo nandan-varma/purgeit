@@ -24,6 +24,12 @@ describe('parseCliArgs', () => {
       minAge: undefined,
       maxAge: undefined,
       depth: undefined,
+      provider: 'local',
+      region: undefined,
+      awsProfile: undefined,
+      gcpProject: undefined,
+      tags: [],
+      withCost: false,
       configPath: undefined,
       noConfig: false,
       noGated: false,
@@ -70,6 +76,81 @@ describe('parseCliArgs', () => {
       expect(parsed.minAge).toBe('7d');
       expect(parsed.maxAge).toBe('30d');
     }
+  });
+
+  it('parses --provider aws with its cloud-only flags', () => {
+    const parsed = parseCliArgs([
+      '--provider',
+      'aws',
+      '--region',
+      'us-east-1',
+      '--aws-profile',
+      'dev',
+      '--tag',
+      'env=dev',
+      '--tag',
+      'team=platform',
+      '--with-cost',
+    ]);
+    if (typeof parsed !== 'string') {
+      expect(parsed.provider).toBe('aws');
+      expect(parsed.region).toBe('us-east-1');
+      expect(parsed.awsProfile).toBe('dev');
+      expect(parsed.gcpProject).toBeUndefined();
+      expect(parsed.tags).toEqual([
+        { key: 'env', value: 'dev' },
+        { key: 'team', value: 'platform' },
+      ]);
+      expect(parsed.withCost).toBe(true);
+    }
+  });
+
+  it('parses --provider gcp with --gcp-project', () => {
+    const parsed = parseCliArgs(['--provider', 'gcp', '--gcp-project', 'my-project']);
+    if (typeof parsed !== 'string') {
+      expect(parsed.provider).toBe('gcp');
+      expect(parsed.gcpProject).toBe('my-project');
+    }
+  });
+
+  it('rejects an invalid --provider value', () => {
+    expect(() => parseCliArgs(['--provider', 'bogus'])).toThrow(/invalid --provider/);
+  });
+
+  it('rejects local-only flags combined with --provider aws', () => {
+    expect(() => parseCliArgs(['--provider', 'aws', '/tmp'])).toThrow(/directory argument/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--full'])).toThrow(/--full/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--project', 'x'])).toThrow(/--project/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--depth', '2'])).toThrow(/--depth/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--targets', 'dist'])).toThrow(/--targets/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--min-size', '10MB'])).toThrow(/--min-size/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--exclude', '*.log'])).toThrow(/--exclude/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--no-gated'])).toThrow(/--no-gated/);
+  });
+
+  it('rejects cloud-only flags with the default local provider', () => {
+    expect(() => parseCliArgs(['--region', 'us-east-1'])).toThrow(/--region requires/);
+    expect(() => parseCliArgs(['--aws-profile', 'dev'])).toThrow(/--aws-profile requires/);
+    expect(() => parseCliArgs(['--gcp-project', 'x'])).toThrow(/--gcp-project requires/);
+    expect(() => parseCliArgs(['--tag', 'env=dev'])).toThrow(/--tag requires/);
+    expect(() => parseCliArgs(['--with-cost'])).toThrow(/--with-cost requires/);
+  });
+
+  it('rejects --aws-profile with --provider gcp and --gcp-project with --provider aws', () => {
+    expect(() =>
+      parseCliArgs(['--provider', 'gcp', '--tag', 'env=dev', '--aws-profile', 'dev']),
+    ).toThrow(/--aws-profile requires --provider aws/);
+    expect(() =>
+      parseCliArgs(['--provider', 'aws', '--tag', 'env=dev', '--gcp-project', 'x']),
+    ).toThrow(/--gcp-project requires --provider gcp/);
+  });
+
+  it('rejects a malformed --tag', () => {
+    expect(() => parseCliArgs(['--provider', 'aws', '--tag', 'no-equals-sign'])).toThrow(
+      /invalid --tag/,
+    );
+    expect(() => parseCliArgs(['--provider', 'aws', '--tag', '=value'])).toThrow(/invalid --tag/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--tag', 'key='])).toThrow(/invalid --tag/);
   });
 
   it('parses --depth and --concurrency as positive integers', () => {
