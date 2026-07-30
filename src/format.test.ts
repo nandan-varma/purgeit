@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatBytes, formatErrorMessage, parseDuration, parseSizeString } from './format.js';
+import {
+  formatBytes,
+  formatDuration,
+  formatErrorMessage,
+  parseDuration,
+  parseSizeString,
+} from './format.js';
 
 describe('parseSizeString', () => {
   it('parses a bare number as bytes', () => {
@@ -80,6 +86,25 @@ describe('formatBytes', () => {
     expect(formatBytes(-1)).toBe('0 B');
     expect(formatBytes(Number.NaN)).toBe('0 B');
     expect(formatBytes(Number.POSITIVE_INFINITY)).toBe('0 B');
+  });
+});
+
+describe('formatDuration', () => {
+  it('formats sub-minute ages as at least 1m', () => {
+    expect(formatDuration(10_000)).toBe('1m');
+  });
+
+  it('formats minutes/hours/days/weeks/months/years', () => {
+    expect(formatDuration(30 * 60_000)).toBe('30m');
+    expect(formatDuration(5 * 3_600_000)).toBe('5h');
+    expect(formatDuration(3 * 86_400_000)).toBe('3d');
+    expect(formatDuration(2 * 604_800_000)).toBe('2w');
+    expect(formatDuration(3 * 2_629_800_000)).toBe('3mo');
+    expect(formatDuration(2 * 31_557_600_000)).toBe('2y');
+  });
+
+  it('clamps a negative value to 0', () => {
+    expect(formatDuration(-1000)).toBe('1m');
   });
 });
 

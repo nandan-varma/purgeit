@@ -126,6 +126,7 @@ describe('parseCliArgs', () => {
     expect(() => parseCliArgs(['--provider', 'aws', '--min-size', '10MB'])).toThrow(/--min-size/);
     expect(() => parseCliArgs(['--provider', 'aws', '--exclude', '*.log'])).toThrow(/--exclude/);
     expect(() => parseCliArgs(['--provider', 'aws', '--no-gated'])).toThrow(/--no-gated/);
+    expect(() => parseCliArgs(['--provider', 'aws', '--tui'])).toThrow(/--tui/);
   });
 
   it('rejects cloud-only flags with the default local provider', () => {

@@ -48,8 +48,7 @@ const { discoverGcpResources } = await import('./discover.js');
 
 function baseOpts(overrides: Partial<CloudDiscoveryOptions> = {}): CloudDiscoveryOptions {
   return {
-    tagKey: 'purgeit-managed',
-    tagValue: 'true',
+    tags: new Map([['purgeit-managed', 'true']]),
     withCost: false,
     project: 'my-project',
     ...overrides,
@@ -75,6 +74,36 @@ describe('discoverGcpResources', () => {
 
   it('requires a project id', async () => {
     await expect(collect(baseOpts({ project: undefined }))).rejects.toThrow(/--gcp-project/);
+  });
+
+  it('rejects an empty tags map instead of matching everything', async () => {
+    await expect(collect(baseOpts({ tags: new Map() }))).rejects.toThrow(/at least one --tag/);
+  });
+
+  it('requires every configured label to match (AND semantics)', async () => {
+    instancePages = [
+      [
+        'zones/z',
+        {
+          instances: [
+            { name: 'both-match', labels: { 'purgeit-managed': 'true', team: 'platform' } },
+            { name: 'only-one-matches', labels: { 'purgeit-managed': 'true', team: 'other' } },
+          ],
+        },
+      ],
+    ];
+    const events = await collect(
+      baseOpts({
+        tags: new Map([
+          ['purgeit-managed', 'true'],
+          ['team', 'platform'],
+        ]),
+      }),
+    );
+    const labels = events
+      .filter((e): e is Extract<CloudScanEvent, { type: 'found' }> => e.type === 'found')
+      .map((e) => e.resource.label);
+    expect(labels).toEqual(['both-match']);
   });
 
   it('yields only labeled Compute Engine instances, with cost always null', async () => {

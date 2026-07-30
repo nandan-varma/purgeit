@@ -3,17 +3,19 @@ import { loadComputeSdk, loadContainerSdk } from './sdk-loader.js';
 
 function labelsMatch(
   labels: Readonly<Record<string, string>> | null | undefined,
-  key: string,
-  value: string,
+  required: ReadonlyMap<string, string>,
 ): boolean {
-  return labels?.[key] === value;
+  for (const [key, value] of required) {
+    if (labels?.[key] !== value) return false;
+  }
+  return true;
 }
 
 /**
  * Discovers Compute Engine instances (via `aggregatedListAsync`, which
  * covers every zone in the project in one call) and GKE clusters (via
- * `listClusters` with `locations/-`, covering every location) labeled with
- * the configured key/value. Unlike the AWS provider, GCP always discovers
+ * `listClusters` with `locations/-`, covering every location) carrying every
+ * one of `opts.tags`' key/value pairs (AND semantics). Unlike the AWS provider, GCP always discovers
  * across the whole project rather than one region per call — GCP's own
  * APIs make that the natural, cheap default (no per-region looping needed),
  * whereas CloudFormation has no equivalent "every region" list call.
@@ -31,6 +33,11 @@ export async function* discoverGcpResources(
       'purgeit: --gcp-project (or cloud.gcp.project in config) is required for --provider gcp',
     );
   }
+  if (opts.tags.size === 0) {
+    throw new Error(
+      'purgeit: at least one --tag (or cloud.tagKey/tagValue in config) is required for cloud discovery',
+    );
+  }
   const project = opts.project;
   const computeSdk = await loadComputeSdk();
   const containerSdk = await loadContainerSdk();
@@ -42,7 +49,7 @@ export async function* discoverGcpResources(
       for (const instance of scopedList.instances ?? []) {
         if (opts.signal?.aborted) break;
         if (instance.name === undefined || instance.name === null) continue;
-        if (!labelsMatch(instance.labels, opts.tagKey, opts.tagValue)) continue;
+        if (!labelsMatch(instance.labels, opts.tags)) continue;
 
         const zone = zoneKey.slice(zoneKey.lastIndexOf('/') + 1);
         const resource: CloudResource = {
@@ -79,7 +86,7 @@ export async function* discoverGcpResources(
           cluster.location === null
         )
           continue;
-        if (!labelsMatch(cluster.resourceLabels, opts.tagKey, opts.tagValue)) continue;
+        if (!labelsMatch(cluster.resourceLabels, opts.tags)) continue;
 
         const resource: CloudResource = {
           id: `projects/${project}/locations/${cluster.location}/clusters/${cluster.name}`,

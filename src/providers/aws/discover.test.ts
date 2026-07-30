@@ -24,7 +24,11 @@ function stack(overrides: Partial<Stack> = {}): Stack {
 }
 
 function baseOpts(overrides: Partial<CloudDiscoveryOptions> = {}): CloudDiscoveryOptions {
-  return { tagKey: 'purgeit-managed', tagValue: 'true', withCost: false, ...overrides };
+  return {
+    tags: new Map([['purgeit-managed', 'true']]),
+    withCost: false,
+    ...overrides,
+  };
 }
 
 async function collect(opts: CloudDiscoveryOptions): Promise<CloudScanEvent[]> {
@@ -39,6 +43,44 @@ describe('discoverAwsResources', () => {
   afterEach(() => {
     cfMock.reset();
     ceMock.reset();
+  });
+
+  it('rejects an empty tags map instead of matching everything', async () => {
+    await expect(collect(baseOpts({ tags: new Map() }))).rejects.toThrow(/at least one --tag/);
+    expect(cfMock.calls()).toHaveLength(0);
+  });
+
+  it('requires every configured tag to match (AND semantics)', async () => {
+    cfMock.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        stack({
+          StackName: 'both-match',
+          Tags: [
+            { Key: 'purgeit-managed', Value: 'true' },
+            { Key: 'team', Value: 'platform' },
+          ],
+        }),
+        stack({
+          StackName: 'only-one-matches',
+          Tags: [
+            { Key: 'purgeit-managed', Value: 'true' },
+            { Key: 'team', Value: 'other' },
+          ],
+        }),
+      ],
+    });
+    const events = await collect(
+      baseOpts({
+        tags: new Map([
+          ['purgeit-managed', 'true'],
+          ['team', 'platform'],
+        ]),
+      }),
+    );
+    const labels = events
+      .filter((e): e is Extract<CloudScanEvent, { type: 'found' }> => e.type === 'found')
+      .map((e) => e.resource.label);
+    expect(labels).toEqual(['both-match']);
   });
 
   it('yields only stacks matching the configured tag key/value', async () => {

@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
 import { parseCliArgs, USAGE } from './args.js';
 import { runHeadless } from './headless.js';
+import { runHeadlessCloud } from './headless-cloud.js';
 
 export interface CliIO {
   stdout?: (text: string) => void;
@@ -33,9 +34,14 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     return 2;
   }
 
+  // Cloud scanning is headless-only this release — the interactive TUI's
+  // data model is local-filesystem-specific (see ui/state.ts), so --provider
+  // aws|gcp always takes the non-interactive report/confirm/delete path,
+  // even in a TTY.
   const wantsTui =
-    parsed.tui ||
-    (!parsed.headless && !parsed.json && !parsed.delete && Boolean(process.stdout.isTTY));
+    parsed.provider === 'local' &&
+    (parsed.tui ||
+      (!parsed.headless && !parsed.json && !parsed.delete && Boolean(process.stdout.isTTY)));
 
   if (wantsTui) {
     let minSizeBytes: number | undefined;
@@ -96,7 +102,9 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     signal: io.signal,
   };
 
-  return runHeadless(parsed, headlessOpts);
+  return parsed.provider === 'local'
+    ? runHeadless(parsed, headlessOpts)
+    : runHeadlessCloud(parsed, headlessOpts);
 }
 
 async function readOwnVersion(): Promise<string> {

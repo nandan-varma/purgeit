@@ -45,6 +45,7 @@ Options:
   -y, --yes                  Skip the confirmation prompt (headless --delete only)
       --json                 Emit machine-readable JSON (disables the TUI)
       --tui                  Force the interactive TUI even when stdout isn't a TTY
+                              (local only — cloud scanning is always headless)
       --headless             Force non-interactive mode even in a TTY
       --concurrency <n>      Max concurrent filesystem operations (default: 8)
       --color                Force ANSI color on
@@ -189,6 +190,7 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     if (values['min-size'] !== undefined) localOnly.push('--min-size');
     if (values.exclude !== undefined && values.exclude.length > 0) localOnly.push('--exclude');
     if (values['no-gated']) localOnly.push('--no-gated');
+    if (values.tui) localOnly.push('--tui');
     if (localOnly.length > 0) {
       throw new Error(`--provider ${provider} cannot be combined with ${localOnly.join(', ')}`);
     }

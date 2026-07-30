@@ -7,6 +7,7 @@ import { createExcludeMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
 import type { ParsedCli } from './args.js';
+import { confirmAndDelete, defaultConfirm } from './report.js';
 
 export interface HeadlessIO {
   stdout?: (text: string) => void;
@@ -15,17 +16,6 @@ export interface HeadlessIO {
   signal?: AbortSignal | undefined;
   /** Asks a yes/no question for the delete confirmation prompt. Defaults to reading real stdin. */
   confirm?: (question: string) => Promise<boolean>;
-}
-
-async function defaultConfirm(question: string): Promise<boolean> {
-  const readline = await import('node:readline/promises');
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    const answer = await rl.question(`${question} [y/N] `);
-    return /^y(es)?$/i.test(answer.trim());
-  } finally {
-    rl.close();
-  }
 }
 
 function sortEntries(
@@ -186,29 +176,24 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     return 0;
   }
 
-  if (!parsed.yes) {
-    const proceed = await confirm(`Delete ${filtered.length} item(s), ${formatBytes(totalBytes)}?`);
-    if (!proceed) {
-      stdout('Aborted.');
-      return 0;
-    }
-  }
-
-  let deletedCount = 0;
-  let failedCount = 0;
-  for await (const event of deleteEntries(
-    filtered.map((e) => e.path),
-    { signal: io.signal, dryRun: parsed.dryRun, concurrency: parsed.concurrency },
-  )) {
-    if (event.type === 'deleted') {
-      stdout(`${event.dryRun ? '(dry-run) ' : ''}deleted: ${event.path}`);
-    } else if (event.type === 'error') {
-      stderr(`error: ${event.path}: ${event.message}`);
-    } else if (event.type === 'done') {
-      deletedCount = event.deleted;
-      failedCount = event.failed;
-    }
-  }
-  stdout(`${deletedCount} deleted, ${failedCount} failed`);
-  return failedCount > 0 ? 1 : 0;
+  return confirmAndDelete(
+    { stdout, stderr, confirm },
+    {
+      confirmQuestion: `Delete ${filtered.length} item(s), ${formatBytes(totalBytes)}?`,
+      yes: parsed.yes,
+    },
+    async function* () {
+      for await (const event of deleteEntries(
+        filtered.map((e) => e.path),
+        { signal: io.signal, dryRun: parsed.dryRun, concurrency: parsed.concurrency },
+      )) {
+        if (event.type === 'deleting') yield { type: 'deleting', key: event.path };
+        else if (event.type === 'deleted')
+          yield { type: 'deleted', key: event.path, dryRun: event.dryRun };
+        else if (event.type === 'error')
+          yield { type: 'error', key: event.path, message: event.message };
+        else yield { type: 'done', deleted: event.deleted, failed: event.failed };
+      }
+    },
+  );
 }

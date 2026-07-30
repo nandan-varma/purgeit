@@ -81,6 +81,24 @@ export function formatBytes(bytes: number): string {
   return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
+const MINUTE_MS = 60_000;
+const HOUR_MS = 3_600_000;
+const DAY_MS = 86_400_000;
+const WEEK_MS = 604_800_000;
+const MONTH_MS = 2_629_800_000; // 30.44 days, matches a calendar-month average
+const YEAR_MS = 31_557_600_000; // 365.25 days
+
+/** Formats an age in milliseconds as a human-readable string (e.g. "3d", "2w", "6mo") for headless text output. */
+export function formatDuration(ms: number): string {
+  const age = Math.max(0, ms);
+  if (age < HOUR_MS) return `${Math.max(1, Math.round(age / MINUTE_MS))}m`;
+  if (age < DAY_MS) return `${Math.round(age / HOUR_MS)}h`;
+  if (age < WEEK_MS) return `${Math.round(age / DAY_MS)}d`;
+  if (age < MONTH_MS) return `${Math.round(age / WEEK_MS)}w`;
+  if (age < YEAR_MS) return `${Math.round(age / MONTH_MS)}mo`;
+  return `${Math.round(age / YEAR_MS)}y`;
+}
+
 /**
  * Narrow an `unknown` caught value to a displayable error message.
  * Use in catch blocks where the caught value is `unknown`:

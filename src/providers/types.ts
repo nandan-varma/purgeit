@@ -42,8 +42,8 @@ export interface CloudDiscoveryOptions {
   readonly profile?: string | undefined;
   /** GCP project id. */
   readonly project?: string | undefined;
-  readonly tagKey: string;
-  readonly tagValue: string;
+  /** All of these key/value pairs must be present on a resource for it to match (AND semantics). */
+  readonly tags: ReadonlyMap<string, string>;
   /** Fetch cost data during discovery — opt-in, since it's extra API calls with their own latency/permissions. */
   readonly withCost: boolean;
   readonly signal?: AbortSignal | undefined;

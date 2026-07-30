@@ -3,6 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const runTuiMock = vi.fn();
 vi.mock('../ui/run-tui.js', () => ({ runTui: runTuiMock }));
 
+const runHeadlessCloudMock = vi.fn();
+vi.mock('./headless-cloud.js', () => ({ runHeadlessCloud: runHeadlessCloudMock }));
+
 // vi.spyOn can't redefine a live ESM namespace export, so readFile is
 // wrapped as a mock at module-load time instead — see the failing-readFile
 // test below, which is the only one that overrides its behavior.
@@ -28,6 +31,7 @@ function captureIO() {
 describe('runCli', () => {
   afterEach(() => {
     runTuiMock.mockReset();
+    runHeadlessCloudMock.mockReset();
   });
 
   it('--help prints USAGE and returns 0', async () => {
@@ -241,5 +245,19 @@ describe('runCli', () => {
     const code = await runCli(['--tui', '/tmp'], { ...io, cwd: '/tmp' });
     expect(code).toBe(2);
     expect(io.err[0]).toMatch(/config error: bad config/);
+  });
+
+  it('dispatches to runHeadlessCloud (never the TUI) for --provider aws|gcp, even in a TTY', async () => {
+    runHeadlessCloudMock.mockResolvedValue(0);
+    const isTTYDescriptor = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
+    Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+    try {
+      const code = await runCli(['--provider', 'aws', '--tag', 'env=dev']);
+      expect(code).toBe(0);
+      expect(runHeadlessCloudMock).toHaveBeenCalledOnce();
+      expect(runTuiMock).not.toHaveBeenCalled();
+    } finally {
+      if (isTTYDescriptor) Object.defineProperty(process.stdout, 'isTTY', isTTYDescriptor);
+    }
   });
 });

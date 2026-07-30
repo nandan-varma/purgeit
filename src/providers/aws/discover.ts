@@ -7,8 +7,15 @@ interface RawTag {
   readonly Value?: string | undefined;
 }
 
-function tagsMatch(tags: readonly RawTag[] | undefined, key: string, value: string): boolean {
-  return (tags ?? []).some((t) => t.Key === key && t.Value === value);
+function tagsMatch(
+  tags: readonly RawTag[] | undefined,
+  required: ReadonlyMap<string, string>,
+): boolean {
+  const list = tags ?? [];
+  for (const [key, value] of required) {
+    if (!list.some((t) => t.Key === key && t.Value === value)) return false;
+  }
+  return true;
 }
 
 /** Only ever called with a stack's Tags after tagsMatch confirmed a match, which is impossible for undefined/empty tags — so unlike tagsMatch, no `?? []` fallback is needed here. */
@@ -21,8 +28,9 @@ function toTagRecord(tags: readonly RawTag[]): Record<string, string> {
 }
 
 /**
- * Discovers CloudFormation stacks tagged with the configured tag key/value,
- * one AWS region per call (from `opts.region`, else the SDK's own default
+ * Discovers CloudFormation stacks carrying every one of `opts.tags`' key/
+ * value pairs (AND semantics), one AWS region per call (from `opts.region`,
+ * else the SDK's own default
  * region resolution — CloudFormation has no single "list stacks in every
  * region" API, unlike GCP's aggregatedList/wildcard-location calls).
  * `--aws-profile` is applied via `AWS_PROFILE` so the SDK's own default
@@ -31,6 +39,11 @@ function toTagRecord(tags: readonly RawTag[]): Record<string, string> {
 export async function* discoverAwsResources(
   opts: CloudDiscoveryOptions,
 ): AsyncGenerator<CloudScanEvent> {
+  if (opts.tags.size === 0) {
+    throw new Error(
+      'purgeit: at least one --tag (or cloud.tagKey/tagValue in config) is required for cloud discovery',
+    );
+  }
   const sdk = await loadCloudFormationSdk();
   if (opts.profile !== undefined) process.env.AWS_PROFILE = opts.profile;
   const client = new sdk.CloudFormationClient(
@@ -48,7 +61,7 @@ export async function* discoverAwsResources(
       for (const stack of response.Stacks ?? []) {
         if (opts.signal?.aborted) break;
         if (stack.StackId === undefined || stack.StackName === undefined) continue;
-        if (!tagsMatch(stack.Tags, opts.tagKey, opts.tagValue)) continue;
+        if (!tagsMatch(stack.Tags, opts.tags)) continue;
 
         const resource: CloudResource = {
           id: stack.StackId,
