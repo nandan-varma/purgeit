@@ -11,9 +11,10 @@ export function Legend() {
         <Text> {glyphs.bullet} safe</Text> (always deletable)
       </Text>
       <Text dimColor>
-        ↑/k ↓/j move · space toggle · a select all · n clear · i invert · s sort · r reverse · enter
-        confirm · q quit · ? help
+        ↑/k ↓/j move · space toggle project/items · p projects/artifacts · a select all · n clear ·
+        i invert
       </Text>
+      <Text dimColor>s sort · r reverse · enter confirm · q quit · ? help</Text>
     </Box>
   );
 }

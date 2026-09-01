@@ -149,8 +149,9 @@ const totalRules = RULE_CATALOG.length;
 
 <style>
   .rule-catalog-summary {
-    color: var(--sl-color-gray-3);
+    color: var(--sl-color-text-muted);
     font-size: var(--sl-text-sm);
+    line-height: 1.6;
   }
 
   /* Toolbar: search field + live count + expand/collapse */
@@ -164,7 +165,8 @@ const totalRules = RULE_CATALOG.length;
     top: 0.5rem;
     z-index: 1;
     background: var(--sl-color-bg);
-    padding-block: 0.5rem;
+    padding-block: 0.6rem;
+    border-radius: 0.5rem;
   }
 
   .search-field {
@@ -174,21 +176,29 @@ const totalRules = RULE_CATALOG.length;
     gap: 0.5rem;
     flex: 1 1 16rem;
     min-width: 12rem;
-    height: 2.35rem;
-    padding-inline: 0.75rem;
-    border: 1px solid var(--sl-color-hairline);
-    border-radius: 0.5rem;
+    height: 2.5rem;
+    padding-inline: 0.85rem;
+    border: 1.5px solid var(--sl-color-hairline);
+    border-radius: var(--sl-radius-md);
     background: var(--sl-color-bg-nav);
-    color: var(--sl-color-gray-2);
-    transition: border-color 0.15s ease;
+    color: var(--sl-color-text-muted);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--sl-shadow-sm);
   }
 
   .search-field :global(svg) {
     flex-shrink: 0;
+    opacity: 0.5;
+    transition: opacity 0.2s ease;
   }
 
   .search-field:focus-within {
     border-color: var(--sl-color-accent);
+    box-shadow: var(--sl-shadow-sm), 0 0 0 3px oklch(0.55 0.14 195 / 0.1);
+  }
+
+  .search-field:focus-within :global(svg) {
+    opacity: 0.9;
   }
 
   .search-field input {
@@ -199,7 +209,8 @@ const totalRules = RULE_CATALOG.length;
   }
 
   .search-field input::placeholder {
-    color: var(--sl-color-gray-3);
+    color: var(--sl-color-text-muted);
+    opacity: 0.7;
   }
 
   .toolbar-buttons {
@@ -210,78 +221,85 @@ const totalRules = RULE_CATALOG.length;
   }
 
   .rule-count {
-    color: var(--sl-color-gray-3);
+    color: var(--sl-color-text-muted);
     font-size: var(--sl-text-xs);
+    font-weight: 500;
     white-space: nowrap;
+    padding: 0.2rem 0.5rem;
+    background: var(--sl-color-accent-subtle);
+    border-radius: var(--sl-radius-sm);
   }
 
   .toolbar-btn {
     box-sizing: border-box;
-    height: 2.35rem;
+    height: 2.5rem;
     font: inherit;
     font-size: var(--sl-text-xs);
     font-weight: 600;
-    color: var(--sl-color-gray-2);
+    color: var(--sl-color-text-muted);
     background: var(--sl-color-bg-nav);
-    border: 1px solid var(--sl-color-hairline);
-    border-radius: 0.4rem;
-    padding-inline: 0.75rem;
+    border: 1.5px solid var(--sl-color-hairline);
+    border-radius: var(--sl-radius-md);
+    padding-inline: 0.85rem;
     cursor: pointer;
     white-space: nowrap;
-    transition: border-color 0.15s ease, color 0.15s ease;
+    transition: border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--sl-shadow-sm);
   }
 
   .toolbar-btn:hover {
-    border-color: var(--sl-color-text-accent);
+    border-color: var(--sl-color-accent);
     color: var(--sl-color-text-accent);
+    box-shadow: var(--sl-shadow-md);
   }
 
   .rule-empty-state {
-    color: var(--sl-color-gray-3);
+    color: var(--sl-color-text-muted);
     font-style: italic;
     padding-block: 1rem;
+    text-align: center;
+    opacity: 0.7;
   }
 
   /* Section cards */
   .rule-sections {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   .rule-section {
-    border: 1px solid var(--sl-color-hairline);
-    border-radius: 0.5rem;
+    border: 1.5px solid var(--sl-color-hairline);
+    border-radius: var(--sl-radius-md);
     background: var(--sl-color-bg-nav);
     overflow: clip;
-    transition: border-color 0.15s ease;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--sl-shadow-sm);
   }
 
-  /* Same accent-on-hover/open treatment as .toolbar-btn above, so the whole
-     component uses one interactive color, not one per section. */
   .rule-section:hover,
   .rule-section[open] {
-    border-color: var(--sl-color-text-accent);
+    border-color: var(--sl-color-accent);
+    box-shadow: var(--sl-shadow-md);
   }
 
   .rule-section > summary {
     display: flex;
     align-items: center;
-    padding: 0.65rem 0.9rem;
+    padding: 0.75rem 1rem;
     font-weight: 600;
     cursor: pointer;
     list-style: none;
+    transition: background-color 0.15s ease;
+  }
+
+  .rule-section > summary:hover {
+    background: var(--sl-color-accent-subtle);
   }
 
   .rule-section > summary::-webkit-details-marker {
     display: none;
   }
-
-  /* Starlight's own marker::before is already a flex item of this summary
-     (generated content on a flex container becomes a flex item per spec)
-     with its own margin — deliberately not touching it here, and instead
-     spacing .section-label/.section-stats off it directly, so there's no
-     specificity fight with Starlight's stylesheet over the marker's box. */
 
   .rule-section[open] > summary {
     border-bottom: 1px solid var(--sl-color-hairline);
@@ -289,7 +307,9 @@ const totalRules = RULE_CATALOG.length;
 
   .section-label {
     margin-inline-start: 0.5rem;
-    color: var(--sl-color-white);
+    color: var(--sl-color-text);
+    font-weight: 700;
+    letter-spacing: -0.01em;
   }
 
   .section-stats {
@@ -305,27 +325,31 @@ const totalRules = RULE_CATALOG.length;
     align-items: center;
     gap: 0.3em;
     font-size: var(--sl-text-xs);
+    font-weight: 500;
     white-space: nowrap;
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--sl-radius-sm);
   }
 
   .mini-stat::before {
     content: '';
-    inline-size: 0.45em;
-    block-size: 0.45em;
+    inline-size: 0.4em;
+    block-size: 0.4em;
     border-radius: 50%;
     background: currentColor;
   }
 
   .mini-safe {
-    color: var(--sl-color-green);
+    color: var(--sl-color-green-high);
+    background: var(--sl-color-green-low);
   }
 
   .mini-gated {
-    color: var(--sl-color-orange);
+    color: var(--sl-color-orange-high);
+    background: var(--sl-color-orange-low);
   }
 
-  /* Rule table — overflow-x wrapper is a safety net on very narrow
-     viewports; normal-width names/descriptions never need it in practice. */
+  /* Rule table */
   .rule-table-wrap {
     overflow-x: auto;
     background: var(--sl-color-bg);
@@ -340,18 +364,16 @@ const totalRules = RULE_CATALOG.length;
   .rule-table-wrap thead th {
     text-align: start;
     font-size: var(--sl-text-xs);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--sl-color-gray-3);
-    background: var(--sl-color-bg);
-    padding: 0.5rem 0.9rem;
-    border-bottom: 1px solid var(--sl-color-hairline);
+    letter-spacing: 0.05em;
+    color: var(--sl-color-text-muted);
+    background: var(--sl-color-bg-nav);
+    padding: 0.6rem 1rem;
+    border-bottom: 1.5px solid var(--sl-color-hairline);
     white-space: nowrap;
   }
 
-  /* Name and Kind shrink to fit their content (nowrap forces a stable
-     minimum so names never break mid-word); Description absorbs the rest. */
   .rule-table-wrap th:nth-child(1),
   .rule-table-wrap td:nth-child(1) {
     white-space: nowrap;
@@ -363,10 +385,10 @@ const totalRules = RULE_CATALOG.length;
   }
 
   .rule-table-wrap tbody td {
-    padding: 0.55rem 0.9rem;
+    padding: 0.6rem 1rem;
     vertical-align: top;
     border-bottom: 1px solid var(--sl-color-hairline-light);
-    transition: background-color 0.1s ease;
+    transition: background-color 0.12s ease;
   }
 
   .rule-table-wrap tbody tr:last-child td {
@@ -374,34 +396,41 @@ const totalRules = RULE_CATALOG.length;
   }
 
   .rule-table-wrap tbody tr:hover td {
-    background: var(--sl-color-bg-nav);
+    background: var(--sl-color-accent-subtle);
+  }
+
+  .rule-name {
+    font-weight: 600;
+    color: var(--sl-color-text-accent);
   }
 
   .rule-description {
     margin: 0;
+    line-height: 1.5;
   }
 
   .gate-condition {
     display: flex;
     align-items: center;
-    gap: 0.3rem;
-    margin: 0.3rem 0 0;
-    color: var(--sl-color-gray-3);
+    gap: 0.35rem;
+    margin: 0.35rem 0 0;
+    color: var(--sl-color-text-muted);
     font-size: var(--sl-text-xs);
   }
 
   .gate-condition svg {
     flex-shrink: 0;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   .badge {
     display: inline-block;
-    border-radius: 0.25rem;
-    padding: 0.05rem 0.45rem;
+    border-radius: var(--sl-radius-sm);
+    padding: 0.1rem 0.5rem;
     font-size: var(--sl-text-xs);
     font-weight: 600;
     white-space: nowrap;
+    letter-spacing: 0.01em;
   }
 
   .badge-always-safe {
@@ -416,7 +445,7 @@ const totalRules = RULE_CATALOG.length;
 
   .badge-prune-meta {
     background-color: var(--sl-color-gray-6);
-    color: var(--sl-color-gray-2);
+    color: var(--sl-color-text-muted);
   }
 
   @media (max-width: 640px) {

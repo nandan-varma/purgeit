@@ -48,7 +48,9 @@ export function Header({
           {state.phase === 'scanning' ? ` ${spinner} scanning…` : ''}
         </Text>
         <Text dimColor wrap="truncate-end">
-          {sortLabel(state.sortKey, state.sortDir)}
+          {state.view === 'projects'
+            ? `projects · ${state.sortDir} size`
+            : sortLabel(state.sortKey, state.sortDir)}
         </Text>
       </Box>
       <Box justifyContent="space-between">

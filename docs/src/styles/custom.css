@@ -1,0 +1,354 @@
+/* ── Custom theme for purgeit docs ── */
+
+/* ── Light palette ── */
+:root {
+  --sl-color-accent-low: oklch(0.95 0.02 195);
+  --sl-color-accent: oklch(0.55 0.14 195);
+  --sl-color-accent-high: oklch(0.45 0.16 195);
+  --sl-color-accent-subtle: oklch(0.96 0.015 195);
+  --sl-color-bg: oklch(0.99 0.003 195);
+  --sl-color-bg-nav: oklch(0.97 0.006 195);
+  --sl-color-bg-sidebar: oklch(0.975 0.005 195);
+  --sl-color-text: oklch(0.2 0.015 195);
+  --sl-color-text-accent: oklch(0.45 0.16 195);
+  --sl-color-text-muted: oklch(0.5 0.03 195);
+  --sl-color-green: oklch(0.62 0.16 155);
+  --sl-color-green-high: oklch(0.38 0.12 155);
+  --sl-color-green-low: oklch(0.94 0.04 155);
+  --sl-color-orange: oklch(0.7 0.15 60);
+  --sl-color-orange-high: oklch(0.48 0.13 55);
+  --sl-color-orange-low: oklch(0.95 0.035 60);
+  --sl-color-red: oklch(0.6 0.18 25);
+  --sl-color-red-high: oklch(0.45 0.16 25);
+  --sl-color-red-low: oklch(0.94 0.04 25);
+  --sl-color-purple: oklch(0.55 0.16 300);
+  --sl-color-purple-high: oklch(0.4 0.14 300);
+  --sl-color-purple-low: oklch(0.94 0.04 300);
+  --sl-color-yellow: oklch(0.82 0.12 90);
+  --sl-color-yellow-high: oklch(0.55 0.12 85);
+  --sl-color-yellow-low: oklch(0.96 0.04 90);
+  --sl-color-gray-1: oklch(0.18 0.01 195);
+  --sl-color-gray-2: oklch(0.35 0.015 195);
+  --sl-color-gray-3: oklch(0.5 0.02 195);
+  --sl-color-gray-4: oklch(0.6 0.015 195);
+  --sl-color-gray-5: oklch(0.72 0.01 195);
+  --sl-color-gray-6: oklch(0.88 0.008 195);
+  --sl-color-gray-7: oklch(0.93 0.005 195);
+  --sl-color-hairline: oklch(0.88 0.008 195);
+  --sl-color-hairline-light: oklch(0.92 0.005 195);
+
+  /* Typography */
+  --sl-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sl-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+
+  /* Layout */
+  --sl-content-width: 48rem;
+  --sl-sidebar-width: 18rem;
+  --sl-nav-height: 3.5rem;
+
+  /* Shadows */
+  --sl-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.06);
+  --sl-shadow-md: 0 4px 12px oklch(0 0 0 / 0.08);
+  --sl-shadow-lg: 0 8px 30px oklch(0 0 0 / 0.1);
+
+  /* Radius */
+  --sl-radius-sm: 0.35rem;
+  --sl-radius-md: 0.5rem;
+  --sl-radius-lg: 0.75rem;
+}
+
+/* ── Dark palette ── */
+html[data-theme='dark'] {
+  --sl-color-accent-low: oklch(0.28 0.04 195);
+  --sl-color-accent: oklch(0.7 0.14 195);
+  --sl-color-accent-high: oklch(0.8 0.12 195);
+  --sl-color-accent-subtle: oklch(0.22 0.03 195);
+  --sl-color-bg: oklch(0.14 0.012 195);
+  --sl-color-bg-nav: oklch(0.17 0.015 195);
+  --sl-color-bg-sidebar: oklch(0.16 0.012 195);
+  --sl-color-text: oklch(0.88 0.01 195);
+  --sl-color-text-accent: oklch(0.72 0.14 195);
+  --sl-color-text-muted: oklch(0.58 0.02 195);
+  --sl-color-green: oklch(0.72 0.16 155);
+  --sl-color-green-high: oklch(0.6 0.14 155);
+  --sl-color-green-low: oklch(0.25 0.05 155);
+  --sl-color-orange: oklch(0.78 0.13 60);
+  --sl-color-orange-high: oklch(0.65 0.12 55);
+  --sl-color-orange-low: oklch(0.26 0.045 55);
+  --sl-color-red: oklch(0.68 0.18 25);
+  --sl-color-red-high: oklch(0.55 0.16 25);
+  --sl-color-red-low: oklch(0.26 0.05 25);
+  --sl-color-purple: oklch(0.65 0.16 300);
+  --sl-color-purple-high: oklch(0.55 0.14 300);
+  --sl-color-purple-low: oklch(0.26 0.05 300);
+  --sl-color-yellow: oklch(0.8 0.12 90);
+  --sl-color-yellow-high: oklch(0.65 0.12 85);
+  --sl-color-yellow-low: oklch(0.28 0.05 85);
+  --sl-color-gray-1: oklch(0.92 0.008 195);
+  --sl-color-gray-2: oklch(0.75 0.015 195);
+  --sl-color-gray-3: oklch(0.58 0.02 195);
+  --sl-color-gray-4: oklch(0.45 0.015 195);
+  --sl-color-gray-5: oklch(0.3 0.01 195);
+  --sl-color-gray-6: oklch(0.22 0.01 195);
+  --sl-color-gray-7: oklch(0.18 0.008 195);
+  --sl-color-hairline: oklch(0.3 0.015 195);
+  --sl-color-hairline-light: oklch(0.22 0.01 195);
+
+  --sl-shadow-sm: 0 1px 3px oklch(0 0 0 / 0.2);
+  --sl-shadow-md: 0 4px 12px oklch(0 0 0 / 0.25);
+  --sl-shadow-lg: 0 8px 30px oklch(0 0 0 / 0.35);
+}
+
+/* ── Hero overrides ── */
+.sl-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.85 0.08 195 / 0.5), transparent),
+    linear-gradient(180deg, oklch(0.97 0.01 195) 0%, var(--sl-color-bg) 100%) !important;
+}
+
+html[data-theme='dark'] .sl-hero {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, oklch(0.25 0.06 195 / 0.6), transparent),
+    linear-gradient(180deg, oklch(0.16 0.015 195) 0%, var(--sl-color-bg) 100%) !important;
+}
+
+.sl-hero-title {
+  letter-spacing: -0.02em;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+}
+
+.sl-hero-tagline {
+  color: var(--sl-color-text-muted);
+  line-height: 1.6;
+  max-width: 36rem;
+}
+
+/* Hero action buttons */
+.sl-hero-actions a {
+  border-radius: var(--sl-radius-md) !important;
+  font-weight: 600;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.sl-hero-actions a:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--sl-shadow-md);
+}
+
+.sl-hero-actions .sl-hero-action-primary {
+  background: var(--sl-color-accent) !important;
+  color: white !important;
+}
+
+.sl-hero-actions .sl-hero-action-primary:hover {
+  background: var(--sl-color-accent-high) !important;
+  box-shadow: var(--sl-shadow-md), 0 0 20px oklch(0.55 0.14 195 / 0.25);
+}
+
+/* ── Card grid ── */
+.sl-card-grid {
+  gap: 1rem !important;
+}
+
+.sl-card {
+  border: 1px solid var(--sl-color-hairline) !important;
+  border-radius: var(--sl-radius-md) !important;
+  background: var(--sl-color-bg-nav) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease !important;
+  box-shadow: var(--sl-shadow-sm) !important;
+}
+
+.sl-card:hover {
+  border-color: var(--sl-color-accent) !important;
+  box-shadow: var(--sl-shadow-md) !important;
+  transform: translateY(-2px);
+}
+
+.sl-card-title {
+  color: var(--sl-color-text) !important;
+  font-weight: 700 !important;
+}
+
+.sl-card .card-icon {
+  color: var(--sl-color-accent) !important;
+}
+
+/* ── Sidebar ── */
+.sidebar-pane .sidebar-section-label {
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--sl-color-text-muted);
+}
+
+.sidebar-pane a {
+  border-radius: var(--sl-radius-sm);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+.sidebar-pane a:hover {
+  background: var(--sl-color-accent-subtle);
+}
+
+.sidebar-pane a[aria-current='page'] {
+  background: var(--sl-color-accent-subtle) !important;
+  color: var(--sl-color-text-accent) !important;
+  font-weight: 600;
+  border-left: 3px solid var(--sl-color-accent);
+}
+
+/* ── Content area ── */
+main {
+  font-feature-settings: 'cv01', 'cv02', 'cv03';
+}
+
+/* Headings */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+  font-weight: 700 !important;
+}
+
+h2 {
+  border-bottom: 1px solid var(--sl-color-hairline-light);
+  padding-bottom: 0.5rem;
+  margin-top: 2.5rem !important;
+}
+
+/* Links */
+a {
+  text-decoration-skip-ink: auto;
+}
+
+main a {
+  color: var(--sl-color-text-accent);
+  text-underline-offset: 2px;
+  transition: color 0.12s ease;
+}
+
+main a:hover {
+  color: var(--sl-color-accent-high);
+}
+
+/* ── Code blocks ── */
+pre {
+  border-radius: var(--sl-radius-md) !important;
+  border: 1px solid var(--sl-color-hairline) !important;
+  box-shadow: var(--sl-shadow-sm) !important;
+  font-size: var(--sl-text-sm) !important;
+  line-height: 1.7 !important;
+}
+
+:not(pre) > code {
+  background: var(--sl-color-accent-subtle) !important;
+  color: var(--sl-color-text-accent) !important;
+  border-radius: 0.25rem !important;
+  padding: 0.1rem 0.35rem !important;
+  font-size: 0.88em !important;
+  font-weight: 500;
+  border: 1px solid var(--sl-color-hairline-light) !important;
+}
+
+/* ── Tables ── */
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+thead th {
+  background: var(--sl-color-bg-nav) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: var(--sl-text-xs) !important;
+  letter-spacing: 0.05em;
+  color: var(--sl-color-text-muted) !important;
+}
+
+tbody tr {
+  transition: background-color 0.1s ease;
+}
+
+tbody tr:hover {
+  background: var(--sl-color-accent-subtle);
+}
+
+tbody td {
+  border-bottom: 1px solid var(--sl-color-hairline-light) !important;
+}
+
+/* ── Keyboard elements ── */
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5rem;
+  height: 1.5rem;
+  padding: 0 0.35rem;
+  font-family: var(--sl-font-mono);
+  font-size: 0.78em;
+  font-weight: 600;
+  background: var(--sl-color-bg-nav);
+  border: 1px solid var(--sl-color-hairline);
+  border-bottom-width: 2px;
+  border-radius: 0.3rem;
+  box-shadow: 0 1px 0 var(--sl-color-hairline);
+  color: var(--sl-color-text);
+  white-space: nowrap;
+}
+
+/* ── Admonitions / asides ── */
+.sl-markdown > .aside {
+  border-radius: var(--sl-radius-md);
+  border: 1px solid var(--sl-color-hairline);
+}
+
+/* ── Search ── */
+sl-search-input {
+  --sl-search-bg: var(--sl-color-bg-nav);
+  --sl-search-border-color: var(--sl-color-hairline);
+  --sl-search-focus-border-color: var(--sl-color-accent);
+  --sl-search-text-color: var(--sl-color-text);
+  --sl-search-placeholder-color: var(--sl-color-text-muted);
+}
+
+/* ── Page navigation (prev/next) ── */
+.sl-link-card {
+  border-radius: var(--sl-radius-md) !important;
+  border: 1px solid var(--sl-color-hairline) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sl-link-card:hover {
+  border-color: var(--sl-color-accent) !important;
+  box-shadow: var(--sl-shadow-md) !important;
+}
+
+/* ── Footer ── */
+footer {
+  border-top: 1px solid var(--sl-color-hairline-light);
+}
+
+/* ── Scrollbar (subtle, modern) ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--sl-color-gray-5);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--sl-color-gray-4);
+}
+
+/* ── Selection color ── */
+::selection {
+  background: oklch(0.6 0.12 195 / 0.25);
+}

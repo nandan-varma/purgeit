@@ -66,10 +66,24 @@ describe('reducer TOGGLE_SELECT', () => {
       phase: 'ready' as const,
       entries: [small, big],
       cursor: 0,
+      view: 'artifacts' as const,
     };
     const next = reducer(state, { type: 'TOGGLE_SELECT' });
     expect(next.selected.has(big.path)).toBe(true);
     expect(next.selected.has(small.path)).toBe(false);
+  });
+
+  it('toggles every artifact in the focused project from the default overview', () => {
+    const first = entry({ path: '/root/a/node_modules', project: 'a', size: 1000 });
+    const second = entry({ path: '/root/a/dist', project: 'a', size: 10 });
+    const state = {
+      ...initialState(),
+      phase: 'ready' as const,
+      entries: [first, second],
+      cursor: 0,
+    };
+    const next = reducer(state, { type: 'TOGGLE_SELECT' });
+    expect(next.selected).toEqual(new Set([first.path, second.path]));
   });
 
   it('is a no-op when the cursor is out of range (e.g. empty entries)', () => {

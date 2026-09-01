@@ -92,6 +92,15 @@ describe('App', () => {
     expect(frame).toContain('[ ]');
   });
 
+  it('opens with a project-level overview and lets the user drill into artifacts', async () => {
+    const { lastFrame, stdin } = renderApp();
+    await flush();
+    expect(lastFrame() ?? '').toContain('ITEMS');
+    stdin.write('p');
+    await flush();
+    expect(lastFrame() ?? '').toContain('TYPE');
+  });
+
   it('does not reach the confirm dialog on enter with nothing selected', async () => {
     const { lastFrame, stdin } = renderApp();
     await flush();

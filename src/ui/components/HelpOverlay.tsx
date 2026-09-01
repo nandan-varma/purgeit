@@ -34,6 +34,7 @@ export function HelpOverlay() {
         <KeyRow keys="Home/g  End/G" description="jump to first / last" />
         <KeyRow keys="PgUp / PgDn" description="jump a page" />
         <KeyRow keys="space" description="toggle selection" />
+        <KeyRow keys="p" description="toggle projects / artifact detail" />
         <KeyRow keys="a / n / i" description="select all / clear / invert" />
         <KeyRow keys="s / r" description="cycle sort key / reverse direction" />
         <KeyRow keys="enter" description="review & confirm deletion (needs ≥1 selected)" />

@@ -10,6 +10,7 @@ import { DoneSummary } from './components/DoneSummary.js';
 import { Header } from './components/Header.js';
 import { HelpOverlay } from './components/HelpOverlay.js';
 import { Legend } from './components/Legend.js';
+import { ProjectList } from './components/ProjectList.js';
 import { computeVisibleRows } from './layout.js';
 import type { ScanResult } from './result.js';
 import type { SortKey } from './state.js';
@@ -173,6 +174,8 @@ export function App({
       dispatch({ type: 'CYCLE_SORT' });
     } else if (input === 'r') {
       dispatch({ type: 'REVERSE_SORT' });
+    } else if (input === 'p') {
+      dispatch({ type: 'TOGGLE_VIEW' });
     } else if (input === '?') {
       setShowHelp(true);
     } else if (key.return && state.selected.size > 0) {
@@ -225,7 +228,11 @@ export function App({
       {!showHelp &&
         (state.phase === 'scanning' || state.phase === 'ready' || state.phase === 'confirming') && (
           <Box marginTop={1}>
-            <ArtifactList state={state} />
+            {state.view === 'projects' ? (
+              <ProjectList state={state} />
+            ) : (
+              <ArtifactList state={state} />
+            )}
           </Box>
         )}
       {!showHelp && state.phase === 'confirming' && <ConfirmDialog state={state} dryRun={dryRun} />}

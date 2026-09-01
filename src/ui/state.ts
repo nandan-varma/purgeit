@@ -5,6 +5,14 @@ import type { ValidationWarning } from '../types.js';
 export type Phase = 'scanning' | 'ready' | 'confirming' | 'deleting' | 'done' | 'error';
 
 export type SortKey = 'size' | 'path' | 'name';
+export type View = 'projects' | 'artifacts';
+
+export interface ProjectGroup {
+  readonly name: string;
+  readonly entries: readonly ScanEntry[];
+  readonly totalSize: number;
+  readonly newestModified: number | null;
+}
 
 export interface AppState {
   phase: Phase;
@@ -13,6 +21,7 @@ export interface AppState {
   selected: Set<string>;
   sortKey: SortKey;
   sortDir: 'asc' | 'desc';
+  view: View;
   scanDone: boolean;
   warnings: ValidationWarning[];
   deletion: { deleted: number; failed: number } | null;
@@ -32,6 +41,7 @@ export type Action =
   | { type: 'INVERT_SELECTION' }
   | { type: 'CYCLE_SORT' }
   | { type: 'REVERSE_SORT' }
+  | { type: 'TOGGLE_VIEW' }
   | { type: 'ENTER_CONFIRM' }
   | { type: 'CANCEL_CONFIRM' }
   | { type: 'START_DELETE' }
@@ -57,6 +67,31 @@ export function sortedEntries(
   });
 }
 
+/** Groups candidates into the cleanup opportunities users actually reason about. */
+export function projectGroups(state: Pick<AppState, 'entries' | 'sortDir'>): ProjectGroup[] {
+  const groups = new Map<string, ScanEntry[]>();
+  for (const entry of state.entries) {
+    const entries = groups.get(entry.project) ?? [];
+    entries.push(entry);
+    groups.set(entry.project, entries);
+  }
+  const direction = state.sortDir === 'asc' ? 1 : -1;
+  return [...groups.entries()]
+    .map(([name, entries]) => ({
+      name,
+      entries,
+      totalSize: entries.reduce((sum, entry) => sum + (entry.size ?? 0), 0),
+      newestModified: entries.reduce<number | null>(
+        (newest, entry) =>
+          entry.lastModified === null || (newest !== null && newest >= entry.lastModified)
+            ? newest
+            : entry.lastModified,
+        null,
+      ),
+    }))
+    .sort((a, b) => direction * (a.totalSize - b.totalSize));
+}
+
 export function initialState(
   sortKey: SortKey = 'size',
   sortDir: 'asc' | 'desc' = 'desc',
@@ -68,6 +103,7 @@ export function initialState(
     selected: new Set<string>(),
     sortKey,
     sortDir,
+    view: 'projects',
     scanDone: false,
     warnings: [],
     deletion: null,
@@ -108,15 +144,35 @@ export function reducer(state: AppState, action: Action): AppState {
       };
 
     case 'MOVE_CURSOR': {
-      const len = state.entries.length;
+      const len = state.view === 'projects' ? projectGroups(state).length : state.entries.length;
       const cursor = len === 0 ? 0 : (state.cursor + action.delta + len) % len;
       return { ...state, cursor };
     }
 
     case 'SET_CURSOR':
-      return { ...state, cursor: Math.max(0, Math.min(action.index, state.entries.length - 1)) };
+      return {
+        ...state,
+        cursor: Math.max(
+          0,
+          Math.min(
+            action.index,
+            (state.view === 'projects' ? projectGroups(state).length : state.entries.length) - 1,
+          ),
+        ),
+      };
 
     case 'TOGGLE_SELECT': {
+      if (state.view === 'projects') {
+        const group = projectGroups(state)[state.cursor];
+        if (!group) return state;
+        const selected = new Set(state.selected);
+        const allSelected = group.entries.every((entry) => selected.has(entry.path));
+        for (const entry of group.entries) {
+          if (allSelected) selected.delete(entry.path);
+          else selected.add(entry.path);
+        }
+        return { ...state, selected };
+      }
       const entry = sortedEntries(state)[state.cursor];
       if (!entry) return state;
       const selected = new Set(state.selected);
@@ -156,6 +212,9 @@ export function reducer(state: AppState, action: Action): AppState {
 
     case 'REVERSE_SORT':
       return { ...state, sortDir: state.sortDir === 'asc' ? 'desc' : 'asc' };
+
+    case 'TOGGLE_VIEW':
+      return { ...state, view: state.view === 'projects' ? 'artifacts' : 'projects', cursor: 0 };
 
     case 'ENTER_CONFIRM':
       return { ...state, phase: 'confirming' };
