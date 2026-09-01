@@ -3,6 +3,11 @@ title: CLI reference
 description: Command-line options for purgeit.
 ---
 
+> The installed CLI is the canonical, version-matched reference for people and agents:
+> run `purgeit agent instructions` for the operating workflow and `purgeit agent schema`
+> for the JSON contract. This page documents legacy flags while users migrate to
+> `scan`, `plan`, and `apply`.
+
 ## Usage
 
 ```bash

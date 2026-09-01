@@ -31,9 +31,9 @@ describe('validatePackageJson', () => {
     );
   });
 
-  it("warns when 'name' is missing", async () => {
+  it("accepts a package.json without a publish-only 'name' field", async () => {
     root = buildTree({ 'package.json': '{}' });
-    expect((await validatePackageJson(join(root, 'package.json')))?.message).toMatch(/name/);
+    expect(await validatePackageJson(join(root, 'package.json'))).toBeUndefined();
   });
 });
 

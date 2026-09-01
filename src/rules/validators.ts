@@ -17,14 +17,10 @@ export async function validatePackageJson(file: string): Promise<ValidationWarni
   if (!(await pathExists(file))) {
     return { file, message: 'package.json not found' };
   }
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(await readFile(file, 'utf8'));
+    JSON.parse(await readFile(file, 'utf8'));
   } catch {
     return { file, message: 'package.json is invalid JSON' };
-  }
-  if (typeof parsed !== 'object' || parsed === null || !('name' in parsed)) {
-    return { file, message: "package.json is missing 'name' field" };
   }
   return undefined;
 }

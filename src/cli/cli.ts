@@ -1,9 +1,12 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
+import { runAgentCommand } from './agent.js';
 import { parseCliArgs, USAGE } from './args.js';
+import { USAGE as COMMAND_USAGE } from './guide.js';
 import { runHeadless } from './headless.js';
 import { runHeadlessCloud } from './headless-cloud.js';
+import { applyPlan, writePlan } from './plans.js';
 import { runSkillsCommand } from './skills.js';
 
 export interface CliIO {
@@ -20,15 +23,50 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
   // Checked before parseCliArgs so 'skills' is never mistaken for a
   // directory positional — a subcommand, not a flag, so it lives outside
   // the rest of the flag-based parsing surface entirely.
+  if (argv[0] === 'agent') {
+    return runAgentCommand(argv.slice(1), { stdout, stderr });
+  }
+  if (argv[0] === 'apply') {
+    const planIndex = argv.indexOf('--plan');
+    const planFile = planIndex === -1 ? undefined : argv[planIndex + 1];
+    if (planFile === undefined || planFile.startsWith('-')) {
+      stderr('purgeit: apply requires --plan <file>');
+      return 2;
+    }
+    return applyPlan(planFile, argv.includes('--yes'), {
+      stdout,
+      stderr,
+      cwd: io.cwd,
+      signal: io.signal,
+    });
+  }
   if (argv[0] === 'skills') {
     return runSkillsCommand(argv.slice(1), { stdout, stderr });
+  }
+
+  const isPlanCommand = argv[0] === 'plan';
+  const isScanCommand = argv[0] === 'scan';
+  if (argv[0] === 'scan' || argv[0] === 'tui' || isPlanCommand) {
+    const command = argv[0];
+    argv = argv.slice(1);
+    if (command === 'scan') {
+      argv = ['--headless', ...argv];
+      if (
+        !argv.some((arg) => arg === '--format' || arg.startsWith('--format=')) &&
+        !argv.includes('--json')
+      ) {
+        argv = [...argv, '--format', process.stdout.isTTY ? 'table' : 'json'];
+      }
+    } else if (command === 'tui') {
+      argv = ['--tui', ...argv];
+    }
   }
 
   let parsed: Awaited<ReturnType<typeof parseCliArgs>>;
   try {
     const early = parseCliArgs(argv);
     if (early === 'help') {
-      stdout(USAGE);
+      stdout(`${COMMAND_USAGE}\n\n${USAGE}`);
       return 0;
     }
     if (early === 'version') {
@@ -40,6 +78,36 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     stderr(`purgeit: ${formatErrorMessage(err)}`);
     stderr(`\n${USAGE}`);
     return 2;
+  }
+
+  if (isScanCommand) parsed = { ...parsed, emptyIsSuccess: true, richOutput: true };
+
+  if (isPlanCommand) {
+    if ((parsed.include?.length ?? 0) === 0 || parsed.output === undefined) {
+      stderr('purgeit: plan requires at least one --include <relative-path> and --output <file>');
+      return 2;
+    }
+    const captured: string[] = [];
+    const code = await runHeadless(
+      { ...parsed, headless: true, json: true, format: 'json', delete: false },
+      { stdout: (line) => captured.push(line), stderr, cwd: io.cwd, signal: io.signal },
+    );
+    if (code !== 0) return code;
+    try {
+      const report = JSON.parse(captured.join('')) as {
+        root: string;
+        entries: {
+          path: string;
+          relativePath: string;
+          ruleName: string;
+          lastModified: number | null;
+        }[];
+      };
+      return writePlan(report, parsed.output, { stdout, stderr, cwd: io.cwd, signal: io.signal });
+    } catch (err) {
+      stderr(`purgeit: failed to create plan: ${formatErrorMessage(err)}`);
+      return 2;
+    }
   }
 
   // Cloud scanning is headless-only this release — the interactive TUI's

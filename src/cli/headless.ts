@@ -1,9 +1,15 @@
-import { basename, resolve } from 'node:path';
+import { basename, relative, resolve, sep } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
-import { formatBytes, formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
+import {
+  formatBytes,
+  formatDuration,
+  formatErrorMessage,
+  parseDuration,
+  parseSizeString,
+} from '../format.js';
 import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
-import { createExcludeMatcher } from '../scan/exclude.js';
+import { createExcludeMatcher, createPathMatcher } from '../scan/exclude.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
 import type { ParsedCli } from './args.js';
@@ -12,7 +18,7 @@ import { confirmAndDelete, defaultConfirm } from './report.js';
 export interface HeadlessIO {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
-  cwd?: string;
+  cwd?: string | undefined;
   signal?: AbortSignal | undefined;
   /** Asks a yes/no question for the delete confirmation prompt. Defaults to reading real stdin. */
   confirm?: (question: string) => Promise<boolean>;
@@ -40,6 +46,7 @@ function sortEntries(
  * testable — mirrors platex's `runCli(argv, io)` pattern.
  */
 export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promise<number> {
+  const startedAt = performance.now();
   const cwd = io.cwd ?? process.cwd();
   const stdout = io.stdout ?? ((text: string) => process.stdout.write(`${text}\n`));
   const stderr = io.stderr ?? ((text: string) => process.stderr.write(`${text}\n`));
@@ -85,6 +92,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   );
 
   const isExcluded = createExcludeMatcher(root, parsed.exclude);
+  const isIncluded = createPathMatcher(root, parsed.include ?? []);
 
   const found: ScanEntry[] = [];
   const sizes = new Map<string, number>();
@@ -130,49 +138,87 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     return true;
   };
   const filtered = sortEntries(
-    found.filter((e) => sizeOf(e.path) >= minSizeBytes && passesAge(e.path)),
+    found.filter(
+      (e) =>
+        !isExcluded(e.path) &&
+        ((parsed.include?.length ?? 0) === 0 || isIncluded(e.path)) &&
+        sizeOf(e.path) >= minSizeBytes &&
+        passesAge(e.path),
+    ),
     parsed.sort,
     parsed.ascending,
     sizeOf,
   );
   const totalBytes = filtered.reduce((sum, e) => sum + sizeOf(e.path), 0);
 
-  if (parsed.json) {
-    stdout(
-      JSON.stringify(
-        {
-          root,
-          totalBytes,
-          entries: filtered.map((e) => ({
-            path: e.path,
-            project: e.project,
-            kind: e.kind,
-            ruleName: e.ruleName,
-            size: sizeOf(e.path),
-            lastModified: lastModifiedOf(e.path) ?? null,
-          })),
-          warnings,
-        },
-        null,
-        2,
-      ),
-    );
-    return filtered.length === 0 ? 1 : 0;
+  const elapsedMs = performance.now() - startedAt;
+  const entries = filtered.map((e) => ({
+    path: e.path,
+    relativePath: relative(root, e.path).split(sep).join('/'),
+    project: e.project,
+    kind: e.kind,
+    ruleName: e.ruleName,
+    size: sizeOf(e.path),
+    lastModified: lastModifiedOf(e.path) ?? null,
+  }));
+  const report = {
+    schemaVersion: 1,
+    status: 'completed' as const,
+    root,
+    summary: { entryCount: entries.length, totalBytes, elapsedMs },
+    // Legacy aliases remain while the former --json mode transitions to scan --format json.
+    totalBytes,
+    entries,
+    diagnostics: warnings.map((message) => ({ code: 'manifest-warning', message })),
+    warnings,
+  };
+  const outputFormat = parsed.format ?? (parsed.json ? 'json' : 'table');
+  if (outputFormat === 'json') {
+    stdout(JSON.stringify(report, null, 2));
+    return filtered.length === 0 && !parsed.emptyIsSuccess ? 1 : 0;
+  }
+  if (outputFormat === 'jsonl') {
+    stdout(JSON.stringify({ schemaVersion: 1, type: 'scan.completed', report }));
+    return filtered.length === 0 && !parsed.emptyIsSuccess ? 1 : 0;
   }
 
   if (filtered.length === 0) {
-    stdout('Nothing to clean.');
-    return 1;
+    stdout(parsed.emptyIsSuccess ? `No artifacts found under ${root}.` : 'Nothing to clean.');
+    return parsed.emptyIsSuccess ? 0 : 1;
   }
 
+  if (parsed.richOutput) {
+    stdout(`Scan: ${root}`);
+    stdout(
+      `${entries.length} artifact(s) · ${formatBytes(totalBytes)} listed · ${Math.round(elapsedMs)}ms`,
+    );
+    stdout('SIZE       AGE    PROJECT                 ARTIFACT        SAFETY  PATH');
+  }
   for (const entry of filtered) {
-    stdout(`${formatBytes(sizeOf(entry.path)).padStart(9)}  ${entry.path}`);
+    if (!parsed.richOutput) {
+      stdout(`${formatBytes(sizeOf(entry.path)).padStart(9)}  ${entry.path}`);
+      continue;
+    }
+    const age = lastModifiedOf(entry.path);
+    const safety = entry.kind === 'always-safe' ? 'safe' : 'gated';
+    const relativePath = relative(root, entry.path).split(sep).join('/');
+    stdout(
+      `${formatBytes(sizeOf(entry.path)).padStart(9)}  ${(age === undefined ? '?' : formatDuration(Date.now() - age)).padStart(5)}  ${entry.project.padEnd(22)}  ${entry.ruleName.padEnd(14)}  ${safety.padEnd(6)}  ${relativePath}`,
+    );
   }
   stdout('');
-  stdout(`${filtered.length} item(s), ${formatBytes(totalBytes)} total`);
+  stdout(
+    parsed.richOutput
+      ? `${filtered.length} artifact(s), ${formatBytes(totalBytes)} listed`
+      : `${filtered.length} item(s), ${formatBytes(totalBytes)} total`,
+  );
 
   if (!parsed.delete) {
-    stdout('Run with --delete to actually delete.');
+    stdout(
+      parsed.richOutput
+        ? 'Create an explicit plan before deleting: purgeit plan <directory> --include <relative-path>.'
+        : 'Run with --delete to actually delete.',
+    );
     return 0;
   }
 

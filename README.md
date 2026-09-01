@@ -4,17 +4,28 @@
 [![CI](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml/badge.svg)](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-Find and delete regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across your projects. Interactive TUI by default; scriptable via flags for CI/cron.
+Find and delete regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across your projects. Interactive TUI by default; explicit scan, plan, and apply commands for CI and agents.
 
 📖 **[Full documentation](https://purgeit.nandan.fyi)** — getting started, CLI reference, configuration, built-in rules, architecture, API reference.
 
 ## Quick start
 
 ```bash
-npx purgeit ~/dev
+npx purgeit tui ~/dev
 ```
 
-> Running `purgeit` in a terminal opens the interactive TUI. For a non-interactive dry-run preview, use `purgeit --headless --dry-run` or `purgeit --json --dry-run`.
+For a non-destructive review outside the TUI:
+
+```bash
+npx purgeit scan ~/dev --format table
+```
+
+For an explicit, revalidated deletion workflow:
+
+```bash
+npx purgeit plan ~/dev --include 'my-app/node_modules' --output cleanup-plan.json
+npx purgeit apply --plan cleanup-plan.json
+```
 
 ## Features
 
@@ -26,16 +37,15 @@ npx purgeit ~/dev
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
 - **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
 
-## For AI agents
+## For people, CI, and AI agents
 
-purgeit ships its own agentic-skill content, served by the CLI itself so it always matches the
-installed version instead of going stale in a tool description:
+The CLI serves its version-matched operating protocol and JSON Schema directly. This is the
+canonical source of truth for user documentation, automation, and agents:
 
 ```bash
-npx purgeit skills list             # see what's available
-npx purgeit skills get core         # safety rules, CLI and library usage — start here
-npx purgeit skills get core --full  # + the complete CLI flag / library API reference
-npx purgeit skills get cloud        # AWS/GCP cloud cleanup skill
+npx purgeit agent instructions
+npx purgeit agent schema
+npx purgeit scan ~/dev --format json
 ```
 
 ## CLI flags

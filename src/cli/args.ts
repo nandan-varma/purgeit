@@ -1,14 +1,12 @@
 import { parseArgs } from 'node:util';
 
-export const USAGE = `Usage: purgeit [directory] [options]
-       purgeit skills <list|get> [name] [--full]
+export const USAGE = `Usage: purgeit scan [directory] [options]
+
+Scan options:
 
 Find and delete regenerable dev build artifacts (node_modules, dist, target,
 Pods, ...) across your projects. Interactive by default in a terminal;
 scriptable via flags otherwise.
-
-'purgeit skills' serves this CLI's own agentic-skill content for AI agents
-(always matches the installed version) — run 'purgeit skills list'.
 
 Options:
   -d, --directory <path>     Root directory to scan (default: cwd)
@@ -18,6 +16,7 @@ Options:
       --project <name>       Limit to a single top-level project by name
                               (only meaningful in default "projects" mode)
       --exclude <glob>       Exclude paths matching glob (repeatable)
+      --include <glob>       Keep only paths matching glob (repeatable; relative to root)
       --targets <names>      Comma-separated rule names / named target group
                               to restrict matching to (e.g. --targets
                               node_modules,dist, or a group from config)
@@ -48,6 +47,8 @@ Options:
       --delete               Actually delete matched artifacts
   -y, --yes                  Skip the confirmation prompt (headless --delete only)
       --json                 Emit machine-readable JSON (disables the TUI)
+      --format <format>      Output table, json, or jsonl
+      --output <file>        Destination for a generated plan
       --tui                  Force the interactive TUI even when stdout isn't a TTY
                               (local only — cloud scanning is always headless)
       --headless             Force non-interactive mode even in a TTY
@@ -61,12 +62,15 @@ Exit codes: 0 success, 1 nothing found / deletion had failures, 2 usage or envir
 
 export type SortKey = 'size' | 'path' | 'name';
 export type CliProvider = 'local' | 'aws' | 'gcp';
+export type OutputFormat = 'table' | 'json' | 'jsonl';
 
 export interface ParsedCli {
   directory: string;
   full: boolean;
   project: string | undefined;
   exclude: string[];
+  /** Glob patterns, relative to the scan root, that candidates must match. */
+  include?: string[] | undefined;
   targets: string[];
   minSize: string | undefined;
   minAge: string | undefined;
@@ -88,6 +92,12 @@ export interface ParsedCli {
   delete: boolean;
   yes: boolean;
   json: boolean;
+  format?: OutputFormat | undefined;
+  output?: string | undefined;
+  /** New subcommand semantics treat an empty scan as a successful result. */
+  emptyIsSuccess?: boolean | undefined;
+  /** Enables the v1 table presentation used by the scan subcommand. */
+  richOutput?: boolean | undefined;
   tui: boolean;
   headless: boolean;
   concurrency: number;
@@ -96,6 +106,7 @@ export interface ParsedCli {
 
 const SORT_KEYS: readonly SortKey[] = ['size', 'path', 'name'];
 const PROVIDERS: readonly CliProvider[] = ['local', 'aws', 'gcp'];
+const OUTPUT_FORMATS: readonly OutputFormat[] = ['table', 'json', 'jsonl'];
 
 function parsePositiveInt(flag: string, value: string): number {
   const parsed = Number(value);
@@ -123,6 +134,7 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
       full: { type: 'boolean' },
       project: { type: 'string' },
       exclude: { type: 'string', multiple: true },
+      include: { type: 'string', multiple: true },
       targets: { type: 'string' },
       'min-size': { type: 'string' },
       'min-age': { type: 'string' },
@@ -143,6 +155,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
       delete: { type: 'boolean' },
       yes: { type: 'boolean', short: 'y' },
       json: { type: 'boolean' },
+      format: { type: 'string' },
+      output: { type: 'string' },
       tui: { type: 'boolean' },
       headless: { type: 'boolean' },
       concurrency: { type: 'string' },
@@ -166,6 +180,12 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
   const sort = values.sort ?? 'size';
   if (!SORT_KEYS.includes(sort as SortKey)) {
     throw new Error(`invalid --sort '${sort}' (expected size | path | name)`);
+  }
+  if (values.format !== undefined && !OUTPUT_FORMATS.includes(values.format as OutputFormat)) {
+    throw new Error(`invalid --format '${values.format}' (expected table | json | jsonl)`);
+  }
+  if (values.json && values.format !== undefined && values.format !== 'json') {
+    throw new Error('--json can only be combined with --format json');
   }
 
   if (values.tui && values.headless) {
@@ -231,6 +251,7 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     full: values.full ?? false,
     project: values.project,
     exclude: values.exclude ?? [],
+    include: values.include ?? [],
     targets: (values.targets ?? '')
       .split(',')
       .map((t) => t.trim())
@@ -254,6 +275,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     delete: values.delete ?? false,
     yes: values.yes ?? false,
     json: values.json ?? false,
+    format: values.format as OutputFormat | undefined,
+    output: values.output,
     tui: values.tui ?? false,
     headless: values.headless ?? false,
     concurrency:

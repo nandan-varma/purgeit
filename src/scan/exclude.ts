@@ -7,7 +7,7 @@ import { globToRegExp } from '../rules/gate-context.js';
  * Shared between the headless runner and the TUI so both honor `--exclude`
  * identically.
  */
-export function createExcludeMatcher(
+export function createPathMatcher(
   root: string,
   patterns: readonly string[],
 ): (path: string) => boolean {
@@ -18,3 +18,6 @@ export function createExcludeMatcher(
     return matchers.some((re) => re.test(rel));
   };
 }
+
+/** Backward-compatible name for predicates used to remove matching paths. */
+export const createExcludeMatcher = createPathMatcher;
