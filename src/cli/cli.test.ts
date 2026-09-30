@@ -86,6 +86,15 @@ describe('runCli', () => {
     ]);
   });
 
+  it('apply without --min-age uses the default window, and a trailing --min-age is invalid', async () => {
+    const io = captureIO();
+    expect(await runCli(['apply', '--plan', 'missing.json'], { ...io, cwd: EMPTY_ROOT })).toBe(2);
+    expect(io.err[0]).toMatch(/^purgeit: .*ENOENT/);
+    const trailing = captureIO();
+    expect(await runCli(['apply', '--plan', 'p.json', '--min-age'], trailing)).toBe(2);
+    expect(trailing.err[0]).toMatch(/invalid duration/);
+  });
+
   it('apply rejects an invalid --min-age', async () => {
     const io = captureIO();
     expect(await runCli(['apply', '--plan', 'p.json', '--min-age', 'soon'], io)).toBe(2);
@@ -140,6 +149,77 @@ describe('runCli', () => {
     expect(runTuiMock).toHaveBeenLastCalledWith(
       expect.objectContaining({ minSizeBytes: undefined }),
     );
+  });
+
+  it('dispatches agent to its own command', async () => {
+    const io = captureIO();
+    expect(await runCli(['agent', 'schema'], io)).toBe(0);
+    expect(JSON.parse(io.out.join('')).title).toBe('purgeit scan report');
+  });
+
+  it('scan defaults to JSON when piped and to a table in a terminal, unless a format is given', async () => {
+    const root = buildTree({ dist: { 'a.js': 'x' } });
+    const isTTY = Object.getOwnPropertyDescriptor(process.stdout, 'isTTY');
+    try {
+      const piped = captureIO();
+      expect(await runCli(['scan', root], piped)).toBe(0);
+      expect(JSON.parse(piped.out.join('')).entries).toHaveLength(1);
+
+      Object.defineProperty(process.stdout, 'isTTY', { value: true, configurable: true });
+      const tty = captureIO();
+      expect(await runCli(['scan', root], tty)).toBe(0);
+      expect(tty.out[0]).toBe(`Scan: ${root}`);
+
+      for (const argv of [
+        ['scan', root, '--json'],
+        ['scan', root, '--format=json'],
+      ]) {
+        const io = captureIO();
+        expect(await runCli(argv, io)).toBe(0);
+        expect(JSON.parse(io.out.join('')).entries).toHaveLength(1);
+      }
+    } finally {
+      if (isTTY) Object.defineProperty(process.stdout, 'isTTY', isTTY);
+      else delete (process.stdout as { isTTY?: boolean }).isTTY;
+      cleanupTree(root);
+    }
+  });
+
+  it('plan writes a v2 plan of the included entries, and validates its inputs', async () => {
+    const root = buildTree({ app: { dist: { 'a.js': 'x' }, node_modules: { f: 'x' } } });
+    try {
+      const io = captureIO();
+      const code = await runCli(['plan', '.', '--include', 'app/dist', '--output', 'plan.json'], {
+        ...io,
+        cwd: root,
+      });
+      expect(code).toBe(0);
+      const { readFileSync } = await import('node:fs');
+      const plan = JSON.parse(readFileSync(join(root, 'plan.json'), 'utf8'));
+      expect(plan.schemaVersion).toBe(2);
+      expect(plan.entries.map((e: { relativePath: string }) => e.relativePath)).toEqual([
+        'app/dist',
+      ]);
+
+      const missing = captureIO();
+      expect(await runCli(['plan', '.', '--output', 'p.json'], { ...missing, cwd: root })).toBe(2);
+      expect(missing.err[0]).toMatch(/plan requires at least one --include/);
+      const noOutput = captureIO();
+      expect(await runCli(['plan', '.', '--include', 'app/dist'], { ...noOutput, cwd: root })).toBe(
+        2,
+      );
+      expect(noOutput.err[0]).toMatch(/and --output <file>/);
+
+      const failing = captureIO();
+      expect(
+        await runCli(['plan', '.', '--include', 'x', '--output', 'p.json', '--min-size', 'big'], {
+          ...failing,
+          cwd: root,
+        }),
+      ).toBe(2);
+    } finally {
+      cleanupTree(root);
+    }
   });
 
   it('dispatches docs to its own command', async () => {

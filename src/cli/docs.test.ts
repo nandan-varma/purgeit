@@ -67,4 +67,42 @@ describe('purgeit docs', () => {
     expect(io.err).toEqual(['purgeit: could not locate docs']);
     vi.doUnmock('./package-path.js');
   });
+
+  it('writes to the real stdout/stderr when no io is given', async () => {
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      expect(await runDocsCommand(['faq'])).toBe(0);
+      expect(await runDocsCommand(['nope'])).toBe(2);
+      expect(String(out.mock.calls[0]?.[0])).toMatch(/^# FAQ/);
+      expect(String(err.mock.calls[0]?.[0])).toMatch(/unknown docs topic 'nope'/);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('lists a page without a description with an empty one', async () => {
+    const { mkdtempSync, writeFileSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    const dir = mkdtempSync(join(tmpdir(), 'purgeit-docs-'));
+    const { DOC_SECTIONS } = await import('../docs/topics.js');
+    for (const section of DOC_SECTIONS) {
+      for (const item of section.items)
+        writeFileSync(join(dir, `${item.slug}.md`), '# no frontmatter');
+    }
+    vi.resetModules();
+    vi.doMock('./package-path.js', () => ({
+      resolvePackageDir: async () => pathToFileURL(`${dir}/`),
+    }));
+    try {
+      const { runDocsCommand: run } = await import('./docs.js');
+      const io = captureIO();
+      expect(await run(['--json'], io)).toBe(0);
+      expect(JSON.parse(io.out.join(''))[0].description).toBe('');
+    } finally {
+      vi.doUnmock('./package-path.js');
+    }
+  });
 });

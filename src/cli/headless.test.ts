@@ -136,6 +136,19 @@ describe('runHeadless', () => {
     expect(names(shown)).toEqual(['dist', 'node_modules']);
   });
 
+  it('streams a single scan.completed event with --format jsonl', async () => {
+    root = buildTree({ dist: { 'a.js': 'x' } });
+    const io = captureIO();
+    expect(await runHeadless(baseArgs({ directory: root, format: 'jsonl' }), io)).toBe(0);
+    const event = JSON.parse(io.out.join(''));
+    expect(event.type).toBe('scan.completed');
+    expect(event.report.entries).toHaveLength(1);
+    const empty = captureIO();
+    cleanupTree(root);
+    root = buildTree({});
+    expect(await runHeadless(baseArgs({ directory: root, format: 'jsonl' }), empty)).toBe(1);
+  });
+
   it('exits 1 with --json when nothing is found', async () => {
     root = buildTree({ 'readme.txt': 'hi' });
     const io = captureIO();
@@ -187,7 +200,7 @@ describe('runHeadless', () => {
   });
 
   it('filters out freshly modified matches below --min-age', async () => {
-    root = buildTree({ node_modules: null });
+    root = buildTree({ node_modules: { f: 'x' } });
     const io = captureIO();
     const code = await runHeadless(baseArgs({ directory: root, minAge: '1d' }), io);
     expect(code).toBe(1);
@@ -241,7 +254,7 @@ describe('runHeadless', () => {
   });
 
   it('filters out a match older than --max-age', async () => {
-    root = buildTree({ node_modules: null });
+    root = buildTree({ node_modules: { f: 'x' } });
     const old = new Date(Date.now() - 2 * 86_400_000);
     utimesSync(join(root, 'node_modules'), old, old);
     const io = captureIO();
@@ -512,5 +525,49 @@ describe('runHeadless error handling', () => {
     expect(tildify('/Users/me/dev/app', '/Users/me')).toBe('~/dev/app');
     expect(tildify('/Users/me', '/Users/me')).toBe('~');
     expect(tildify('/Users/meta/app', '/Users/me')).toBe('/Users/meta/app');
+  });
+
+  it('scans the working directory when no directory is given', async () => {
+    root = buildTree({ dist: { 'a.js': 'x' } });
+    const io = captureIO();
+    await runHeadless(baseArgs({ directories: [], json: true }), { ...io, cwd: root });
+    expect(JSON.parse(io.out.join('')).roots).toEqual([root]);
+  });
+
+  it('--discover with nothing to discover reports the working directory as root and no entries', async () => {
+    root = buildTree({});
+    const saved = process.env.HOME;
+    process.env.HOME = root;
+    try {
+      const io = captureIO();
+      await runHeadless(baseArgs({ directories: [], discover: true, json: true }), {
+        ...io,
+        cwd: root,
+      });
+      const payload = JSON.parse(io.out.join(''));
+      expect(payload.roots).toEqual([]);
+      expect(payload.root).toBe(root);
+      expect(payload.entries).toEqual([]);
+    } finally {
+      process.env.HOME = saved;
+    }
+  });
+
+  it('prefixes cloud-synced paths with [cloud] in the table', async () => {
+    root = buildTree({
+      Library: { CloudStorage: { Dropbox: { app: { dist: { 'a.js': 'x' } } } } },
+    });
+    const saved = process.env.HOME;
+    process.env.HOME = root;
+    try {
+      const io = captureIO();
+      await runHeadless(
+        baseArgs({ directory: join(root, 'Library', 'CloudStorage', 'Dropbox'), richOutput: true }),
+        io,
+      );
+      expect(io.out.some((l) => l.endsWith('[cloud] app/dist'))).toBe(true);
+    } finally {
+      process.env.HOME = saved;
+    }
   });
 });

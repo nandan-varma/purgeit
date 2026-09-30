@@ -122,4 +122,10 @@ describe('runHeadless with an unresolved (null) size', () => {
     expect(lines[0]).toContain('node_modules');
     expect(lines[1]).toContain('dist');
   });
+
+  it('shows ? for an unknown age in the table', async () => {
+    const io = captureIO();
+    expect(await runHeadless(baseArgs({ richOutput: true }), io)).toBe(0);
+    expect(io.out.some((l) => /^\s+\S+ \S+\s+\?\s/.test(l))).toBe(true);
+  });
 });

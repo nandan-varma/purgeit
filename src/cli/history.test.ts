@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import { appendHistory } from '../delete/history.js';
 import { runHistoryCommand } from './history.js';
@@ -68,6 +68,19 @@ describe('purgeit history', () => {
       const io = captureIO();
       expect(await runHistoryCommand(argv, io)).toBe(2);
       expect(io.err[0]).toMatch(/^purgeit: /);
+    }
+  });
+
+  it('writes to the real stdout/stderr when no io is given', async () => {
+    const out = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const err = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    try {
+      expect(await runHistoryCommand([])).toBe(0);
+      expect(await runHistoryCommand(['--bogus'])).toBe(2);
+      expect(out).toHaveBeenCalledWith('No deletions recorded yet.\n');
+      expect(err).toHaveBeenCalledWith("purgeit: unexpected history argument '--bogus'\n");
+    } finally {
+      vi.restoreAllMocks();
     }
   });
 });

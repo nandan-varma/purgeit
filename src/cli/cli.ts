@@ -102,7 +102,7 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
   if (isScanCommand) parsed = { ...parsed, emptyIsSuccess: true, richOutput: true };
 
   if (isPlanCommand) {
-    if ((parsed.include?.length ?? 0) === 0 || parsed.output === undefined) {
+    if (!parsed.include?.length || parsed.output === undefined) {
       stderr('purgeit: plan requires at least one --include <relative-path> and --output <file>');
       return 2;
     }
@@ -112,23 +112,19 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       { stdout: (line) => captured.push(line), stderr, cwd: io.cwd, signal: io.signal },
     );
     if (code !== 0) return code;
-    try {
-      const report = JSON.parse(captured.join('')) as {
-        roots: string[];
-        entries: {
-          path: string;
-          root: string;
-          relativePath: string;
-          ruleName: string;
-          kind: 'always-safe' | 'gated' | 'marker';
-          lastModified: number | null;
-        }[];
-      };
-      return writePlan(report, parsed.output, { stdout, stderr, cwd: io.cwd, signal: io.signal });
-    } catch (err) {
-      stderr(`purgeit: failed to create plan: ${formatErrorMessage(err)}`);
-      return 2;
-    }
+    // runHeadless in JSON mode writes exactly one JSON document to stdout (diagnostics go to stderr).
+    const report = JSON.parse(captured.join('')) as {
+      roots: string[];
+      entries: {
+        path: string;
+        root: string;
+        relativePath: string;
+        ruleName: string;
+        kind: 'always-safe' | 'gated' | 'marker';
+        lastModified: number | null;
+      }[];
+    };
+    return writePlan(report, parsed.output, { stdout, stderr, cwd: io.cwd, signal: io.signal });
   }
 
   // Cloud scanning is headless-only this release — the interactive TUI's

@@ -237,6 +237,40 @@ describe('scan (projects mode, default)', () => {
     expect(events).toEqual([{ type: 'done', totalBytes: 0 }]);
   });
 
+  it('drops queued protection probes once aborted', async () => {
+    root = buildTree({ node_modules: null, dist: null, coverage: null, '.cache': null });
+    const controller = new AbortController();
+    const found: ScanEvent[] = [];
+    for await (const event of scan(root, defaultRuleSet(), {
+      mode: 'flat',
+      concurrency: 1,
+      signal: controller.signal,
+    })) {
+      if (event.type === 'found') {
+        found.push(event);
+        controller.abort();
+      }
+    }
+    expect(found).toHaveLength(1);
+  });
+
+  it('stops discovery mid-walk once aborted when protection is off', async () => {
+    root = buildTree({ node_modules: null, dist: null, coverage: null, '.cache': null });
+    const controller = new AbortController();
+    const found: ScanEvent[] = [];
+    for await (const event of scan(root, defaultRuleSet(), {
+      mode: 'flat',
+      protect: false,
+      signal: controller.signal,
+    })) {
+      if (event.type === 'found') {
+        found.push(event);
+        controller.abort();
+      }
+    }
+    expect(found.length).toBeLessThan(4);
+  });
+
   it('skips pending size computations once aborted mid-scan', async () => {
     // All matches are siblings in one directory, so walk() discovers (and
     // queues) every one of them synchronously, before any of their size

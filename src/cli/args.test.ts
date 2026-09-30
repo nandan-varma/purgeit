@@ -60,6 +60,13 @@ describe('parseCliArgs', () => {
     if (typeof parsed !== 'string') expect(parsed.directory).toBe('~/dev');
   });
 
+  it('rejects an unknown --format and --json with a non-json --format', () => {
+    expect(() => parseCliArgs(['--format', 'xml'])).toThrow(/invalid --format 'xml'/);
+    expect(() => parseCliArgs(['--json', '--format', 'table'])).toThrow(
+      /--json can only be combined/,
+    );
+  });
+
   it('accepts several directory arguments, keeping the first as directory', () => {
     const parsed = parseCliArgs(['a', 'b']) as ParsedCli;
     expect(parsed.directories).toEqual(['a', 'b']);

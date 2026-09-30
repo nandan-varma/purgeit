@@ -169,12 +169,14 @@ describe('cleanup plans', () => {
       }),
       'v3.json': JSON.stringify({ schemaVersion: 3, roots: [], entries: [] }),
       'not-json.json': '{',
+      'null.json': 'null',
     });
     for (const file of [
       'v2-no-roots.json',
       'v2-entry-without-root.json',
       'v3.json',
       'not-json.json',
+      'null.json',
     ]) {
       const err: string[] = [];
       expect(
@@ -182,5 +184,49 @@ describe('cleanup plans', () => {
       ).toBe(2);
       expect(err[0]).toMatch(/^purgeit: /);
     }
+  });
+
+  it('refuses to overwrite an existing plan file', async () => {
+    root = buildTree({ 'plan.json': '{}' });
+    const err: string[] = [];
+    const code = await writePlan({ roots: [root], entries: [] }, join(root, 'plan.json'), {
+      stderr: (t) => err.push(t),
+      stdout: () => {},
+    });
+    expect(code).toBe(2);
+    expect(err[0]).toMatch(/^purgeit: .*EEXIST/);
+  });
+
+  it('skips an entry whose artifact disappeared, and reports refused deletions as failures', async () => {
+    root = buildTree({ dist: { f: 'x' } });
+    const entry = (name: string) => ({
+      root,
+      path: join(root, name),
+      relativePath: name,
+      ruleName: name,
+      lastModified: null,
+    });
+    const planFile = join(root, 'plan.json');
+    await writePlan({ roots: [root], entries: [entry('dist'), entry('build')] }, planFile);
+    const err: string[] = [];
+    const out: string[] = [];
+    // dist is freshly created, so the default 7-day recency guard refuses it.
+    expect(
+      await applyPlan(planFile, true, { stderr: (t) => err.push(t), stdout: (t) => out.push(t) }),
+    ).toBe(1);
+    expect(err[0]).toBe('warning: skipped missing artifact build');
+    expect(err[1]).toMatch(/^error: .*dist: skipped: modified within the last 1w/);
+    expect(out.at(-1)).toBe('0 deleted, 1 failed');
+  });
+
+  it('reports an empty plan as nothing to delete and exits 0', async () => {
+    root = buildTree({});
+    const planFile = join(root, 'plan.json');
+    await writePlan({ roots: [root], entries: [] }, planFile);
+    const out: string[] = [];
+    expect(await applyPlan(planFile, true, { stdout: (t) => out.push(t), stderr: () => {} })).toBe(
+      0,
+    );
+    expect(out.at(-1)).toBe('No approved artifacts remain to delete.');
   });
 });

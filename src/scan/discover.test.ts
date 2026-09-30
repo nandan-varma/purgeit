@@ -1,3 +1,4 @@
+import { chmodSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
@@ -42,5 +43,15 @@ describe('discoverRoots', () => {
   it('skips unreadable project folders instead of failing', async () => {
     home = buildTree({ Work: { link: 'not-a-dir' } });
     expect(await discoverRoots(defaultRuleSet(), home)).toEqual([]);
+  });
+
+  it('treats an unreadable project folder as holding no project', async () => {
+    home = buildTree({ Work: { locked: { app: { 'package.json': '{}' } } } });
+    chmodSync(join(home, 'Work', 'locked'), 0o000);
+    try {
+      expect(await discoverRoots(defaultRuleSet(), home)).toEqual([]);
+    } finally {
+      chmodSync(join(home, 'Work', 'locked'), 0o755);
+    }
   });
 });
