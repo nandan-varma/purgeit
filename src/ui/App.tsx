@@ -95,6 +95,7 @@ export function App({
         for await (const event of deleteEntries(selected, {
           signal: controller.signal,
           dryRun,
+          roots: [root],
           concurrency: scanOpts.concurrency ?? 8,
         })) {
           if (event.type === 'done') {

@@ -1,7 +1,7 @@
 import { existsSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
+import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import type { ParsedCli } from './args.js';
 import { isCloudSynced, runHeadless } from './headless.js';
 
@@ -192,6 +192,37 @@ describe('runHeadless', () => {
     expect(payload.entries[0].lastModified).toBeTypeOf('number');
   });
 
+  it('--min-age also drops a match whose own mtime is old but whose contents changed recently', async () => {
+    root = buildTree({ node_modules: { pkg: { 'index.js': 'x' } }, dist: { 'a.js': 'x' } });
+    backdate(join(root, 'dist'));
+    const old = new Date(Date.now() - 2 * 86_400_000);
+    utimesSync(join(root, 'node_modules'), old, old);
+    const io = captureIO();
+    await runHeadless(baseArgs({ directory: root, minAge: '1d', json: true }), io);
+    const names = JSON.parse(io.out.join('')).entries.map((e: { ruleName: string }) => e.ruleName);
+    expect(names).toEqual(['dist']);
+  });
+
+  it('--min-age 0 keeps fresh matches and lets --delete remove them', async () => {
+    root = buildTree({ node_modules: { f: 'x' } });
+    const io = captureIO();
+    const code = await runHeadless(
+      baseArgs({ directory: root, minAge: '0', delete: true, yes: true }),
+      io,
+    );
+    expect(code).toBe(0);
+    expect(existsSync(join(root, 'node_modules'))).toBe(false);
+  });
+
+  it('--delete skips a recently active artifact by default and exits 1', async () => {
+    root = buildTree({ node_modules: { f: 'x' } });
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, delete: true, yes: true }), io);
+    expect(code).toBe(1);
+    expect(existsSync(join(root, 'node_modules'))).toBe(true);
+    expect(io.err.some((l) => l.includes('skipped: modified within the last 1w'))).toBe(true);
+  });
+
   it('filters out a match older than --max-age', async () => {
     root = buildTree({ node_modules: null });
     const old = new Date(Date.now() - 2 * 86_400_000);
@@ -256,6 +287,7 @@ describe('runHeadless', () => {
 
   it('--delete with --yes deletes without prompting', async () => {
     root = buildTree({ node_modules: { f: 'x' } });
+    backdate(root);
     const io = captureIO();
     const code = await runHeadless(baseArgs({ directory: root, delete: true, yes: true }), io);
     expect(code).toBe(0);
@@ -277,6 +309,7 @@ describe('runHeadless', () => {
 
   it('--delete without --yes deletes when confirm resolves true', async () => {
     root = buildTree({ node_modules: { f: 'x' } });
+    backdate(root);
     const io = captureIO();
     const code = await runHeadless(baseArgs({ directory: root, delete: true }), {
       ...io,
@@ -288,6 +321,7 @@ describe('runHeadless', () => {
 
   it('--delete --dry-run simulates deletion without touching the filesystem', async () => {
     root = buildTree({ node_modules: { f: 'x' } });
+    backdate(root);
     const io = captureIO();
     const code = await runHeadless(
       baseArgs({ directory: root, delete: true, yes: true, dryRun: true }),
@@ -358,6 +392,7 @@ describe('runHeadless error handling', () => {
 
   it('uses defaultConfirm when io.confirm is not provided', async () => {
     root = buildTree({ node_modules: { f: 'x' } });
+    backdate(root);
     const rlMock = { question: vi.fn(async () => 'y'), close: vi.fn() };
     vi.doMock('node:readline/promises', () => ({
       createInterface: vi.fn(() => rlMock),

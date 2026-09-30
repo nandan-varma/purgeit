@@ -1,9 +1,9 @@
-import { existsSync } from 'node:fs';
+import { existsSync, renameSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
-import { deleteEntries } from './deleter.js';
+import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
+import { DEFAULT_IDLE_MS, deleteEntries } from './deleter.js';
 
 async function collect(paths: readonly string[], opts?: Parameters<typeof deleteEntries>[1]) {
   const events = [];
@@ -128,5 +128,61 @@ describe('deleteEntries', () => {
     ]);
     expect(existsSync(a)).toBe(false);
     expect(existsSync(b)).toBe(true);
+  });
+
+  it('deletes a path inside the given roots, including through a symlinked root', async () => {
+    root = buildTree({ real: { proj: { node_modules: { f: 'x' } } } });
+    symlinkSync(join(root, 'real'), join(root, 'alias'));
+    const target = join(root, 'real', 'proj', 'node_modules');
+    const events = await collect([target], { roots: [join(root, 'alias')] });
+    expect(events.at(-1)).toEqual({ type: 'done', deleted: 1, failed: 0 });
+    expect(existsSync(target)).toBe(false);
+  });
+
+  it('refuses a path whose ancestor was swapped for a symlink leading outside the roots', async () => {
+    root = buildTree({ scanned: { proj: {} }, victim: { node_modules: { keep: 'x' } } });
+    const proj = join(root, 'scanned', 'proj');
+    renameSync(proj, join(root, 'moved'));
+    symlinkSync(join(root, 'victim'), proj);
+    const events = await collect([join(proj, 'node_modules')], { roots: [join(root, 'scanned')] });
+    expect(events).toContainEqual({
+      type: 'error',
+      path: join(proj, 'node_modules'),
+      message: 'refusing to delete a path that resolves outside the scanned roots',
+    });
+    expect(existsSync(join(root, 'victim', 'node_modules', 'keep'))).toBe(true);
+  });
+
+  it('refuses a root itself and a path that no longer exists', async () => {
+    root = buildTree({ proj: {} });
+    const events = await collect([root, join(root, 'gone')], { roots: [root] });
+    expect(events.filter((e) => e.type === 'error')).toHaveLength(2);
+  });
+
+  it('refuses a recently active path under idleForMs, even in a dry run, and deletes an idle one', async () => {
+    root = buildTree({ fresh: { f: 'x' }, old: { f: 'x' } });
+    backdate(join(root, 'old'));
+    const events = await collect([join(root, 'fresh'), join(root, 'old')], {
+      idleForMs: DEFAULT_IDLE_MS,
+      dryRun: true,
+    });
+    expect(events).toContainEqual({
+      type: 'error',
+      path: join(root, 'fresh'),
+      message:
+        'skipped: modified within the last 1w (lower the window with --min-age, 0 to disable)',
+    });
+    expect(events).toContainEqual({ type: 'deleted', path: join(root, 'old'), dryRun: true });
+  });
+
+  it('refuses a path whose activity cannot be checked, and skips the guard at 0', async () => {
+    root = buildTree({ fresh: { f: 'x' } });
+    const missing = await collect([join(root, 'missing')], { idleForMs: DEFAULT_IDLE_MS });
+    expect(missing[1]).toMatchObject({
+      type: 'error',
+      message: expect.stringContaining('could not check'),
+    });
+    const off = await collect([join(root, 'fresh')], { idleForMs: 0 });
+    expect(off.at(-1)).toEqual({ type: 'done', deleted: 1, failed: 0 });
   });
 });

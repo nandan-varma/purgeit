@@ -1,7 +1,8 @@
 import { homedir } from 'node:os';
 import { basename, relative, resolve, sep } from 'node:path';
+import pLimit from 'p-limit';
 import { loadConfig } from '../config/resolve.js';
-import { deleteEntries } from '../delete/deleter.js';
+import { DEFAULT_IDLE_MS, deleteEntries } from '../delete/deleter.js';
 import {
   formatBytes,
   formatDuration,
@@ -10,6 +11,7 @@ import {
   parseSizeString,
 } from '../format.js';
 import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
+import { checkActivity } from '../scan/activity.js';
 import { createExcludeMatcher, createPathMatcher } from '../scan/exclude.js';
 import { PROTECTION_DESCRIPTIONS, type ProtectionReason } from '../scan/protection.js';
 import type { ScanEntry } from '../scan/scanner.js';
@@ -172,18 +174,26 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     if (maxAgeMs !== undefined && age > maxAgeMs) return false;
     return true;
   };
-  const filtered = sortEntries(
-    found.filter(
-      (e) =>
-        !isExcluded(e.path) &&
-        ((parsed.include?.length ?? 0) === 0 || isIncluded(e.path)) &&
-        sizeOf(e.path) >= minSizeBytes &&
-        passesAge(e.path),
-    ),
-    parsed.sort,
-    parsed.ascending,
-    sizeOf,
+  const candidates = found.filter(
+    (e) =>
+      !isExcluded(e.path) &&
+      ((parsed.include?.length ?? 0) === 0 || isIncluded(e.path)) &&
+      sizeOf(e.path) >= minSizeBytes &&
+      passesAge(e.path),
   );
+  // A directory's own mtime misses changes deeper inside it, so --min-age also
+  // requires that nothing below the artifact changed within the window.
+  const idle =
+    minAgeMs === undefined || minAgeMs === 0
+      ? candidates
+      : await (async () => {
+          const limit = pLimit(parsed.concurrency);
+          const verdicts = await Promise.all(
+            candidates.map((e) => limit(() => checkActivity(e.path, minAgeMs))),
+          );
+          return candidates.filter((_, i) => verdicts[i] === 'idle');
+        })();
+  const filtered = sortEntries(idle, parsed.sort, parsed.ascending, sizeOf);
   const totalBytes = filtered.reduce((sum, e) => sum + sizeOf(e.path), 0);
 
   const elapsedMs = performance.now() - startedAt;
@@ -270,7 +280,13 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     async function* () {
       for await (const event of deleteEntries(
         filtered.map((e) => e.path),
-        { signal: io.signal, dryRun: parsed.dryRun, concurrency: parsed.concurrency },
+        {
+          signal: io.signal,
+          dryRun: parsed.dryRun,
+          concurrency: parsed.concurrency,
+          roots: [root],
+          idleForMs: minAgeMs ?? DEFAULT_IDLE_MS,
+        },
       )) {
         if (event.type === 'deleting') yield { type: 'deleting', key: event.path };
         else if (event.type === 'deleted')

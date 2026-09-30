@@ -1,7 +1,7 @@
 import { existsSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
+import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import { applyPlan, writePlan } from './plans.js';
 
 describe('cleanup plans', () => {
@@ -10,6 +10,7 @@ describe('cleanup plans', () => {
 
   it('writes an explicit plan and applies only its revalidated entry', async () => {
     root = buildTree({ node_modules: { file: 'x' }, dist: { file: 'x' } });
+    backdate(root);
     const target = join(root, 'node_modules');
     const planFile = join(root, 'cleanup-plan.json');
     const code = await writePlan(
@@ -62,6 +63,7 @@ describe('cleanup plans', () => {
       kept: { 'CACHEDIR.TAG': tag, blob: 'x' },
       untagged: { 'CACHEDIR.TAG': tag },
     });
+    backdate(root);
     const entry = (name: string) => ({
       path: join(root, name),
       relativePath: name,

@@ -1,6 +1,6 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, relative, resolve } from 'node:path';
-import { deleteEntries } from '../delete/deleter.js';
+import { DEFAULT_IDLE_MS, deleteEntries } from '../delete/deleter.js';
 import { formatErrorMessage } from '../format.js';
 import { MARKER_RULES } from '../rules/default-rules.js';
 import { hasMarker } from '../rules/markers.js';
@@ -29,6 +29,8 @@ interface PlanIO {
   cwd?: string | undefined;
   confirm?: (question: string) => Promise<boolean>;
   signal?: AbortSignal | undefined;
+  /** Recency guard window for deletions (see deleteEntries' idleForMs). Default DEFAULT_IDLE_MS. */
+  idleForMs?: number | undefined;
 }
 
 function output(io: PlanIO): (text: string) => void {
@@ -147,7 +149,12 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
     { stdout, stderr, confirm: io.confirm ?? defaultConfirm },
     { confirmQuestion: `Delete ${approved.length} approved artifact(s)?`, yes },
     async function* () {
-      for await (const event of deleteEntries(approved, { signal: io.signal, concurrency: 8 })) {
+      for await (const event of deleteEntries(approved, {
+        signal: io.signal,
+        concurrency: 8,
+        roots: [plan.root],
+        idleForMs: io.idleForMs ?? DEFAULT_IDLE_MS,
+      })) {
         if (event.type === 'deleting') yield { type: 'deleting', key: event.path };
         else if (event.type === 'deleted')
           yield { type: 'deleted', key: event.path, dryRun: event.dryRun };

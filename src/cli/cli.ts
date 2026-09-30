@@ -33,11 +33,22 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       stderr('purgeit: apply requires --plan <file>');
       return 2;
     }
+    const minAgeIndex = argv.indexOf('--min-age');
+    let idleForMs: number | undefined;
+    if (minAgeIndex !== -1) {
+      try {
+        idleForMs = parseDuration(argv[minAgeIndex + 1] ?? '');
+      } catch (err) {
+        stderr(`purgeit: ${formatErrorMessage(err)}`);
+        return 2;
+      }
+    }
     return applyPlan(planFile, argv.includes('--yes'), {
       stdout,
       stderr,
       cwd: io.cwd,
       signal: io.signal,
+      idleForMs,
     });
   }
   if (argv[0] === 'skills') {

@@ -1,3 +1,5 @@
+import { existsSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 
@@ -72,6 +74,50 @@ describe('runCli', () => {
     expect(code).toBe(2);
     expect(io.err.some((l) => l.includes('purgeit:'))).toBe(true);
     expect(io.err.some((l) => l.includes('Usage:'))).toBe(true);
+  });
+
+  it('apply requires --plan <file>', async () => {
+    const io = captureIO();
+    expect(await runCli(['apply'], io)).toBe(2);
+    expect(await runCli(['apply', '--plan', '--yes'], io)).toBe(2);
+    expect(io.err).toEqual([
+      'purgeit: apply requires --plan <file>',
+      'purgeit: apply requires --plan <file>',
+    ]);
+  });
+
+  it('apply rejects an invalid --min-age', async () => {
+    const io = captureIO();
+    expect(await runCli(['apply', '--plan', 'p.json', '--min-age', 'soon'], io)).toBe(2);
+    expect(io.err[0]).toMatch(/invalid duration/);
+  });
+
+  it('apply --min-age 0 lifts the recency guard for a fresh approved artifact', async () => {
+    const root = buildTree({ node_modules: { f: 'x' } });
+    try {
+      const plan = {
+        schemaVersion: 1,
+        root,
+        entries: [
+          {
+            path: join(root, 'node_modules'),
+            relativePath: 'node_modules',
+            ruleName: 'node_modules',
+            lastModified: null,
+          },
+        ],
+      };
+      writeFileSync(join(root, 'plan.json'), JSON.stringify(plan));
+      const io = captureIO();
+      const code = await runCli(['apply', '--plan', 'plan.json', '--yes', '--min-age', '0'], {
+        ...io,
+        cwd: root,
+      });
+      expect(code).toBe(0);
+      expect(existsSync(join(root, 'node_modules'))).toBe(false);
+    } finally {
+      cleanupTree(root);
+    }
   });
 
   it('runs headless when --json is passed', async () => {
