@@ -45,13 +45,17 @@ describe('discoverRoots', () => {
     expect(await discoverRoots(defaultRuleSet(), home)).toEqual([]);
   });
 
-  it('treats an unreadable project folder as holding no project', async () => {
-    home = buildTree({ Work: { locked: { app: { 'package.json': '{}' } } } });
-    chmodSync(join(home, 'Work', 'locked'), 0o000);
-    try {
-      expect(await discoverRoots(defaultRuleSet(), home)).toEqual([]);
-    } finally {
-      chmodSync(join(home, 'Work', 'locked'), 0o755);
-    }
-  });
+  // chmod can't make a directory unreadable on Windows.
+  it.skipIf(process.platform === 'win32')(
+    'treats an unreadable project folder as holding no project',
+    async () => {
+      home = buildTree({ Work: { locked: { app: { 'package.json': '{}' } } } });
+      chmodSync(join(home, 'Work', 'locked'), 0o000);
+      try {
+        expect(await discoverRoots(defaultRuleSet(), home)).toEqual([]);
+      } finally {
+        chmodSync(join(home, 'Work', 'locked'), 0o755);
+      }
+    },
+  );
 });

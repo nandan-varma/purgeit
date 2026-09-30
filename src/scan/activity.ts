@@ -21,10 +21,18 @@ export type Activity = 'recent' | 'idle' | 'unknown';
 export async function checkActivity(
   path: string,
   withinMs: number,
-  find = 'find',
+  find: string | null = defaultFind(),
 ): Promise<Activity> {
-  const viaFind = await activityViaFind(path, withinMs, find);
+  const viaFind = find === null ? 'no-find' : await activityViaFind(path, withinMs, find);
   return viaFind === 'no-find' ? activityViaWalk(path, Date.now() - withinMs) : viaFind;
+}
+
+/**
+ * The `find` to use, or null for the Node walk. On Windows `find` is FIND.EXE,
+ * a text search that would fail every check, so the walk is always used there.
+ */
+export function defaultFind(platform: NodeJS.Platform = process.platform): string | null {
+  return platform === 'win32' ? null : 'find';
 }
 
 function activityViaFind(

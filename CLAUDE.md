@@ -130,7 +130,11 @@ scan/ (additions)
                         scanner.ts runs it per match before 'found' and emits 'protected' instead; plans
                         re-probe at apply. `protect: false` in ScanOptions skips it (tests of sizing only).
   activity.ts             checkActivity(): anything modified *inside* within a window (`find -mmin -N -print
-                        -quit`, Node-walk fallback); 'unknown' must be treated as 'recent'.
+                        -quit`, Node-walk fallback); 'unknown' must be treated as 'recent'. Never `find` on
+                        Windows (defaultFind()): there it's FIND.EXE, a text search that fails every check.
+  empty.ts                isEmptyTree(): no files anywhere below (only empty dirs). Emptiness is judged by
+                        content, not size — `du` reports an empty dir as 4 KB on ext4 but 0 on APFS.
+                        ScanOptions.skipEmpty drops such matches; the CLI sets it unless --include-empty.
   discover.ts             discoverRoots() for --discover: WELL_KNOWN_ROOTS (incl. ~/.claude|.codex/worktrees)
                         plus home folders holding a project within 2 levels. walk.ts's HOME_PRUNE_NAMES
                         (Library, .Trash, Applications) are never scanned from the home dir.
@@ -277,6 +281,7 @@ Two entries in `tsup.config.ts`, in order: library (`src/index.ts` → `dist/ind
 - **`fileParallelism: false`** (`vitest.config.ts`) — tests spawn real `du` child processes; parallel file execution exhausts `posix_spawn` on macOS.
 - **Never scan or delete a shared directory in tests** (`/tmp`, `os.tmpdir()` itself, `$HOME`) — a headless `--delete --yes` there really deletes whatever other processes left behind (this happened: cli.test.ts deleted a sibling project's `coverage/`). Use `buildTree()`; for home-relative behavior point `process.env.HOME` at a fixture.
 - **Deletion tests need old fixtures** — a fresh `buildTree()` is correctly "recently active", so the 7-day recency guard refuses it. Call `backdate(root)` (build-tmp-tree.ts), or pass `minAge: '0'` when the guard itself isn't under test.
+- **Home-directory tests use `withHome(dir, fn)`** (build-tmp-tree.ts), which sets both `HOME` and `USERPROFILE` — `os.homedir()` reads the latter on Windows. Build expected paths with `join`/`resolve`, never literal `/`-paths, and skip what a platform can't express (e.g. `chmod 000` on Windows) with `it.skipIf`.
 - **`PURGEIT_NO_HISTORY=1` is set for every test** (`vitest.config.ts` `env`) so no test writes the real deletion history; history tests set `PURGEIT_HISTORY_FILE` to a temp file.
 - **Mocking ESM modules** — `vi.spyOn` cannot redefine a live ESM namespace export (`Cannot redefine property`). Use `vi.mock('module', async (importOriginal) => { const actual = await importOriginal(); return { ...actual, fn: vi.fn(actual.fn) }; })` at module load time instead, then grab the mock via `vi.mocked(...)` after the dynamic `await import(...)` of the module under test. See `src/cli/cli.test.ts` and `src/cli/headless-scan-error.test.ts`.
 - **`scan()` swallows its own fs errors internally** — `headless.ts`'s catch block around its `for await` loop is otherwise unreachable. Test it by mocking `../scan/scanner.js`'s `scan` to throw (dedicated file: `headless-scan-error.test.ts`). The same "mock a throwing async generator" pattern covers `discoverAwsResources`/`discoverGcpResources`/`loadProvider` failures in `headless-cloud.test.ts`.

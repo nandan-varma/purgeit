@@ -141,13 +141,15 @@ describe('runCli', () => {
     expect(runTuiMock).not.toHaveBeenCalled();
   });
 
-  it('hides zero-byte artifacts in the TUI unless --include-empty', async () => {
+  it('hides artifacts with no files in the TUI unless --include-empty', async () => {
     runTuiMock.mockResolvedValue(0);
     await runCli(['--tui', '.'], { cwd: EMPTY_ROOT });
-    expect(runTuiMock).toHaveBeenLastCalledWith(expect.objectContaining({ minSizeBytes: 1 }));
+    expect(runTuiMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ scanOpts: expect.objectContaining({ skipEmpty: true }) }),
+    );
     await runCli(['--tui', '--include-empty', '.'], { cwd: EMPTY_ROOT });
     expect(runTuiMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ minSizeBytes: undefined }),
+      expect.objectContaining({ scanOpts: expect.objectContaining({ skipEmpty: false }) }),
     );
   });
 

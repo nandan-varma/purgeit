@@ -15,7 +15,7 @@ Common causes:
 - You are scanning a directory that does not contain projects in its immediate children (use `--full` for flat mode).
 - The artifacts are below `--min-size`.
 - The artifacts are matched by gated rules but the sibling manifest is missing. See the [built-in rules reference](/rules/).
-- The artifacts are empty (zero bytes) — pass `--include-empty` to list them.
+- The artifacts contain no files — pass `--include-empty` to list them.
 - The artifacts hold authored content (a nested `.git`, a `*-keypair.json`, or git-tracked files) and are protected — see the `protected:` lines on stderr, or `diagnostics` in JSON, and [Safety checks](/cli/#safety-checks).
 
 Exit code `1` means nothing was found or deletion had failures.

@@ -27,7 +27,7 @@ Options:
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
       --min-age <duration>    Skip matches newer than this age (e.g. 7d, 24h)
       --max-age <duration>    Skip matches older than this age (e.g. 30d)
-      --include-empty         Also list zero-byte artifacts (hidden by default)
+      --include-empty         Also list artifacts containing no files (hidden by default)
       --depth <n>             Max recursion depth safety valve (default: unlimited)
       --provider <local|aws|gcp> Resource domain to scan (default: local). aws/gcp scan
                               cloud resources (tagged CloudFormation stacks / labeled
@@ -76,7 +76,7 @@ export interface ParsedCli {
   directories?: string[] | undefined;
   /** Also scan the discovered default roots (see scan/discover.ts). */
   discover?: boolean | undefined;
-  /** List zero-byte artifacts too. */
+  /** Also list artifacts that contain no files. */
   includeEmpty?: boolean | undefined;
   full: boolean;
   project: string | undefined;

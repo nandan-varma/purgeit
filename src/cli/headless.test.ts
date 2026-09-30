@@ -1,7 +1,7 @@
 import { existsSync, utimesSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
+import { backdate, buildTree, cleanupTree, withHome } from '../../test/fixtures/build-tmp-tree.js';
 import type { ParsedCli } from './args.js';
 import { isCloudSynced, runHeadless, tildify } from './headless.js';
 
@@ -84,7 +84,10 @@ describe('runHeadless', () => {
   });
 
   it('reports a protected match as a diagnostic instead of an entry, and says so on stderr', async () => {
-    root = buildTree({ dist: { vendored: { '.git': {} } }, node_modules: { f: 'x' } });
+    root = buildTree({
+      dist: { vendored: { '.git': { HEAD: 'ref: refs/heads/main' } } },
+      node_modules: { f: 'x' },
+    });
     const io = captureIO();
     const code = await runHeadless(baseArgs({ directory: root, json: true }), io);
     expect(code).toBe(0);
@@ -103,7 +106,7 @@ describe('runHeadless', () => {
   });
 
   it('drops protected matches that --exclude already removes', async () => {
-    root = buildTree({ dist: { '.git': {} } });
+    root = buildTree({ dist: { '.git': { HEAD: 'ref' } } });
     const io = captureIO();
     await runHeadless(baseArgs({ directory: root, json: true, exclude: ['dist'] }), io);
     expect(JSON.parse(io.out.join('')).diagnostics).toEqual([]);
@@ -122,8 +125,8 @@ describe('runHeadless', () => {
     expect(isCloudSynced('/Users/me/dev/node_modules', '/Users/me')).toBe(false);
   });
 
-  it('hides zero-byte artifacts unless --include-empty', async () => {
-    root = buildTree({ node_modules: null, dist: { 'a.js': 'x' } });
+  it('hides artifacts with no files unless --include-empty', async () => {
+    root = buildTree({ node_modules: { nested: {} }, dist: { 'a.js': 'x' } });
     const hidden = captureIO();
     await runHeadless(baseArgs({ directory: root, json: true }), hidden);
     const names = (io: { out: string[] }) =>
@@ -476,9 +479,7 @@ describe('runHeadless error handling', () => {
 
   it('prints ~-relative paths in the table when scanning several roots', async () => {
     root = buildTree({ a: { dist: { 'x.js': 'x' } }, b: { dist: { 'y.js': 'y' } } });
-    const saved = process.env.HOME;
-    process.env.HOME = root;
-    try {
+    await withHome(root, async () => {
       const io = captureIO();
       await runHeadless(
         baseArgs({ directories: [join(root, 'a'), join(root, 'b')], richOutput: true }),
@@ -488,16 +489,12 @@ describe('runHeadless error handling', () => {
       expect(io.out.filter((l) => l.endsWith('~/a/dist') || l.endsWith('~/b/dist'))).toHaveLength(
         2,
       );
-    } finally {
-      process.env.HOME = saved;
-    }
+    });
   });
 
   it('--discover scans the discovered home roots', async () => {
     root = buildTree({ dev: { app: { dist: { 'x.js': 'x' } } }, Documents: { 'a.txt': 'x' } });
-    const saved = process.env.HOME;
-    process.env.HOME = root;
-    try {
+    await withHome(root, async () => {
       const io = captureIO();
       await runHeadless(baseArgs({ directories: [], discover: true, full: false, json: true }), io);
       const payload = JSON.parse(io.out.join(''));
@@ -505,9 +502,7 @@ describe('runHeadless error handling', () => {
       expect(payload.entries.map((e: { relativePath: string }) => e.relativePath)).toEqual([
         'app/dist',
       ]);
-    } finally {
-      process.env.HOME = saved;
-    }
+    });
   });
 
   it('reports an empty scan of several roots with the root list', async () => {
@@ -522,9 +517,10 @@ describe('runHeadless error handling', () => {
   });
 
   it('abbreviates only paths inside the home directory', () => {
-    expect(tildify('/Users/me/dev/app', '/Users/me')).toBe('~/dev/app');
-    expect(tildify('/Users/me', '/Users/me')).toBe('~');
-    expect(tildify('/Users/meta/app', '/Users/me')).toBe('/Users/meta/app');
+    const home = resolve('/Users/me');
+    expect(tildify(join(home, 'dev', 'app'), home)).toBe(join('~', 'dev', 'app'));
+    expect(tildify(home, home)).toBe('~');
+    expect(tildify(resolve('/Users/meta/app'), home)).toBe(resolve('/Users/meta/app'));
   });
 
   it('scans the working directory when no directory is given', async () => {
@@ -536,9 +532,7 @@ describe('runHeadless error handling', () => {
 
   it('--discover with nothing to discover reports the working directory as root and no entries', async () => {
     root = buildTree({});
-    const saved = process.env.HOME;
-    process.env.HOME = root;
-    try {
+    await withHome(root, async () => {
       const io = captureIO();
       await runHeadless(baseArgs({ directories: [], discover: true, json: true }), {
         ...io,
@@ -548,26 +542,20 @@ describe('runHeadless error handling', () => {
       expect(payload.roots).toEqual([]);
       expect(payload.root).toBe(root);
       expect(payload.entries).toEqual([]);
-    } finally {
-      process.env.HOME = saved;
-    }
+    });
   });
 
   it('prefixes cloud-synced paths with [cloud] in the table', async () => {
     root = buildTree({
       Library: { CloudStorage: { Dropbox: { app: { dist: { 'a.js': 'x' } } } } },
     });
-    const saved = process.env.HOME;
-    process.env.HOME = root;
-    try {
+    await withHome(root, async () => {
       const io = captureIO();
       await runHeadless(
         baseArgs({ directory: join(root, 'Library', 'CloudStorage', 'Dropbox'), richOutput: true }),
         io,
       );
       expect(io.out.some((l) => l.endsWith('[cloud] app/dist'))).toBe(true);
-    } finally {
-      process.env.HOME = saved;
-    }
+    });
   });
 });

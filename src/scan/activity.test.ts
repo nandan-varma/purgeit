@@ -2,10 +2,18 @@ import { symlinkSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
-import { checkActivity } from './activity.js';
+import { checkActivity, defaultFind } from './activity.js';
 
 const WEEK = 7 * 24 * 60 * 60 * 1000;
 const NO_FIND = 'purgeit-no-such-find-binary';
+
+describe('defaultFind', () => {
+  it('uses find except on Windows, where find is FIND.EXE', () => {
+    expect(defaultFind('darwin')).toBe('find');
+    expect(defaultFind('linux')).toBe('find');
+    expect(defaultFind('win32')).toBeNull();
+  });
+});
 
 describe('checkActivity', () => {
   let root: string;
@@ -14,8 +22,10 @@ describe('checkActivity', () => {
   for (const [label, find] of [
     ['find', 'find'],
     ['Node walk fallback', NO_FIND],
+    ['Node walk (Windows)', null],
   ] as const) {
-    describe(`via ${label}`, () => {
+    // On Windows `find` is FIND.EXE (a text search); the explicit-find variant only makes sense elsewhere.
+    describe.skipIf(find === 'find' && process.platform === 'win32')(`via ${label}`, () => {
       it('is recent when a file deep inside changed, even though the directory mtime is old', async () => {
         root = buildTree({ node_modules: { pkg: { lib: { 'index.js': 'x' } } } });
         backdate(join(root, 'node_modules'));

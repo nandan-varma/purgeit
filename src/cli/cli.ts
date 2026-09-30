@@ -176,14 +176,15 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
           targetProject: parsed.project,
           concurrency: parsed.concurrency,
           maxDepth: parsed.depth,
+          // Artifacts with no files in them free nothing, so they're hidden unless asked for.
+          skipEmpty: !parsed.includeEmpty,
         },
         configPath: parsed.configPath,
         noConfig: parsed.noConfig,
         noGated: parsed.noGated,
         targets: parsed.targets,
         exclude: parsed.exclude,
-        // Zero-byte artifacts free nothing, so they're hidden unless asked for.
-        minSizeBytes: parsed.includeEmpty ? minSizeBytes : Math.max(minSizeBytes ?? 0, 1),
+        minSizeBytes,
         minAgeMs,
         maxAgeMs,
         sort: parsed.sort,

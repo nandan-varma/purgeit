@@ -15,6 +15,7 @@ import {
 } from '../rules/validators.js';
 import type { ResolvedRuleSet, ValidationWarning } from '../types.js';
 import { AsyncQueue } from './async-queue.js';
+import { isEmptyTree } from './empty.js';
 import { findProtection, type ProtectionReason } from './protection.js';
 import { computeSize, createDuBatcher } from './size.js';
 import type { WalkMatch } from './walk.js';
@@ -57,6 +58,8 @@ export interface ScanOptions {
    * Default true; only disable when a caller does its own check.
    */
   readonly protect?: boolean | undefined;
+  /** Drop matches that contain no files at all (deleting them frees nothing). Default false. */
+  readonly skipEmpty?: boolean | undefined;
 }
 
 interface ProjectInfo {
@@ -223,8 +226,9 @@ export async function* scan(
     }
   }
 
+  const protect = opts.protect !== false;
   function handleMatch(project: string, match: WalkMatch): void {
-    if (opts.protect === false) {
+    if (!protect && !opts.skipEmpty) {
       reportMatch(project, match);
       return;
     }
@@ -232,7 +236,8 @@ export async function* scan(
     void limit(async () => {
       try {
         if (signal?.aborted) return;
-        const reason = await findProtection(match.path);
+        if (opts.skipEmpty && (await isEmptyTree(match.path))) return;
+        const reason = protect ? await findProtection(match.path) : undefined;
         if (signal?.aborted) return;
         if (reason === undefined) reportMatch(project, match);
         else queue.push({ type: 'protected', entry: newEntry(project, match), reason });

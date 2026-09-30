@@ -60,8 +60,6 @@ function baseArgs(overrides: Partial<ParsedCli> = {}): ParsedCli {
     headless: true,
     concurrency: 8,
     color: undefined,
-    // The mocked scan reports zero/unknown sizes, which are hidden by default.
-    includeEmpty: true,
     ...overrides,
   };
 }

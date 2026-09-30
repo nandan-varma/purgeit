@@ -20,7 +20,7 @@ purgeit agent <instructions|schema>
                               inside may have changed within it either; createdAt for cloud.
                               Also the --delete/apply recency guard window (default 7d, 0 = off)
       --max-age <duration>   Skip matches older than this age (e.g. 30d)
-      --include-empty        Also list zero-byte artifacts (hidden by default)
+      --include-empty        Also list artifacts containing no files (hidden by default)
       --depth <n>            Max recursion depth below each scanned root (local only)
       --provider <local|aws|gcp>  Resource domain to scan (default: local). aws/gcp scan cloud
                               resources instead of local directories, always headless — see

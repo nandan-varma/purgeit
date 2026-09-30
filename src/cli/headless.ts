@@ -116,8 +116,6 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     stderr(`purgeit: ${formatErrorMessage(err)}`);
     return 2;
   }
-  // Zero-byte artifacts free nothing, so they're hidden unless asked for.
-  const sizeFloor = parsed.includeEmpty ? minSizeBytes : Math.max(minSizeBytes, 1);
 
   const roots = await resolveRoots(parsed, cwd);
   const sizes = new Map<string, number>();
@@ -156,6 +154,8 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
         targetProject: parsed.project,
         concurrency: parsed.concurrency,
         maxDepth: parsed.depth,
+        // Artifacts with no files in them free nothing, so they're hidden unless asked for.
+        skipEmpty: !parsed.includeEmpty,
       })) {
         if (event.type === 'found') {
           if (!isExcluded(event.entry.path)) result.found.push({ root, entry: event.entry });
@@ -227,7 +227,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   const candidates = found.filter(
     ({ root, entry }) =>
       (inScope.get(root) as (path: string) => boolean)(entry.path) &&
-      sizeOf(entry.path) >= sizeFloor &&
+      sizeOf(entry.path) >= minSizeBytes &&
       passesAge(entry.path),
   );
   // A directory's own mtime misses changes deeper inside it, so --min-age also

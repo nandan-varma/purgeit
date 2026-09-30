@@ -73,7 +73,7 @@ purgeit agent <instructions|schema>
       --min-age <duration>   Skip matches with anything modified inside within this window
                               (e.g. 7d, 24h); also the --delete/apply recency guard (default 7d, 0 = off)
       --max-age <duration>   Skip matches older than this age (e.g. 30d)
-      --include-empty        Also list zero-byte artifacts (hidden by default)
+      --include-empty        Also list artifacts containing no files (hidden by default)
       --depth <n>            Max recursion depth
       --config <path>        Explicit config file
       --no-config            Ignore config file (defaults only)

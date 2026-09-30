@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 ### Changed
 - Headless `--delete` and `apply` skip anything with something modified inside it in the last 7 days (`--min-age` sets the window, `0` disables it), and refuse paths that resolve outside the scanned roots through a symlink.
 - `--min-age` now also requires that nothing *inside* a match changed within the window, not just the directory's own mtime.
-- Zero-byte artifacts are hidden unless `--include-empty` is passed.
+- Artifacts containing no files (nothing to free) are hidden unless `--include-empty` is passed.
 - Scanning the home directory never descends into `~/Library`, `~/.Trash` or `~/Applications`.
 - The TUI project overview uses aligned columns with age colors, and artifact rows show root-relative paths.
 

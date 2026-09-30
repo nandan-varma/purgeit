@@ -60,3 +60,21 @@ export function backdate(path: string, days = 30): void {
   };
   visit(path);
 }
+
+/**
+ * Runs `fn` with the home directory pointed at `home`. Node's os.homedir()
+ * reads HOME on POSIX but USERPROFILE on Windows, so both are set.
+ */
+export async function withHome<T>(home: string, fn: () => T | Promise<T>): Promise<T> {
+  const saved = { HOME: process.env.HOME, USERPROFILE: process.env.USERPROFILE };
+  process.env.HOME = home;
+  process.env.USERPROFILE = home;
+  try {
+    return await fn();
+  } finally {
+    for (const [key, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
+}

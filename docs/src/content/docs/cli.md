@@ -42,7 +42,7 @@ If no directory is given, the current working directory is used. Pass directorie
 | `--min-size <size>` | Skip matches below this size (e.g. `10MB`, `500KB`) |
 | `--min-age <duration>` | Skip matches newer than this age (e.g. `7d`, `24h`). Locally a match must be older *and* have nothing inside it modified within the window; for cloud resources it applies to `createdAt`. With `--delete` or `apply` it also sets the [recency guard](#safety-checks) window (`0` disables it). |
 | `--max-age <duration>` | Skip matches older than this age (e.g. `30d`) |
-| `--include-empty` | Also list zero-byte artifacts, which are hidden by default since deleting them frees nothing |
+| `--include-empty` | Also list artifacts that contain no files (only empty folders, if anything), which are hidden by default since deleting them frees nothing |
 | `--depth <n>` | Max recursion depth below each scanned root (default: unlimited) — local only |
 | `--provider <local\|aws\|gcp>` | Resource domain to scan (default: `local`). `aws`/`gcp` scan cloud resources instead of local directories and always run headless — see [Cloud cleanup](/cloud/) |
 | `--region <region>` | AWS region (`--provider aws` only; GCP always discovers across every zone/location in the project) |

@@ -1,6 +1,6 @@
 import { basename, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
+import { buildTree, cleanupTree, withHome } from '../../test/fixtures/build-tmp-tree.js';
 import { defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import type { ResolvedRuleSet } from '../types.js';
 import type { ScanEvent, ScanOptions } from './scanner.js';
@@ -163,9 +163,7 @@ describe('scan (projects mode, default)', () => {
       Applications: { tool: { node_modules: null } },
       dev: { app: { node_modules: null } },
     });
-    const saved = process.env.HOME;
-    process.env.HOME = root;
-    try {
+    await withHome(root, async () => {
       const flat = (await collect(root, { mode: 'flat' })).flatMap((e) =>
         e.type === 'found' ? [e.entry.path] : [],
       );
@@ -174,8 +172,16 @@ describe('scan (projects mode, default)', () => {
         e.type === 'project-start' ? [e.project] : [],
       );
       expect(starts).toEqual(['dev']);
-    } finally {
-      process.env.HOME = saved;
+    });
+  });
+
+  it('skips matches with no files when skipEmpty is set, with or without protection', async () => {
+    root = buildTree({ app: { node_modules: { empty: {} }, dist: { 'a.js': 'x' } } });
+    for (const protect of [true, false]) {
+      const found = (await collect(root, { skipEmpty: true, protect })).flatMap((e) =>
+        e.type === 'found' ? [e.entry.ruleName] : [],
+      );
+      expect(found).toEqual(['dist']);
     }
   });
 
