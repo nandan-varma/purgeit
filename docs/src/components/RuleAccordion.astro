@@ -4,33 +4,13 @@
 // src/rules/catalog/index.ts), so this table can never drift from what the
 // CLI actually does, unlike a hand-maintained markdown table.
 import { Icon } from '@astrojs/starlight/components';
-import type { GateCondition } from '../../../src/config/schema.js';
+import {
+  describeWhen,
+  KIND_LABELS as kindLabel,
+  KIND_ORDER as kindOrder,
+} from '../../../src/rules/catalog/describe.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, RULE_CATALOG } from '../../../src/rules/catalog/index.js';
 import type { RuleCategory, RuleDefinition } from '../../../src/rules/catalog/types.js';
-
-function describeCondition(condition: GateCondition): string {
-  if ('file' in condition) return condition.file;
-  if ('glob' in condition) return condition.glob;
-  return `${condition.grep.file} (matching /${condition.grep.pattern}/)`;
-}
-
-function describeWhen(when: GateCondition | readonly GateCondition[]): string {
-  const list = Array.isArray(when) ? when : [when];
-  return list.map(describeCondition).join(' or ');
-}
-
-const kindOrder: Record<RuleDefinition['kind'], number> = {
-  'always-safe': 0,
-  gated: 1,
-  marker: 2,
-  'prune-meta': 3,
-};
-const kindLabel: Record<RuleDefinition['kind'], string> = {
-  'always-safe': 'safe',
-  gated: 'gated',
-  marker: 'tagged',
-  'prune-meta': 'pruned',
-};
 
 const byCategory = new Map<RuleCategory, RuleDefinition[]>();
 for (const rule of RULE_CATALOG) {

@@ -1,5 +1,6 @@
-import { readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { formatErrorMessage } from '../format.js';
+import { resolvePackageDir } from './package-path.js';
 
 export interface SkillsIO {
   stdout?: (text: string) => void;
@@ -23,29 +24,6 @@ const SKILL_DESCRIPTIONS: Record<string, string> = {
   core: 'Safety rules, CLI and library usage — start here.',
   cloud: 'AWS/GCP cloud cleanup — tag filters, cost caveats, stronger delete safety.',
 };
-
-/**
- * Locates the package's bundled skills/purgeit/ directory relative to this
- * module's own location — same dual-candidate trick cli.ts's
- * readOwnVersion() uses for package.json, since this file runs both as
- * built `dist/cli.js` (one directory below the package root) and directly
- * from `src/cli/skills.ts` in dev (two directories below).
- */
-async function resolveSkillsDir(): Promise<URL> {
-  const candidates = [
-    new URL('../skills/purgeit/', import.meta.url),
-    new URL('../../skills/purgeit/', import.meta.url),
-  ];
-  for (const url of candidates) {
-    try {
-      await readdir(url);
-      return url;
-    } catch {
-      // try next candidate
-    }
-  }
-  throw new Error('could not locate the skills/ directory relative to the installed package');
-}
 
 async function readSkillFile(dir: URL, name: string): Promise<string> {
   return readFile(new URL(`${name}.md`, dir), 'utf-8');
@@ -75,7 +53,7 @@ export async function runSkillsCommand(argv: string[], io: SkillsIO = {}): Promi
 
   let dir: URL;
   try {
-    dir = await resolveSkillsDir();
+    dir = await resolvePackageDir('skills/purgeit');
   } catch (err) {
     stderr(`purgeit: ${formatErrorMessage(err)}`);
     return 2;

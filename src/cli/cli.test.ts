@@ -142,6 +142,12 @@ describe('runCli', () => {
     );
   });
 
+  it('dispatches docs to its own command', async () => {
+    const io = captureIO();
+    expect(await runCli(['docs', 'nope'], io)).toBe(2);
+    expect(io.err[0]).toMatch(/unknown docs topic 'nope'/);
+  });
+
   it('dispatches history to its own command', async () => {
     const io = captureIO();
     expect(await runCli(['history', '--help'], io)).toBe(0);

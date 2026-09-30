@@ -1,4 +1,5 @@
 import { defineConfig } from 'astro/config';
+import { DOC_SECTIONS } from '../src/docs/topics.ts';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
@@ -67,34 +68,8 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/nandan-varma/purgeit' },
         { icon: 'npm', label: 'npm', href: 'https://www.npmjs.com/package/purgeit' },
       ],
-      sidebar: [
-        {
-          label: 'Start here',
-          items: [
-            { label: 'Getting started', slug: 'getting-started' },
-            { label: 'Interactive TUI', slug: 'tui' },
-            { label: 'CLI reference', slug: 'cli' },
-            { label: 'Configuration', slug: 'configuration' },
-            { label: 'Built-in rules', slug: 'rules' },
-          ],
-        },
-        {
-          label: 'Advanced',
-          items: [
-            { label: 'Architecture', slug: 'architecture' },
-            { label: 'API reference', slug: 'api' },
-            { label: 'Cloud cleanup (AWS & GCP)', slug: 'cloud' },
-            { label: 'Scheduled cleanup', slug: 'scheduled-cleanup' },
-          ],
-        },
-        {
-          label: 'Community',
-          items: [
-            { label: 'FAQ & troubleshooting', slug: 'faq' },
-            { label: 'Contributing', slug: 'contributing' },
-          ],
-        },
-      ],
+      // Shared with `purgeit docs` so the CLI and the site list the same pages.
+      sidebar: DOC_SECTIONS.map(({ label, items }) => ({ label, items: [...items] })),
       editLink: {
         baseUrl: 'https://github.com/nandan-varma/purgeit/edit/main/docs/',
       },

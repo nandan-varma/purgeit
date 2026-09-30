@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { formatErrorMessage, parseDuration, parseSizeString } from '../format.js';
 import { runAgentCommand } from './agent.js';
 import { parseCliArgs, USAGE } from './args.js';
+import { runDocsCommand } from './docs.js';
 import { USAGE as COMMAND_USAGE } from './guide.js';
 import { runHeadless } from './headless.js';
 import { runHeadlessCloud } from './headless-cloud.js';
@@ -51,6 +52,9 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       signal: io.signal,
       idleForMs,
     });
+  }
+  if (argv[0] === 'docs') {
+    return runDocsCommand(argv.slice(1), { stdout, stderr });
   }
   if (argv[0] === 'history') {
     return runHistoryCommand(argv.slice(1), { stdout, stderr });

@@ -37,7 +37,9 @@ describe('runSkillsCommand fs failure paths', () => {
     const io = captureIO();
     const code = await runSkillsCommand(['list'], io);
     expect(code).toBe(2);
-    expect(io.err[0]).toMatch(/could not locate the skills\/ directory/);
+    expect(io.err[0]).toMatch(
+      /could not locate skills\/purgeit\/ relative to the installed package/,
+    );
   });
 
   it('returns exit code 2 for "get" when the skills/ directory cannot be located', async () => {
@@ -45,7 +47,9 @@ describe('runSkillsCommand fs failure paths', () => {
     const io = captureIO();
     const code = await runSkillsCommand(['get', 'core'], io);
     expect(code).toBe(2);
-    expect(io.err[0]).toMatch(/could not locate the skills\/ directory/);
+    expect(io.err[0]).toMatch(
+      /could not locate skills\/purgeit\/ relative to the installed package/,
+    );
   });
 
   it('returns exit code 2 when the directory resolves but the skill file cannot be read', async () => {
