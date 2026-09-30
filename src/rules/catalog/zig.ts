@@ -5,7 +5,13 @@ export const zigRules: readonly RuleDefinition[] = [
     kind: 'always-safe',
     name: 'zig-cache',
     categories: ['zig'],
-    description: 'Zig compiler cache',
+    description: 'Zig compiler cache (Zig ≤ 0.11)',
+  },
+  {
+    kind: 'always-safe',
+    name: '.zig-cache',
+    categories: ['zig'],
+    description: 'Zig compiler cache (Zig ≥ 0.12)',
   },
   {
     kind: 'always-safe',

@@ -22,6 +22,7 @@ export type RuleCategory =
   | 'zig'
   | 'dart-flutter'
   | 'cpp'
+  | 'terraform'
   | 'vcs';
 
 /** Human-readable section labels, e.g. for a docs accordion keyed by category. */
@@ -41,6 +42,7 @@ export const CATEGORY_LABELS: Readonly<Record<RuleCategory, string>> = {
   zig: 'Zig',
   'dart-flutter': 'Dart / Flutter',
   cpp: 'C / C++ (CMake)',
+  terraform: 'Terraform / Terragrunt',
   vcs: 'Version control metadata',
 };
 
@@ -61,6 +63,7 @@ export const CATEGORY_ORDER: readonly RuleCategory[] = [
   'haskell',
   'elm',
   'zig',
+  'terraform',
   'vcs',
 ];
 

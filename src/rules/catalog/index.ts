@@ -10,6 +10,7 @@ import { pythonRules } from './python.js';
 import { rubyRules } from './ruby.js';
 import { rustRules } from './rust.js';
 import { sharedRules } from './shared.js';
+import { terraformRules } from './terraform.js';
 import type { RuleDefinition } from './types.js';
 import { vcsRules } from './vcs.js';
 import { zigRules } from './zig.js';
@@ -42,6 +43,7 @@ export const RULE_CATALOG: readonly RuleDefinition[] = [
   ...haskellRules,
   ...elmRules,
   ...zigRules,
+  ...terraformRules,
   ...vcsRules,
 ];
 

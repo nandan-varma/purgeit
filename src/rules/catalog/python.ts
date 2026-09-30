@@ -45,6 +45,12 @@ export const pythonRules: readonly RuleDefinition[] = [
   },
   {
     kind: 'always-safe',
+    name: '.nox',
+    categories: ['python'],
+    description: 'nox test sessions (virtualenvs)',
+  },
+  {
+    kind: 'always-safe',
     name: '.eggs',
     categories: ['python'],
     description: 'setuptools egg build cache',
