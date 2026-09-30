@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
+import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 
 const runTuiMock = vi.fn();
 vi.mock('../ui/run-tui.js', () => ({ runTui: runTuiMock }));
@@ -18,6 +19,12 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 });
 
 const { runCli } = await import('./cli.js');
+
+// Headless runs below really scan (and one really deletes), so they must never
+// point at a shared directory like /tmp — whatever artifacts other processes
+// left there would be listed or removed. An empty private tree has nothing to find.
+const EMPTY_ROOT = buildTree({}, 'purgeit-cli-empty-');
+afterAll(() => cleanupTree(EMPTY_ROOT));
 const fsPromises = await import('node:fs/promises');
 
 function captureIO() {
@@ -69,19 +76,19 @@ describe('runCli', () => {
 
   it('runs headless when --json is passed', async () => {
     const io = captureIO();
-    const code = await runCli(['--json', '--headless', '.'], { ...io, cwd: '/tmp' });
+    const code = await runCli(['--json', '--headless', '.'], { ...io, cwd: EMPTY_ROOT });
     expect(code).toBe(1);
   });
 
   it('runs headless when --delete is passed with --yes', async () => {
     const io = captureIO();
-    const code = await runCli(['--delete', '--yes', '.'], { ...io, cwd: '/tmp' });
+    const code = await runCli(['--delete', '--yes', '.'], { ...io, cwd: EMPTY_ROOT });
     expect(code).toBe(1);
   });
 
   it('runs headless when --headless is passed', async () => {
     const io = captureIO();
-    const code = await runCli(['--headless', '.'], { ...io, cwd: '/tmp' });
+    const code = await runCli(['--headless', '.'], { ...io, cwd: EMPTY_ROOT });
     expect(code).toBe(1);
   });
 
@@ -95,13 +102,13 @@ describe('runCli', () => {
 
   it('accepts a positional directory argument', async () => {
     const io = captureIO();
-    const code = await runCli(['--headless', '/tmp'], io);
+    const code = await runCli(['--headless', EMPTY_ROOT], io);
     expect(code).toBe(1);
   });
 
   it('accepts -d for directory', async () => {
     const io = captureIO();
-    const code = await runCli(['--headless', '-d', '/tmp'], io);
+    const code = await runCli(['--headless', '-d', EMPTY_ROOT], io);
     expect(code).toBe(1);
   });
 
