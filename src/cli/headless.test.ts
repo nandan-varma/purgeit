@@ -117,12 +117,11 @@ describe('runHeadless', () => {
     const io = captureIO();
     await runHeadless(baseArgs({ directory: root, json: true }), io);
     expect(JSON.parse(io.out.join('')).entries[0].cloudSynced).toBe(false);
-    expect(
-      isCloudSynced('/Users/me/Library/CloudStorage/Dropbox/app/node_modules', '/Users/me'),
-    ).toBe(true);
-    expect(isCloudSynced('/Users/me/Library/Mobile Documents', '/Users/me')).toBe(true);
-    expect(isCloudSynced('/Users/me/Library/CloudStorageX/node_modules', '/Users/me')).toBe(false);
-    expect(isCloudSynced('/Users/me/dev/node_modules', '/Users/me')).toBe(false);
+    const home = resolve('/Users/me');
+    expect(isCloudSynced(join(home, 'Library', 'CloudStorage', 'Dropbox', 'app'), home)).toBe(true);
+    expect(isCloudSynced(join(home, 'Library', 'Mobile Documents'), home)).toBe(true);
+    expect(isCloudSynced(join(home, 'Library', 'CloudStorageX', 'app'), home)).toBe(false);
+    expect(isCloudSynced(join(home, 'dev', 'node_modules'), home)).toBe(false);
   });
 
   it('hides artifacts with no files unless --include-empty', async () => {
@@ -485,10 +484,9 @@ describe('runHeadless error handling', () => {
         baseArgs({ directories: [join(root, 'a'), join(root, 'b')], richOutput: true }),
         io,
       );
-      expect(io.out[0]).toBe('Scan: ~/a, ~/b');
-      expect(io.out.filter((l) => l.endsWith('~/a/dist') || l.endsWith('~/b/dist'))).toHaveLength(
-        2,
-      );
+      expect(io.out[0]).toBe(`Scan: ${join('~', 'a')}, ${join('~', 'b')}`);
+      const paths = [join('~', 'a', 'dist'), join('~', 'b', 'dist')];
+      expect(io.out.filter((l) => paths.some((p) => l.endsWith(p)))).toHaveLength(2);
     });
   });
 
