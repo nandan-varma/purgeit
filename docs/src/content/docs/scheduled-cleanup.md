@@ -7,6 +7,8 @@ purgeit doesn't ship a background daemon or menu-bar app — that's a different 
 
 **Always dry-run a new schedule manually before wiring it into cron** — a scripted `--delete --yes` has no human in the loop to catch a misconfigured `--directory`/`--tag`.
 
+Local deletes are also held back by purgeit's [recency guard](/cli/#safety-checks): anything with a file modified inside it within the `--min-age` window (7 days if unset) is skipped, and matches holding git-tracked or other authored content are never deleted. `purgeit history` shows what each run removed.
+
 ## Local: cron, launchd, or a systemd timer
 
 ### cron (Linux/macOS)

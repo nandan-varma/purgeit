@@ -9,11 +9,12 @@ purgeit is a TypeScript CLI and library. The codebase is split into a framework-
 
 ```
 src/
-├── cli/           # argument parsing, headless orchestration, TUI dispatch
+├── cli/           # argument parsing, headless orchestration, TUI dispatch, docs/history commands
 ├── config/        # cosmiconfig integration and config validation
-├── delete/        # deletion engine with safety guards
-├── rules/         # default rules, gates, merge logic, validators
-├── scan/          # filesystem walker, size computation, async queue
+├── delete/        # deletion engine with safety guards, deletion history
+├── docs/          # the docs table of contents (shared with the site's sidebar) and terminal rendering
+├── rules/         # default rules, gates, markers, merge logic, validators
+├── scan/          # walker, size, protection probe, activity check, root discovery, async queue
 ├── ui/            # Ink-based interactive terminal UI
 ├── format.ts      # byte formatting and error helpers
 ├── types.ts       # shared TypeScript interfaces
@@ -32,9 +33,10 @@ src/
 1. `scan()` starts an async discovery pass.
 2. In `projects` mode (the default), `listProjects()` enumerates the root's immediate children, identifies which are projects, and runs manifest validators (e.g. flags a corrupted `package.json`). `flat` mode (`--full`) skips this and treats the whole root as one scan unit.
 3. `walk()` descends each project tree, matching directory names against the ruleset. Sibling directories are read concurrently rather than one at a time, so a wide tree of many projects doesn't pay for discovery serially.
-4. Always-safe matches stop the walk there (no point looking for `node_modules` inside `node_modules`); gated matches are reported only when the gate predicate passes, and also stop the walk either way.
-5. Each reported match is sized by `computeSize()`, which batches `du -s -k` calls on macOS/Linux (reducing process-fork overhead from O(n) to O(n/32)) and falls back to a concurrency-limited pure-Node recursive walk on Windows, or wherever `du` is unavailable or fails on a specific path.
-6. Events are streamed to the consumer via an `AsyncQueue` bridging the concurrent producers into one ordered async generator.
+4. Always-safe matches stop the walk there (no point looking for `node_modules` inside `node_modules`); gated matches are reported only when the gate predicate passes, and also stop the walk either way. A directory whose own listing contains a marker rule's file (`CACHEDIR.TAG`) matches under any name. Walking the home directory skips `~/Library`, `~/.Trash` and `~/Applications`.
+5. Each match is probed by `findProtection()` — a nested `.git` or `*-keypair.json` within three levels, then `git ls-files` for tracked content — and emitted as `protected` (never deletable) or `found`.
+6. Each reported match is sized by `computeSize()`, which batches `du -s -k` calls on macOS/Linux (reducing process-fork overhead from O(n) to O(n/32)) and falls back to a concurrency-limited pure-Node recursive walk on Windows, or wherever `du` is unavailable or fails on a specific path.
+7. Events are streamed to the consumer via an `AsyncQueue` bridging the concurrent producers into one ordered async generator.
 
 ## Rule engine
 
@@ -42,6 +44,7 @@ A `ResolvedRuleSet` contains:
 
 - `alwaysSafe`: directories that are always deletable (e.g. `node_modules`).
 - `gated`: directories that are only deletable when a sibling condition is met (e.g. `build` next to a `package.json`).
+- `markers`: marker files (e.g. `CACHEDIR.TAG`) whose presence, with the right signature, makes any directory a match.
 - `skipDirs`: directories that are never descended into.
 - `pruneMeta`: directories treated like VCS metadata (e.g. `.git`).
 - `targets`: named groups of rule names.
@@ -60,4 +63,5 @@ Safety is layered at every stage, not just at the final delete call:
 
 1. **Matching is conservative by construction.** A directory name is only ever a candidate if it's in the unconditionally-safe list or passes a gate predicate proving a sibling manifest exists — there's no heuristic "looks like build output" guessing.
 2. **Nothing is ever deleted without explicit human action.** In the [TUI](/tui/), every row starts unselected, and deletion is only reachable through a dedicated confirming phase requiring an explicit select-then-confirm. Headless mode requires `--delete`, and prompts for confirmation unless `--yes` is also passed.
-3. **`deleteEntries()` is the last line of defense**, independent of whatever the rule engine matched: it refuses to delete the filesystem root or the current user's home directory outright, supports `--dry-run` to simulate the entire deletion flow with nothing touched on disk, and continues past individual failures (permission denied, path vanished) rather than aborting the whole batch — failures are aggregated into the final `done` event instead of taking down the run.
+3. **Authored content is never offered.** Every match is probed before it's reported and again before a plan is applied; a nested repository, a deploy keypair or git-tracked files make it `protected`.
+4. **`deleteEntries()` is the last line of defense**, independent of whatever the rule engine matched: it refuses to delete the filesystem root or the current user's home directory outright, refuses any path that resolves outside the scanned roots through a symlink, refuses (for headless deletes and `apply`) anything modified inside within the recency window, supports `--dry-run` to simulate the entire deletion flow with nothing touched on disk, and continues past individual failures (permission denied, path vanished) rather than aborting the whole batch — failures are aggregated into the final `done` event instead of taking down the run.

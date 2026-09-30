@@ -18,20 +18,29 @@ initiative. Treat `--yes` as equivalent to skipping a safety check a human would
 ## CLI usage (no install required)
 
 ```bash
+npx purgeit docs                                  # full documentation, version-matched
+npx purgeit scan --discover --format json         # every usual project folder at once
 npx purgeit <directory> --json --dry-run          # list matches as JSON, delete nothing
 npx purgeit <directory> --json --dry-run --min-size 100MB   # only artifacts >= 100MB
 npx purgeit <directory> --json --dry-run --min-age 30d      # only untouched for 30+ days
 npx purgeit <directory> --delete --yes            # actually delete — only after reviewing the list above
 ```
 
-- `--json` gives machine-readable output: `{ root, totalBytes, entries: [{ path, project, kind,
-  ruleName, size, lastModified }], warnings }`. `size` is bytes, `lastModified` is epoch ms (or
-  `null` if not yet resolved).
+- `--json` gives machine-readable output: `{ root, roots, totalBytes, entries: [{ path, root,
+  relativePath, project, kind, ruleName, size, lastModified, cloudSynced }], diagnostics }`. `size`
+  is bytes, `lastModified` is epoch ms (or `null` if not yet resolved).
+- Matches holding authored content (a nested `.git`, a `*-keypair.json`, git-tracked files) are
+  never in `entries` — they appear in `diagnostics` with `code: "protected"` and a `reason`. Report
+  them to the user; never try to delete them another way.
+- `--delete` and `apply` skip anything modified inside in the last 7 days and report it as a
+  failure. Only pass `--min-age 0` when the user explicitly wants recently used artifacts gone.
+- `cloudSynced: true` means deleting also deletes from every synced device — call that out.
+- `npx purgeit history --json` lists what was deleted, for reporting back after a cleanup.
 - `--dry-run` simulates deletion without touching the filesystem — always do this before a real
   `--delete` run, and show the resulting entry list to the user for confirmation first.
 - `kind: "gated"` entries (e.g. `Pods`, `build`) required an extra manifest-based check to match;
-  `kind: "always-safe"` entries (e.g. `node_modules`, `dist`) are unconditionally regenerable by
-  name alone.
+  `kind: "marker"` entries carried a `CACHEDIR.TAG` cache tag; `kind: "always-safe"` entries (e.g.
+  `node_modules`, `dist`) are unconditionally regenerable by name alone.
 - `--min-size <size>` / `--min-age <duration>` / `--max-age <duration>` (e.g. `10MB`, `7d`, `24h`)
   narrow the result set — prefer narrowing over deleting everything found.
 - Run `npx purgeit skills get core --full` for the complete CLI flag reference, or `npx purgeit

@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ## [Unreleased]
 
+### Added
+- `CACHEDIR.TAG` marker rule (new `marker` kind): any directory carrying a [Cache Directory Tagging](https://bford.info/cachedir/) tag matches whatever its name. Disable with `markersRemove` in config.
+- Rules for `.nox`, `.zig-cache` (Zig ≥ 0.12) and `.terragrunt-cache` (new Terraform / Terragrunt category).
+- Authored-content protection: a match containing its own `.git`, a `*-keypair.json` deploy key, or git-tracked files is reported as `protected` (JSON `diagnostics`, stderr) and never deleted; re-checked before `apply`.
+- Several directories per `scan`/`plan`, and `--discover` for the usual project folders under the home directory (including AI agent worktrees). JSON reports gain `roots` and a per-entry `root`; plans move to schema v2 (v1 still applies).
+- `purgeit docs [topic]` serves the documentation site's pages from the installed package; `purgeit history` lists recorded deletions.
+- `cloudSynced` on JSON entries (and `[cloud]` in tables) for paths under `~/Library/CloudStorage` or iCloud Drive.
+- Library exports: `findProtection`, `checkActivity`, `discoverRoots`, `readHistory`, `historyFile`, `DEFAULT_IDLE_MS`, `PROTECTION_DESCRIPTIONS`.
+
+### Changed
+- Headless `--delete` and `apply` skip anything with something modified inside it in the last 7 days (`--min-age` sets the window, `0` disables it), and refuse paths that resolve outside the scanned roots through a symlink.
+- `--min-age` now also requires that nothing *inside* a match changed within the window, not just the directory's own mtime.
+- Zero-byte artifacts are hidden unless `--include-empty` is passed.
+- Scanning the home directory never descends into `~/Library`, `~/.Trash` or `~/Applications`.
+- The TUI project overview uses aligned columns with age colors, and artifact rows show root-relative paths.
+
+### Fixed
+- The CLI test suite scanned the real `/tmp`, and one test ran `--delete --yes` there, deleting other processes' artifacts.
+- Coverage is back at the enforced 100% (the `plan`/`apply`/`agent` commands had shipped untested).
+
 ## [0.1.1] - 2026-07-23
 
 ### Fixed

@@ -40,6 +40,14 @@ Or emit JSON for downstream tools:
 purgeit --json --dry-run ~/dev
 ```
 
+To review every folder your projects usually live in at once (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, ...):
+
+```bash
+purgeit scan --discover
+```
+
+The full documentation is also built in: `purgeit docs` lists the pages, and `purgeit docs <topic>` prints one.
+
 ## What gets cleaned
 
 purgeit ships with 60+ built-in rules across 16 ecosystems — not just JavaScript. A sample:

@@ -30,9 +30,13 @@ npx purgeit apply --plan cleanup-plan.json
 ## Features
 
 - **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
+- **Protects authored content** — a match holding its own `.git`, a `*-keypair.json` deploy key, or any git-tracked file is reported as protected and never deleted
+- **Keeps what's in use** — unattended deletes skip anything modified inside in the last 7 days (`--min-age` to change, `0` to disable), resolve every path through symlinks to stay inside the scanned roots, and are recorded (`purgeit history`)
+- **Scan everywhere at once** — several directories per run, or `--discover` for your usual project folders (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, ...); never touches `~/Library`, the Trash or `~/Applications`
 - **Interactive TUI** — a sortable table (size/age/type/name/project/path) with live sizes and a color-coded "warmth" age indicator; selection is a full-row color highlight, not just a checkbox
 - **Headless mode** — `--json`/`--delete` flags for scripting and CI
-- **60+ built-in rules across 16 ecosystems** — JavaScript/TypeScript, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple/Swift, Elixir, Haskell, Elm, Zig, Dart/Flutter, C/C++, not just `node_modules`. Full list: [purgeit.nandan.fyi/rules](https://purgeit.nandan.fyi/rules/)
+- **Cache tags** — any directory with a [`CACHEDIR.TAG`](https://bford.info/cachedir/) (Cargo, Go, Zig, ccache, pytest, ...) is matched whatever its name
+- **60+ built-in rules across 16 ecosystems** — JavaScript/TypeScript, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple/Swift, Elixir, Haskell, Elm, Zig, Dart/Flutter, C/C++, Terraform/Terragrunt, not just `node_modules`. Full list: [purgeit.nandan.fyi/rules](https://purgeit.nandan.fyi/rules/)
 - **Configurable rules** — extend, narrow, or replace the defaults with a `purgeit.config.ts`
 - **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
 - **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
@@ -43,6 +47,8 @@ The CLI serves its version-matched operating protocol and JSON Schema directly. 
 canonical source of truth for user documentation, automation, and agents:
 
 ```bash
+npx purgeit docs              # every documentation page, version-matched
+npx purgeit docs cli          # one page, with links to the site
 npx purgeit agent instructions
 npx purgeit agent schema
 npx purgeit scan ~/dev --format json
@@ -51,16 +57,23 @@ npx purgeit scan ~/dev --format json
 ## CLI flags
 
 ```
-purgeit [directory] [options]
+purgeit [scan|tui|plan] [directory...] [options]
+purgeit apply --plan <file> [--yes] [--min-age <duration>]
+purgeit docs [topic] [--json]
+purgeit history [--json] [--limit <n>]
 purgeit skills <list|get> [name] [--full]
-  -d, --directory <path>     Root directory to scan (default: cwd)
+purgeit agent <instructions|schema>
+  -d, --directory <path>     Root directory to scan (default: cwd; or pass several as arguments)
+      --discover             Also scan the usual project folders under your home directory
       --full                 Flat scan mode
       --project <name>       Limit to a single project (projects mode only)
       --exclude <glob>       Exclude paths matching glob (repeatable)
       --targets <names>      Comma-separated rule names to restrict matching
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
-      --min-age <duration>   Skip matches newer than this age (e.g. 7d, 24h)
+      --min-age <duration>   Skip matches with anything modified inside within this window
+                              (e.g. 7d, 24h); also the --delete/apply recency guard (default 7d, 0 = off)
       --max-age <duration>   Skip matches older than this age (e.g. 30d)
+      --include-empty        Also list zero-byte artifacts (hidden by default)
       --depth <n>            Max recursion depth
       --config <path>        Explicit config file
       --no-config            Ignore config file (defaults only)

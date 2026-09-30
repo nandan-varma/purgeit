@@ -75,6 +75,10 @@ Multiple conditions in a `when` array are OR'd together — the gate passes if a
 
 Array of gated rule names to remove from the built-in list.
 
+### `markersRemove`
+
+Array of marker rule names to disable — currently just `'CACHEDIR.TAG'`, which matches any directory carrying a [Cache Directory Tagging](https://bford.info/cachedir/) tag. `--targets CACHEDIR.TAG` restricts a scan to it.
+
 ### `skipDirs`
 
 Array of directory names that purgeit should not descend into during scanning.

@@ -11,6 +11,8 @@ Run by name: `npx vitest run -t "test name substring"`
 
 ## Hard-earned gotchas
 
+- **Tests must never touch a shared directory** — no scanning or deleting `/tmp` or `$HOME`; use `buildTree()` fixtures (and `backdate()` for anything deleted, since fresh trees trip the 7-day recency guard). `PURGEIT_NO_HISTORY=1` is set globally for tests.
+
 - **`src/ui/` isolation** — only directory allowed to import `react`/`ink`. CI enforces with grep. Keep rule engine, scanner, config, CLI core framework-agnostic.
 - **`exactOptionalPropertyTypes: true`** — optional fields fed by `| undefined` must be `field?: T | undefined`, not `field?: T`.
 - **`noUncheckedIndexedAccess: true`** — use `as T` for guaranteed values (e.g. regex captures after a successful match). Don't add `??` that creates unreachable branches.

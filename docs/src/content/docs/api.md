@@ -140,7 +140,9 @@ for await (const event of scan('/path/to/projects', ruleSet, { mode: 'projects' 
 }
 ```
 
-`scan()` is an async generator: it streams `found` events the instant a match is discovered (`size: null`), then an independent `size` event once that match's byte count finishes computing — discovery is never blocked on sizing, so a UI built on this can render results progressively.
+`scan()` is an async generator: it streams `found` events as matches are discovered (`size: null`), then independent `size` and `lastModified` events once each finishes computing — discovery is never blocked on sizing, so a UI built on this can render results progressively.
+
+Before a match is reported it is probed for authored content (see [`findProtection`](#protection-activity-and-discovery)): a match holding a nested `.git`, a `*-keypair.json` deploy key or git-tracked files arrives as a `protected` event with its `reason` instead of `found`, and should never be offered for deletion. Pass `protect: false` only if you run the check yourself. Scanning your home directory never descends into `~/Library`, `~/.Trash` or `~/Applications`.
 
 ```ts
 function scan(
@@ -160,21 +162,26 @@ interface ScanOptions {
   concurrency?: number;
   /** Never descend more than this many levels below each scanned root. Default: unlimited. */
   maxDepth?: number;
+  /** Probe each match for authored content and report it as 'protected'. Default true. */
+  protect?: boolean;
 }
 
 type ScanEvent =
   | { type: 'project-start'; project: string; label: string }
   | { type: 'found'; entry: ScanEntry }
+  | { type: 'protected'; entry: ScanEntry; reason: ProtectionReason }
   | { type: 'size'; path: string; bytes: number }
+  | { type: 'lastModified'; path: string; mtimeMs: number }
   | { type: 'warning'; warning: ValidationWarning }
   | { type: 'done'; totalBytes: number };
 
 interface ScanEntry {
   path: string;
   project: string;
-  kind: 'always-safe' | 'gated';
+  kind: 'always-safe' | 'gated' | 'marker';
   ruleName: string;
   size: number | null; // null until the matching 'size' event arrives
+  lastModified: number | null; // the directory's own mtime, null until its 'lastModified' event
 }
 
 interface ValidationWarning {
@@ -209,6 +216,12 @@ interface DeleteOptions {
   dryRun?: boolean;
   /** Max concurrent deletion operations. Default 8. */
   concurrency?: number;
+  /** Refuse any path that doesn't physically resolve (symlinks followed) inside one of these roots. */
+  roots?: readonly string[];
+  /** Refuse any path with something modified inside it within this many ms (or unreadable). DEFAULT_IDLE_MS is 7 days. */
+  idleForMs?: number;
+  /** Append real (non-dry-run) outcomes to the deletion history. Default false. */
+  recordHistory?: boolean;
 }
 
 type DeleteEvent =
@@ -218,7 +231,36 @@ type DeleteEvent =
   | { type: 'done'; deleted: number; failed: number };
 ```
 
-`deleteEntries` continues past individual failures rather than aborting the whole batch — one bad path (permission denied, already gone) shows up as an `error` event and gets counted in the final `done`, everything else still gets deleted. As a last line of defense independent of whatever the rule engine matched, it also refuses to delete the filesystem root or the current user's home directory, surfacing that refusal as a normal `error` event rather than throwing.
+`deleteEntries` continues past individual failures rather than aborting the whole batch — one bad path (permission denied, already gone) shows up as an `error` event and gets counted in the final `done`, everything else still gets deleted. As a last line of defense independent of whatever the rule engine matched, it also refuses to delete the filesystem root or the current user's home directory, surfacing that refusal as a normal `error` event rather than throwing. The optional `roots` and `idleForMs` guards are refused the same way — the CLI passes both for headless deletes and `apply`.
+
+## Protection, activity and discovery
+
+```ts
+import { checkActivity, discoverRoots, findProtection, PROTECTION_DESCRIPTIONS } from 'purgeit';
+
+const reason = await findProtection('/projects/app/build'); // 'tracked-files' | ... | undefined
+if (reason) console.log(PROTECTION_DESCRIPTIONS[reason]);
+
+await checkActivity('/projects/app/node_modules', 7 * 86_400_000); // 'recent' | 'idle' | 'unknown'
+
+const roots = await discoverRoots(defaultRuleSet()); // ['~/dev', '~/Projects', ...] that exist
+```
+
+- `findProtection(path)` — why a matched directory must not be deleted: `'nested-repository'`, `'deploy-keypair'`, `'tracked-files'`, or `'unverified'` when git failed for a reason other than "not a repository"; `undefined` when nothing marks it as authored.
+- `checkActivity(path, withinMs)` — whether anything *inside* the directory changed within the window (a directory's own mtime misses deeper changes). Treat `'unknown'` like `'recent'`.
+- `discoverRoots(ruleSet, home?)` — the roots `--discover` scans.
+
+## Deletion history
+
+```ts
+import { historyFile, readHistory } from 'purgeit';
+
+for (const record of await readHistory()) {
+  console.log(record.time, record.action, record.path, record.message ?? '');
+}
+```
+
+`readHistory(file?)` returns the recorded outcomes newest first (`action: 'deleted' | 'failed'`); `historyFile()` is where they live (`PURGEIT_HISTORY_FILE` overrides it).
 
 ## Exclude matcher
 
@@ -303,14 +345,21 @@ interface GatedRule {
 | `restrictRuleSetToTargets` | function — `(ruleSet, names) => ResolvedRuleSet` |
 | `applyCliFilters` | function — `(ruleSet, noGated, targets) => ResolvedRuleSet` |
 | `createExcludeMatcher` | function — `(root, patterns) => (path: string) => boolean` |
+| `findProtection` | function — `(path) => Promise<ProtectionReason \| undefined>` |
+| `checkActivity` | function — `(path, withinMs) => Promise<Activity>` |
+| `discoverRoots` | function — `(ruleSet, home?) => Promise<string[]>` |
+| `readHistory`, `historyFile` | functions — read the deletion history / locate it |
+| `DEFAULT_IDLE_MS` | value — the CLI's default recency window (7 days) |
+| `PROTECTION_DESCRIPTIONS` | value — `Record<ProtectionReason, string>` |
 | `RULE_CATALOG` | value — `readonly RuleDefinition[]`, the full built-in rule catalog |
 | `CATEGORY_LABELS` | value — `Record<RuleCategory, string>` display labels |
 | `CATEGORY_ORDER` | value — `readonly RuleCategory[]` fixed display order |
 | `ScanEntry`, `ScanEvent`, `ScanOptions` | types |
 | `DeleteEvent`, `DeleteOptions` | types |
-| `ArtifactRule`, `Gate`, `GateContext`, `ResolvedRuleSet`, `ValidationWarning` | types |
+| `ArtifactRule`, `Gate`, `GateContext`, `MarkerSpec`, `ResolvedRuleSet`, `ValidationWarning` | types |
+| `ProtectionReason`, `Activity`, `HistoryRecord` | types |
 | `PurgeitUserConfig`, `UserGatedRule`, `GateCondition` | types |
 | `LoadConfigOptions`, `LoadedConfig` | types |
-| `RuleCategory`, `RuleDefinition`, `AlwaysSafeRuleDefinition`, `GatedRuleDefinition`, `PruneMetaRuleDefinition` | types |
+| `RuleCategory`, `RuleDefinition`, `AlwaysSafeRuleDefinition`, `GatedRuleDefinition`, `MarkerRuleDefinition`, `PruneMetaRuleDefinition` | types |
 
 The Ink TUI (`src/ui/`) is intentionally not part of this package's public API — only `react`/`ink`-free code is exported, so this package can be used as a plain library with no UI dependency.

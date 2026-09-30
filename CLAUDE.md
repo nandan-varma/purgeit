@@ -66,6 +66,10 @@ rules/ (pure data + predicates, no fs except gate evaluation)
   gate-conditions.ts   DEFAULT_GATES — compiles each gated RULE_CATALOG entry's declarative
                         `when` via the same compileGateConditions() user configs go through
                         (config/schema.ts), rather than hand-written Gate closures
+  markers.ts           hasMarker()/findMarker() — marker rules (kind 'marker', e.g. CACHEDIR.TAG) match
+                        any directory whose own listing contains the marker file starting with its
+                        signature; walk.ts checks the listing it already read, so untagged dirs cost nothing
+  catalog/describe.ts  KIND_LABELS/KIND_ORDER/describeWhen — shared by RuleAccordion.astro and `purgeit docs`
   project-types.ts     detectProjectTypes() — display labels only (next/node/rust/xcode/...), no effect on matching
   validators.ts        warn-only manifest sanity checks (corrupted package.json, etc.)
   merge.ts              defaultRuleSet() + mergeRuleSets(base, userConfig) + restrictRuleSetToTargets()
@@ -111,9 +115,30 @@ scan/                  scan(root, ruleSet, opts): AsyncGenerator<ScanEvent> — 
                         spurious top-level "duplicates" while wastefully traversing the whole subtree.
 
 delete/deleter.ts       deleteEntries(paths, opts): AsyncGenerator<DeleteEvent> — dry-run support, per-path
-                        failure aggregation (one bad path doesn't abort the batch), and isDangerousPath() as a
-                        last-line-of-defense refusal to delete the filesystem root or the user's home directory,
-                        independent of whatever the rule engine matched.
+                        failure aggregation (one bad path doesn't abort the batch), and last-line-of-defense
+                        refusals (reported as per-path errors): isDangerousPath() (fs root / home), `roots`
+                        (the realpath must be inside a realpath'd scan root — defeats a symlink swapped in
+                        after the scan; an unresolvable root contains nothing), `idleForMs` (checkActivity
+                        must say 'idle'; headless --delete/apply pass DEFAULT_IDLE_MS = 7d unless --min-age).
+  history.ts             JSONL deletion history (~/Library/Logs/purgeit on macOS, %LOCALAPPDATA%, XDG state);
+                        deleteEntries appends only when `recordHistory` is set (the CLI and TUI set it),
+                        never on dry runs, and never lets a write failure fail a deletion.
+
+scan/ (additions)
+  protection.ts           findProtection(): nested .git / *-keypair.json within 3 levels, then `git ls-files`
+                        (GIT_DIR-style env stripped); non-128 git failures fail closed as 'unverified'.
+                        scanner.ts runs it per match before 'found' and emits 'protected' instead; plans
+                        re-probe at apply. `protect: false` in ScanOptions skips it (tests of sizing only).
+  activity.ts             checkActivity(): anything modified *inside* within a window (`find -mmin -N -print
+                        -quit`, Node-walk fallback); 'unknown' must be treated as 'recent'.
+  discover.ts             discoverRoots() for --discover: WELL_KNOWN_ROOTS (incl. ~/.claude|.codex/worktrees)
+                        plus home folders holding a project within 2 levels. walk.ts's HOME_PRUNE_NAMES
+                        (Library, .Trash, Applications) are never scanned from the home dir.
+
+docs/ (src/docs, not the site)
+  topics.ts               DOC_SECTIONS — the site's sidebar (docs/astro.config.mjs imports it) and the list
+                        `purgeit docs` serves; render.ts turns a page into terminal Markdown (absolute links,
+                        See also, RuleAccordion → tables). The .md/.mdx pages ship in the npm package.
 
 providers/              The CLOUD resource domain — deliberately parallel to, not unified with, scan/+delete/.
                         Bytes-vs-dollars and path-vs-ARN are different enough concepts that forcing them into one
@@ -250,6 +275,9 @@ Two entries in `tsup.config.ts`, in order: library (`src/index.ts` → `dist/ind
 - **Real filesystem fixtures, not mocks** — `test/fixtures/build-tmp-tree.ts`'s `buildTree()`/`cleanupTree()` create/remove real temp dirs via `mkdtempSync`. Don't mock `fs` for scanner/walk/rule tests.
 - **Cloud provider tests are the deliberate exception to "real fixtures, not mocks"** — there's no real AWS/GCP account in CI. AWS: `aws-sdk-client-mock`'s `mockClient(SomeClient)` (purpose-built for `@aws-sdk/client-*`); note `.rejects()` always normalizes to a real `Error` instance, so testing a genuinely non-Error rejection needs `.callsFake(() => Promise.reject('raw string'))` instead. GCP: no equivalent client-mock package exists, so `@google-cloud/compute`/`@google-cloud/container` are mocked directly via `vi.mock()` with hand-written fake client classes — **the fake class constructor must be a `function`, not an arrow function**, since vitest's mock `new`-support invokes the implementation via `Reflect.construct`, which throws on an arrow function (no `[[Construct]]`).
 - **`fileParallelism: false`** (`vitest.config.ts`) — tests spawn real `du` child processes; parallel file execution exhausts `posix_spawn` on macOS.
+- **Never scan or delete a shared directory in tests** (`/tmp`, `os.tmpdir()` itself, `$HOME`) — a headless `--delete --yes` there really deletes whatever other processes left behind (this happened: cli.test.ts deleted a sibling project's `coverage/`). Use `buildTree()`; for home-relative behavior point `process.env.HOME` at a fixture.
+- **Deletion tests need old fixtures** — a fresh `buildTree()` is correctly "recently active", so the 7-day recency guard refuses it. Call `backdate(root)` (build-tmp-tree.ts), or pass `minAge: '0'` when the guard itself isn't under test.
+- **`PURGEIT_NO_HISTORY=1` is set for every test** (`vitest.config.ts` `env`) so no test writes the real deletion history; history tests set `PURGEIT_HISTORY_FILE` to a temp file.
 - **Mocking ESM modules** — `vi.spyOn` cannot redefine a live ESM namespace export (`Cannot redefine property`). Use `vi.mock('module', async (importOriginal) => { const actual = await importOriginal(); return { ...actual, fn: vi.fn(actual.fn) }; })` at module load time instead, then grab the mock via `vi.mocked(...)` after the dynamic `await import(...)` of the module under test. See `src/cli/cli.test.ts` and `src/cli/headless-scan-error.test.ts`.
 - **`scan()` swallows its own fs errors internally** — `headless.ts`'s catch block around its `for await` loop is otherwise unreachable. Test it by mocking `../scan/scanner.js`'s `scan` to throw (dedicated file: `headless-scan-error.test.ts`). The same "mock a throwing async generator" pattern covers `discoverAwsResources`/`discoverGcpResources`/`loadProvider` failures in `headless-cloud.test.ts`.
 - **Abort timing** — don't rely on inter-project/inter-directory navigation timing for "aborts mid-scan" tests; it's genuinely racy. Use multiple matching dirs as *siblings in one directory* with `concurrency: 1` so p-limit's queuing is deterministic (only the first task runs immediately, the rest are provably still queued) — see `scanner.test.ts`.

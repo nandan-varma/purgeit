@@ -15,6 +15,8 @@ Common causes:
 - You are scanning a directory that does not contain projects in its immediate children (use `--full` for flat mode).
 - The artifacts are below `--min-size`.
 - The artifacts are matched by gated rules but the sibling manifest is missing. See the [built-in rules reference](/rules/).
+- The artifacts are empty (zero bytes) — pass `--include-empty` to list them.
+- The artifacts hold authored content (a nested `.git`, a `*-keypair.json`, or git-tracked files) and are protected — see the `protected:` lines on stderr, or `diagnostics` in JSON, and [Safety checks](/cli/#safety-checks).
 
 Exit code `1` means nothing was found or deletion had failures.
 
@@ -88,7 +90,15 @@ Press <kbd>Ctrl</kbd>+<kbd>C</kbd> in the TUI. In headless mode, send `SIGINT` o
 
 ## Does `purgeit` delete files outside the scanned root?
 
-No. Matches are always directories found under the scanned root. The delete engine also refuses to delete the filesystem root or your home directory as a last-line-of-defense guard.
+No. Matches are always directories found under the scanned root, and right before deleting, each path is resolved through symlinks and refused if it now points outside the roots you scanned. The delete engine also refuses to delete the filesystem root or your home directory as a last-line-of-defense guard.
+
+## Why did `--delete` skip an artifact as "modified within the last 1w"?
+
+Headless `--delete` and `apply` keep any artifact with something modified inside it in the last 7 days — it's probably in use. Pass `--min-age <duration>` to change the window, or `--min-age 0` to turn the check off. See [Safety checks](/cli/#safety-checks).
+
+## What did purgeit delete?
+
+`purgeit history` lists every real deletion (and every failed or refused one), newest first; add `--json` for scripts. See [Deletion history](/cli/#deletion-history).
 
 ## Where can I report a bug or request a feature?
 

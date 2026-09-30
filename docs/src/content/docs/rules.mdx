@@ -9,10 +9,11 @@ purgeit ships with a default ruleset ported from the original `CLEANUP.sh` and s
 
 ## Always-safe vs. gated
 
-Rules come in three kinds:
+Rules come in four kinds:
 
 - **always-safe** — deletable wherever the name appears in a project tree, no further proof needed. Once matched, the walker stops descending into it (no point looking for `node_modules` inside `node_modules`).
 - **gated** — the name alone is too generic to trust (`build`, `bin`, `vendor`, ...), so it's only reported when a sibling manifest in the *same parent directory* proves it's really generated output for a specific ecosystem — e.g. `Pods/` only counts next to a `Podfile`.
+- **tagged** — any directory, whatever its name, that carries a marker file proving it's a cache: a [`CACHEDIR.TAG`](https://bford.info/cachedir/) starting with the standard signature, as written by Cargo, Go, Zig, ccache, pytest and others.
 - **pruned** (version control metadata) — never descended into at all, and never itself a deletion candidate.
 
 Expand a section below for that ecosystem's rules. Names repeated across sections (like `build` or `vendor`) are genuinely polyglot — gated on whichever ecosystem's manifest happens to be present, so one rule definition safely covers all of them.

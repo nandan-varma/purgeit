@@ -22,10 +22,12 @@ The TUI moves through a small number of phases, and only one path leads to delet
 | Column | Meaning |
 | --- | --- |
 | SIZE | Real on-disk size (`du -s -k`, or a pure-Node walk on Windows). Blank until computed. |
-| TYPE | `always-safe` or `gated` — see [built-in rules](/rules/). |
+| TYPE | `safe`, `gated` or `tagged` (a marker-matched cache) — see [built-in rules](/rules/). |
 | NAME | The matched directory name (e.g. `node_modules`). |
 | PROJECT | The top-level project the match was found under. Hidden on narrow terminals to give PATH more room. |
-| PATH | Full path to the match. Truncates from the start so the meaningful tail (the artifact's own directory) stays visible. |
+| PATH | Path to the match relative to the scanned directory. Truncates from the start so the meaningful tail (the artifact's own directory) stays visible. |
+
+Zero-byte artifacts are hidden (they free nothing); pass `--include-empty` to list them. Matches holding authored content — a nested `.git`, a deploy keypair, or git-tracked files — never appear at all (see [Safety checks](/cli/#safety-checks)). The TUI reviews one directory at a time; use `purgeit scan` for several directories or `--discover`.
 
 The header shows the scanned root, item count, running total size, current sort, and (once you've selected something) the selected count and size.
 

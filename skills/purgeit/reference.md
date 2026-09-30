@@ -1,19 +1,26 @@
 ## Full CLI flag reference
 
 ```
-purgeit [directory] [options]
+purgeit [scan|tui|plan] [directory...] [options]
+purgeit apply --plan <file> [--yes] [--min-age <duration>]
+purgeit docs [topic] [--json]
+purgeit history [--json] [--limit <n>]
 purgeit skills list | get <name> [--full]
+purgeit agent <instructions|schema>
 
-  -d, --directory <path>     Root directory to scan (default: cwd)
+  -d, --directory <path>     Root directory to scan (default: cwd; or pass several as arguments)
+      --discover             Also scan the usual project folders under the home directory
       --full                 Flat scan mode: treat <directory> as one unit instead of
                               grouping its immediate children as separate projects
       --project <name>       Limit to a single top-level project by name (projects mode only)
       --exclude <glob>       Exclude paths matching glob, relative to the scanned root (repeatable)
       --targets <names>      Comma-separated rule names / named target group to restrict matching to
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
-      --min-age <duration>   Skip matches newer than this age (e.g. 7d, 24h) — local mtime,
-                              or createdAt for cloud resources
+      --min-age <duration>   Skip matches newer than this age (e.g. 7d, 24h) — locally, nothing
+                              inside may have changed within it either; createdAt for cloud.
+                              Also the --delete/apply recency guard window (default 7d, 0 = off)
       --max-age <duration>   Skip matches older than this age (e.g. 30d)
+      --include-empty        Also list zero-byte artifacts (hidden by default)
       --depth <n>            Max recursion depth below each scanned root (local only)
       --provider <local|aws|gcp>  Resource domain to scan (default: local). aws/gcp scan cloud
                               resources instead of local directories, always headless — see
@@ -58,11 +65,13 @@ purgeit exits `2` on conflicting pairs.
 - `scan(root, ruleSet, opts): AsyncGenerator<ScanEvent>` — `ScanEvent`/`ScanEntry`/`ScanOptions` types
 - `defaultRuleSet()`, `mergeRuleSets(base, userConfig)`, `restrictRuleSetToTargets(ruleSet, tokens)`, `applyCliFilters(ruleSet, noGated, targets)`
 - `createExcludeMatcher(root, patterns)`
-- `RULE_CATALOG`, `CATEGORY_LABELS`, `CATEGORY_ORDER` and the `RuleDefinition`/`AlwaysSafeRuleDefinition`/`GatedRuleDefinition`/`PruneMetaRuleDefinition`/`RuleCategory` types
-- `ArtifactRule`, `Gate`, `GateContext`, `ResolvedRuleSet`, `ValidationWarning` types
+- `findProtection(path)`, `PROTECTION_DESCRIPTIONS`, `checkActivity(path, withinMs)`, `discoverRoots(ruleSet, home?)` — `ProtectionReason`/`Activity` types
+- `RULE_CATALOG`, `CATEGORY_LABELS`, `CATEGORY_ORDER` and the `RuleDefinition`/`AlwaysSafeRuleDefinition`/`GatedRuleDefinition`/`MarkerRuleDefinition`/`PruneMetaRuleDefinition`/`RuleCategory` types
+- `ArtifactRule`, `Gate`, `GateContext`, `MarkerSpec`, `ResolvedRuleSet`, `ValidationWarning` types
 
 **Deleting (local):**
-- `deleteEntries(paths, opts): AsyncGenerator<DeleteEvent>` — `DeleteEvent`/`DeleteOptions` types
+- `deleteEntries(paths, opts): AsyncGenerator<DeleteEvent>` — `DeleteEvent`/`DeleteOptions` types; opts `roots`, `idleForMs` (`DEFAULT_IDLE_MS`), `recordHistory`
+- `readHistory(file?)`, `historyFile()` — `HistoryRecord` type
 
 **Config:**
 - `loadConfig(opts): Promise<LoadedConfig>` — `LoadConfigOptions`/`LoadedConfig` types
