@@ -23,6 +23,7 @@ export type RuleCategory =
   | 'dart-flutter'
   | 'cpp'
   | 'terraform'
+  | 'cache-marker'
   | 'vcs';
 
 /** Human-readable section labels, e.g. for a docs accordion keyed by category. */
@@ -43,6 +44,7 @@ export const CATEGORY_LABELS: Readonly<Record<RuleCategory, string>> = {
   'dart-flutter': 'Dart / Flutter',
   cpp: 'C / C++ (CMake)',
   terraform: 'Terraform / Terragrunt',
+  'cache-marker': 'Tagged cache directories (any ecosystem)',
   vcs: 'Version control metadata',
 };
 
@@ -64,6 +66,7 @@ export const CATEGORY_ORDER: readonly RuleCategory[] = [
   'elm',
   'zig',
   'terraform',
+  'cache-marker',
   'vcs',
 ];
 
@@ -84,6 +87,17 @@ export interface GatedRuleDefinition extends BaseRuleDefinition {
   readonly when: GateCondition | readonly GateCondition[];
 }
 
+/**
+ * Deletable under any name when the directory itself contains `file` whose
+ * content starts with `signature` — a tool's own declaration that the directory
+ * is a regenerable cache (e.g. the Cache Directory Tagging standard).
+ */
+export interface MarkerRuleDefinition extends BaseRuleDefinition {
+  readonly kind: 'marker';
+  readonly file: string;
+  readonly signature: string;
+}
+
 /** Never descended into while scanning (VCS metadata) — not itself a deletion candidate. */
 export interface PruneMetaRuleDefinition extends BaseRuleDefinition {
   readonly kind: 'prune-meta';
@@ -92,4 +106,5 @@ export interface PruneMetaRuleDefinition extends BaseRuleDefinition {
 export type RuleDefinition =
   | AlwaysSafeRuleDefinition
   | GatedRuleDefinition
+  | MarkerRuleDefinition
   | PruneMetaRuleDefinition;

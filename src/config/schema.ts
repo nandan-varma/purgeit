@@ -31,6 +31,8 @@ export interface PurgeitUserConfig {
   readonly alwaysSafeRemove?: readonly string[];
   readonly gated?: readonly UserGatedRule[];
   readonly gatedRemove?: readonly string[];
+  /** Built-in marker rules to disable by name (e.g. 'CACHEDIR.TAG'). */
+  readonly markersRemove?: readonly string[];
   readonly skipDirs?: readonly string[];
   readonly pruneNames?: readonly string[];
   readonly targets?: Readonly<Record<string, readonly string[]>>;
@@ -99,6 +101,7 @@ export function assertPurgeitUserConfig(
   assertOptionalStringArray(cfg.alwaysSafe, 'alwaysSafe', source);
   assertOptionalStringArray(cfg.alwaysSafeRemove, 'alwaysSafeRemove', source);
   assertOptionalStringArray(cfg.gatedRemove, 'gatedRemove', source);
+  assertOptionalStringArray(cfg.markersRemove, 'markersRemove', source);
   assertOptionalStringArray(cfg.skipDirs, 'skipDirs', source);
   assertOptionalStringArray(cfg.pruneNames, 'pruneNames', source);
 

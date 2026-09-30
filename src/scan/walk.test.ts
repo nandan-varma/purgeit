@@ -29,6 +29,22 @@ describe('walk', () => {
     ]);
   });
 
+  it('reports a CACHEDIR.TAG-tagged directory under any name and does not descend into it', async () => {
+    const tag = 'Signature: 8a477f597d28d172789f06886806bc55\n';
+    root = buildTree({
+      tools: { 'my-cache': { 'CACHEDIR.TAG': tag, dist: null } },
+      decoy: { 'CACHEDIR.TAG': 'not a tag' },
+    });
+    expect(await collect(root)).toEqual([
+      { path: join(root, 'tools', 'my-cache'), kind: 'marker', ruleName: 'CACHEDIR.TAG' },
+    ]);
+  });
+
+  it('never reports the walk root itself as a marker match', async () => {
+    root = buildTree({ 'CACHEDIR.TAG': 'Signature: 8a477f597d28d172789f06886806bc55\n' });
+    expect(await collect(root)).toEqual([]);
+  });
+
   it('never descends into .git', async () => {
     root = buildTree({
       '.git': { objects: { dist: null } }, // a decoy 'dist' inside .git must never surface

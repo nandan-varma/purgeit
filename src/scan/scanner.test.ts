@@ -113,6 +113,26 @@ describe('scan (projects mode, default)', () => {
     expect(projects).toEqual(['proj-a', 'proj-b']);
   });
 
+  it('reports a CACHEDIR.TAG-tagged top-level directory as a match instead of a project', async () => {
+    root = buildTree({
+      'build-cache': { 'CACHEDIR.TAG': 'Signature: 8a477f597d28d172789f06886806bc55\n', blob: 'x' },
+      app: { 'package.json': '{}', node_modules: null },
+    });
+    const events = await collect(root);
+    const starts = events.filter((e) => e.type === 'project-start');
+    expect(starts.map((e) => (e.type === 'project-start' ? e.project : ''))).toEqual(['app']);
+    const found = events.flatMap((e) => (e.type === 'found' ? [e.entry] : []));
+    expect(found).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          path: join(root, 'build-cache'),
+          kind: 'marker',
+          ruleName: 'CACHEDIR.TAG',
+        }),
+      ]),
+    );
+  });
+
   it('honors maxDepth within each project too', async () => {
     root = buildTree({ proj: { a: { b: { node_modules: null } } } });
     const events = await collect(root, { maxDepth: 1 });

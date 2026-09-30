@@ -1,7 +1,7 @@
 import type { PurgeitUserConfig } from '../config/schema.js';
 import { compileGateConditions, isDeclarativeGatedRule } from '../config/schema.js';
-import type { Gate, ResolvedRuleSet } from '../types.js';
-import { ALWAYS_SAFE_NAMES, GATED_NAMES, PRUNE_META_NAMES } from './default-rules.js';
+import type { Gate, MarkerSpec, ResolvedRuleSet } from '../types.js';
+import { ALWAYS_SAFE_NAMES, GATED_NAMES, MARKER_RULES, PRUNE_META_NAMES } from './default-rules.js';
 import { DEFAULT_GATES } from './gate-conditions.js';
 
 /**
@@ -15,6 +15,7 @@ export function defaultRuleSet(): ResolvedRuleSet {
   return {
     alwaysSafe: new Set(ALWAYS_SAFE_NAMES),
     gated: new Map(DEFAULT_GATES),
+    markers: new Map(MARKER_RULES),
     pruneMeta: new Set(PRUNE_META_NAMES),
     skipDirs: new Set(),
     targets: new Map(),
@@ -42,6 +43,7 @@ export function mergeRuleSets(
   const replacing = config.extends === 'replace';
   const alwaysSafe = replacing ? new Set<string>() : new Set(base.alwaysSafe);
   const gated = replacing ? new Map<string, Gate>() : new Map(base.gated);
+  const markers = replacing ? new Map<string, MarkerSpec>() : new Map(base.markers);
   const pruneMeta = replacing ? new Set<string>() : new Set(base.pruneMeta);
   const skipDirs = replacing ? new Set<string>() : new Set(base.skipDirs);
   const targets = replacing ? new Map<string, readonly string[]>() : new Map(base.targets);
@@ -54,6 +56,7 @@ export function mergeRuleSets(
     gated.set(rule.name, gate);
   }
   for (const name of config.gatedRemove ?? []) gated.delete(name);
+  for (const name of config.markersRemove ?? []) markers.delete(name);
 
   // Always-safe is the stronger guarantee — a name can't be both.
   for (const name of alwaysSafe) gated.delete(name);
@@ -65,6 +68,7 @@ export function mergeRuleSets(
   return {
     alwaysSafe,
     gated,
+    markers,
     pruneMeta,
     skipDirs,
     targets,
@@ -96,6 +100,7 @@ export function restrictRuleSetToTargets(
   return {
     alwaysSafe: new Set([...ruleSet.alwaysSafe].filter((name) => names.has(name))),
     gated: new Map([...ruleSet.gated].filter(([name]) => names.has(name))),
+    markers: new Map([...ruleSet.markers].filter(([name]) => names.has(name))),
     pruneMeta: ruleSet.pruneMeta,
     skipDirs: ruleSet.skipDirs,
     targets: ruleSet.targets,

@@ -90,6 +90,7 @@ describe('assertPurgeitUserConfig', () => {
     bad({ alwaysSafe: [1, 2] }, /alwaysSafe.*array of strings/);
     bad({ alwaysSafeRemove: [1] }, /alwaysSafeRemove/);
     bad({ gatedRemove: [1] }, /gatedRemove/);
+    bad({ markersRemove: [1] }, /markersRemove/);
     bad({ skipDirs: [1] }, /skipDirs/);
     bad({ pruneNames: [1] }, /pruneNames/);
   });

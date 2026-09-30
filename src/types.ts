@@ -40,9 +40,17 @@ export interface ValidationWarning {
 
 export type Validator = (projectDir: string) => ValidationWarning | undefined;
 
+/** A marker file whose presence (with `signature` as its leading content) proves a directory is a cache. */
+export interface MarkerSpec {
+  readonly file: string;
+  readonly signature: string;
+}
+
 export interface ResolvedRuleSet {
   readonly alwaysSafe: ReadonlySet<string>;
   readonly gated: ReadonlyMap<string, Gate>;
+  /** Rule name → marker file that makes any directory containing it a match. */
+  readonly markers: ReadonlyMap<string, MarkerSpec>;
   readonly pruneMeta: ReadonlySet<string>;
   readonly skipDirs: ReadonlySet<string>;
   readonly targets: ReadonlyMap<string, readonly string[]>;

@@ -64,10 +64,10 @@ export function Row({
         </Box>
       )}
       <Box width={COLUMN_WIDTHS.kind} flexShrink={0}>
-        {entry.kind === 'gated' ? (
-          <Text color={theme.gated}>gated</Text>
-        ) : (
+        {entry.kind === 'always-safe' ? (
           <Text dimColor={dim}>safe</Text>
+        ) : (
+          <Text color={theme.gated}>{entry.kind === 'gated' ? 'gated' : 'tagged'}</Text>
         )}
       </Box>
       <Box width={COLUMN_WIDTHS.name} flexShrink={0}>

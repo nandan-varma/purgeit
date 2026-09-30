@@ -22,11 +22,13 @@ function describeWhen(when: GateCondition | readonly GateCondition[]): string {
 const kindOrder: Record<RuleDefinition['kind'], number> = {
   'always-safe': 0,
   gated: 1,
-  'prune-meta': 2,
+  marker: 2,
+  'prune-meta': 3,
 };
 const kindLabel: Record<RuleDefinition['kind'], string> = {
   'always-safe': 'safe',
   gated: 'gated',
+  marker: 'tagged',
   'prune-meta': 'pruned',
 };
 
@@ -132,6 +134,13 @@ const totalRules = RULE_CATALOG.length;
                           <p class="gate-condition">
                             <Icon name="right-arrow" size="0.85rem" />
                             Requires a sibling: {gateText}
+                          </p>
+                        )}
+                        {rule.kind === 'marker' && (
+                          <p class="gate-condition">
+                            <Icon name="right-arrow" size="0.85rem" />
+                            Matches any directory containing <code>{rule.file}</code> that starts
+                            with <code>{rule.signature}</code>
                           </p>
                         )}
                       </td>
@@ -441,6 +450,11 @@ const totalRules = RULE_CATALOG.length;
   .badge-gated {
     background-color: var(--sl-color-orange-low);
     color: var(--sl-color-orange-high);
+  }
+
+  .badge-marker {
+    background-color: var(--sl-color-blue-low);
+    color: var(--sl-color-blue-high);
   }
 
   .badge-prune-meta {

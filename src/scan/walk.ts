@@ -2,12 +2,13 @@ import { readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import pLimit, { type LimitFunction } from 'p-limit';
 import { createGateContext } from '../rules/gate-context.js';
+import { findMarker } from '../rules/markers.js';
 import type { ResolvedRuleSet } from '../types.js';
 import { AsyncQueue } from './async-queue.js';
 
 export interface WalkMatch {
   readonly path: string;
-  readonly kind: 'always-safe' | 'gated';
+  readonly kind: 'always-safe' | 'gated' | 'marker';
   readonly ruleName: string;
 }
 
@@ -32,7 +33,9 @@ export interface WalkOptions {
  * their gate predicate passes) and never descended into either way — so a
  * native module's own nested `build/`/`bin/` inside `node_modules` can never
  * be reached, because `node_modules` itself already stopped the walk.
- * Symlinked directories are never followed.
+ * Symlinked directories are never followed. Below the root, a directory whose
+ * own listing contains a marker rule's file (e.g. CACHEDIR.TAG) is reported as
+ * a match under any name and not descended into.
  *
  * Sibling directories are read concurrently (bounded by `concurrency`/
  * `limit`) rather than one at a time, so a wide tree of many projects (or
@@ -63,6 +66,15 @@ export async function* walk(
           entries = await readdir(dir, { withFileTypes: true });
         } catch {
           return;
+        }
+
+        if (depth > 0 && ruleSet.markers.size > 0) {
+          const hasFile = (name: string) => entries.some((e) => e.name === name && e.isFile());
+          const markerRule = await findMarker(dir, ruleSet.markers, hasFile);
+          if (markerRule !== undefined) {
+            queue.push({ path: dir, kind: 'marker', ruleName: markerRule });
+            return;
+          }
         }
 
         for (const entry of entries) {

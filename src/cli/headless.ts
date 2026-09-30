@@ -15,6 +15,12 @@ import { scan } from '../scan/scanner.js';
 import type { ParsedCli } from './args.js';
 import { confirmAndDelete, defaultConfirm } from './report.js';
 
+const SAFETY_LABELS: Readonly<Record<ScanEntry['kind'], string>> = {
+  'always-safe': 'safe',
+  gated: 'gated',
+  marker: 'tagged',
+};
+
 export interface HeadlessIO {
   stdout?: (text: string) => void;
   stderr?: (text: string) => void;
@@ -200,7 +206,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
       continue;
     }
     const age = lastModifiedOf(entry.path);
-    const safety = entry.kind === 'always-safe' ? 'safe' : 'gated';
+    const safety = SAFETY_LABELS[entry.kind];
     const relativePath = relative(root, entry.path).split(sep).join('/');
     stdout(
       `${formatBytes(sizeOf(entry.path)).padStart(9)}  ${(age === undefined ? '?' : formatDuration(Date.now() - age)).padStart(5)}  ${entry.project.padEnd(22)}  ${entry.ruleName.padEnd(14)}  ${safety.padEnd(6)}  ${relativePath}`,

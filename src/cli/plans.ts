@@ -2,12 +2,17 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, relative, resolve } from 'node:path';
 import { deleteEntries } from '../delete/deleter.js';
 import { formatErrorMessage } from '../format.js';
+import { MARKER_RULES } from '../rules/default-rules.js';
+import { hasMarker } from '../rules/markers.js';
+import type { ScanEntry } from '../scan/scanner.js';
 import { confirmAndDelete, defaultConfirm } from './report.js';
 
 interface PlanEntry {
   readonly path: string;
   readonly relativePath: string;
   readonly ruleName: string;
+  /** Absent in plans written before marker rules existed; those entries are name-matched. */
+  readonly kind?: ScanEntry['kind'] | undefined;
   readonly lastModified: number | null;
 }
 
@@ -54,6 +59,13 @@ export async function writePlan(
   }
 }
 
+/** A marker entry must still carry its marker; any other entry must still have the rule's name. */
+async function stillMatchesRule(path: string, entry: PlanEntry): Promise<boolean> {
+  if (entry.kind !== 'marker') return basename(path) === entry.ruleName;
+  const spec = MARKER_RULES.get(entry.ruleName);
+  return spec !== undefined && (await hasMarker(path, spec));
+}
+
 function isValidPlan(value: unknown): value is CleanupPlan {
   if (typeof value !== 'object' || value === null) return false;
   const plan = value as { schemaVersion?: unknown; root?: unknown; entries?: unknown };
@@ -67,7 +79,8 @@ function isValidPlan(value: unknown): value is CleanupPlan {
         entry !== null &&
         typeof (entry as PlanEntry).path === 'string' &&
         typeof (entry as PlanEntry).relativePath === 'string' &&
-        typeof (entry as PlanEntry).ruleName === 'string',
+        typeof (entry as PlanEntry).ruleName === 'string' &&
+        ['undefined', 'string'].includes(typeof (entry as PlanEntry).kind),
     )
   );
 }
@@ -94,7 +107,7 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
     if (
       entry.path !== expectedPath ||
       relative(plan.root, expectedPath).startsWith('..') ||
-      basename(expectedPath) !== entry.ruleName
+      !(await stillMatchesRule(expectedPath, entry))
     ) {
       skipped++;
       stderr(`warning: skipped invalid plan entry ${entry.relativePath}`);

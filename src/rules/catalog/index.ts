@@ -6,6 +6,7 @@ import { elmRules } from './elm.js';
 import { haskellRules } from './haskell.js';
 import { javaJvmRules } from './java-jvm.js';
 import { javascriptRules } from './javascript.js';
+import { markerRules } from './markers.js';
 import { pythonRules } from './python.js';
 import { rubyRules } from './ruby.js';
 import { rustRules } from './rust.js';
@@ -44,6 +45,7 @@ export const RULE_CATALOG: readonly RuleDefinition[] = [
   ...elmRules,
   ...zigRules,
   ...terraformRules,
+  ...markerRules,
   ...vcsRules,
 ];
 

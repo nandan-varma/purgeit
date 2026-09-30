@@ -45,6 +45,14 @@ describe('mergeRuleSets', () => {
     expect(merged.gated.has('obj')).toBe(true);
   });
 
+  it('keeps built-in marker rules, removes them by name, and empties them on replace', () => {
+    const base = defaultRuleSet();
+    expect(base.markers.has('CACHEDIR.TAG')).toBe(true);
+    expect(mergeRuleSets(base, { markersRemove: ['CACHEDIR.TAG'] }).markers.size).toBe(0);
+    expect(mergeRuleSets(base, { extends: 'replace' }).markers.size).toBe(0);
+    expect(mergeRuleSets(base, { alwaysSafe: ['x'] }).markers.has('CACHEDIR.TAG')).toBe(true);
+  });
+
   it('adds function-based gated rules', () => {
     const base = defaultRuleSet();
     const gateFn = () => true;
@@ -99,6 +107,14 @@ describe('restrictRuleSetToTargets', () => {
     const restricted = restrictRuleSetToTargets(base, ['node_modules', 'Pods']);
     expect(restricted.alwaysSafe).toEqual(new Set(['node_modules']));
     expect([...restricted.gated.keys()]).toEqual(['Pods']);
+  });
+
+  it('keeps a marker rule only when --targets names it', () => {
+    const base = defaultRuleSet();
+    expect(restrictRuleSetToTargets(base, ['node_modules']).markers.size).toBe(0);
+    expect([...restrictRuleSetToTargets(base, ['CACHEDIR.TAG']).markers.keys()]).toEqual([
+      'CACHEDIR.TAG',
+    ]);
   });
 
   it('expands a named group from ruleSet.targets', () => {

@@ -66,6 +66,7 @@ vi.mock('../delete/deleter.js', async (importOriginal) => {
 const emptyRuleSet: ResolvedRuleSet = {
   alwaysSafe: new Set(),
   gated: new Map(),
+  markers: new Map(),
   pruneMeta: new Set(),
   skipDirs: new Set(),
   targets: new Map(),

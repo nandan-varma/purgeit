@@ -2,6 +2,7 @@ import { readdir, stat } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import pLimit from 'p-limit';
 import { createGateContext } from '../rules/gate-context.js';
+import { findMarker } from '../rules/markers.js';
 import { detectProjectTypes, findTopLevelMatchName } from '../rules/project-types.js';
 import {
   validateCargoToml,
@@ -20,7 +21,7 @@ import { walk } from './walk.js';
 export interface ScanEntry {
   readonly path: string;
   readonly project: string;
-  readonly kind: 'always-safe' | 'gated';
+  readonly kind: WalkMatch['kind'];
   readonly ruleName: string;
   readonly size: number | null;
   /** Epoch ms of the matched directory's own mtime, resolved asynchronously like `size` — null until its 'lastModified' event arrives. */
@@ -86,7 +87,7 @@ async function listProjects(
   }
 
   const matches: WalkMatch[] = [];
-  const projectTasks: Promise<ProjectInfo>[] = [];
+  const projectTasks: Promise<ProjectInfo | WalkMatch>[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const name = entry.name;
@@ -108,7 +109,9 @@ async function listProjects(
     }
 
     projectTasks.push(
-      (async (): Promise<ProjectInfo> => {
+      (async (): Promise<ProjectInfo | WalkMatch> => {
+        const markerRule = await findMarker(path, ruleSet.markers);
+        if (markerRule !== undefined) return { path, kind: 'marker', ruleName: markerRule };
         const labels = await detectProjectTypes(path);
         return {
           name,
@@ -120,7 +123,11 @@ async function listProjects(
     );
   }
 
-  const projects = await Promise.all(projectTasks);
+  const projects: ProjectInfo[] = [];
+  for (const result of await Promise.all(projectTasks)) {
+    if ('kind' in result) matches.push(result);
+    else projects.push(result);
+  }
   return { projects, matches };
 }
 

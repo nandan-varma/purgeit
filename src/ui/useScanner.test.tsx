@@ -16,6 +16,7 @@ vi.mock('../scan/scanner.js', async () => {
 const emptyRuleSet: ResolvedRuleSet = {
   alwaysSafe: new Set(),
   gated: new Map(),
+  markers: new Map(),
   pruneMeta: new Set(),
   skipDirs: new Set(),
   targets: new Map(),

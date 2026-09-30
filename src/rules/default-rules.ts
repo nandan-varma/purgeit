@@ -1,3 +1,4 @@
+import type { MarkerSpec } from '../types.js';
 import { RULE_CATALOG } from './catalog/index.js';
 
 /**
@@ -22,6 +23,15 @@ export const ALWAYS_SAFE_NAMES: readonly string[] = RULE_CATALOG.filter(
 export const GATED_NAMES: readonly string[] = RULE_CATALOG.filter(
   (rule) => rule.kind === 'gated',
 ).map((rule) => rule.name);
+
+/** Marker rules by name: any directory containing the marker file (with its signature) matches. */
+export const MARKER_RULES: ReadonlyMap<string, MarkerSpec> = new Map(
+  RULE_CATALOG.flatMap((rule) =>
+    rule.kind === 'marker'
+      ? [[rule.name, { file: rule.file, signature: rule.signature }] as const]
+      : [],
+  ),
+);
 
 /** VCS metadata directories never descended into while scanning. */
 export const PRUNE_META_NAMES: readonly string[] = RULE_CATALOG.filter(

@@ -100,6 +100,7 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
           path: string;
           relativePath: string;
           ruleName: string;
+          kind: 'always-safe' | 'gated' | 'marker';
           lastModified: number | null;
         }[];
       };
