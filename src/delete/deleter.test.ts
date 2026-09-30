@@ -210,4 +210,17 @@ describe('deleteEntries', () => {
     ]);
     expect(records.find((r) => r.action === 'failed')?.message).toMatch(/refusing|outside/);
   });
+
+  it('treats a root that no longer exists as containing nothing, without an unhandled rejection', async () => {
+    root = buildTree({ proj: { dist: { f: 'x' } } });
+    const events = await collect([join(root, 'proj', 'dist')], { roots: [join(root, 'gone')] });
+    expect(events).toContainEqual({
+      type: 'error',
+      path: join(root, 'proj', 'dist'),
+      message: 'refusing to delete a path that resolves outside the scanned roots',
+    });
+    expect(await collect([], { roots: [join(root, 'gone')] })).toEqual([
+      { type: 'done', deleted: 0, failed: 0 },
+    ]);
+  });
 });

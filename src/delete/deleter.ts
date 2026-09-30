@@ -78,14 +78,18 @@ export async function* deleteEntries(
   }
 
   const concurrency = opts.concurrency ?? 8;
+  // A root that can't be resolved (e.g. deleted since the scan) contains nothing.
   const realRoots =
-    opts.roots === undefined ? undefined : Promise.all(opts.roots.map((root) => realpath(root)));
+    opts.roots === undefined
+      ? undefined
+      : Promise.all(opts.roots.map((root) => realpath(root).catch(() => undefined)));
 
   async function guard(path: string): Promise<string | undefined> {
     if (isDangerousPath(path)) return 'refusing to delete filesystem root or home directory';
     if (realRoots !== undefined) {
       const real = await realpath(path).catch(() => undefined);
-      const inside = (root: string) => {
+      const inside = (root: string | undefined) => {
+        if (root === undefined) return false;
         const rel = relative(root, real as string);
         return rel !== '' && !rel.startsWith('..') && !isAbsolute(rel);
       };
