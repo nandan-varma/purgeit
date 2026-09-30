@@ -102,4 +102,27 @@ describe('cleanup plans', () => {
     expect(await applyPlan(planFile, true, { stderr: () => {}, stdout: () => {} })).toBe(1);
     expect(existsSync(join(root, 'cache'))).toBe(true);
   });
+
+  it('skips an entry that became protected after planning', async () => {
+    root = buildTree({ dist: { 'a.js': 'x' } });
+    const planFile = join(root, 'plan.json');
+    await writePlan(
+      {
+        root,
+        entries: [
+          { path: join(root, 'dist'), relativePath: 'dist', ruleName: 'dist', lastModified: null },
+        ],
+      },
+      planFile,
+    );
+    writeFileSync(join(root, 'dist', 'program-keypair.json'), '[1]');
+    const err: string[] = [];
+    expect(await applyPlan(planFile, true, { stderr: (t) => err.push(t), stdout: () => {} })).toBe(
+      1,
+    );
+    expect(existsSync(join(root, 'dist'))).toBe(true);
+    expect(err).toEqual([
+      'warning: skipped protected artifact dist (contains a *-keypair.json deploy key)',
+    ]);
+  });
 });

@@ -1,4 +1,5 @@
 import { readdir, stat } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { basename, join } from 'node:path';
 import pLimit from 'p-limit';
 import { createGateContext } from '../rules/gate-context.js';
@@ -14,9 +15,10 @@ import {
 } from '../rules/validators.js';
 import type { ResolvedRuleSet, ValidationWarning } from '../types.js';
 import { AsyncQueue } from './async-queue.js';
+import { findProtection, type ProtectionReason } from './protection.js';
 import { computeSize, createDuBatcher } from './size.js';
 import type { WalkMatch } from './walk.js';
-import { walk } from './walk.js';
+import { HOME_PRUNE_NAMES, walk } from './walk.js';
 
 export interface ScanEntry {
   readonly path: string;
@@ -31,6 +33,8 @@ export interface ScanEntry {
 export type ScanEvent =
   | { readonly type: 'project-start'; readonly project: string; readonly label: string }
   | { readonly type: 'found'; readonly entry: ScanEntry }
+  /** A rule matched, but the directory holds authored content, so it is never offered for deletion. */
+  | { readonly type: 'protected'; readonly entry: ScanEntry; readonly reason: ProtectionReason }
   | { readonly type: 'size'; readonly path: string; readonly bytes: number }
   | { readonly type: 'lastModified'; readonly path: string; readonly mtimeMs: number }
   | { readonly type: 'warning'; readonly warning: ValidationWarning }
@@ -47,6 +51,12 @@ export interface ScanOptions {
   readonly concurrency?: number;
   /** Never descend more than this many levels below each scanned root. Default: unlimited. */
   readonly maxDepth?: number | undefined;
+  /**
+   * Check each match for authored content (nested .git, deploy keypairs,
+   * git-tracked files) and report it as 'protected' instead of 'found'.
+   * Default true; only disable when a caller does its own check.
+   */
+  readonly protect?: boolean | undefined;
 }
 
 interface ProjectInfo {
@@ -87,11 +97,13 @@ async function listProjects(
   }
 
   const matches: WalkMatch[] = [];
+  const atHome = root === homedir();
   const projectTasks: Promise<ProjectInfo | WalkMatch>[] = [];
   for (const entry of entries) {
     if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
     const name = entry.name;
     if (ruleSet.pruneMeta.has(name) || ruleSet.skipDirs.has(name)) continue;
+    if (atHome && HOME_PRUNE_NAMES.has(name)) continue;
     if (targetProject !== undefined && name !== targetProject) continue;
 
     const path = join(root, name);
@@ -212,7 +224,27 @@ export async function* scan(
   }
 
   function handleMatch(project: string, match: WalkMatch): void {
-    const entry: ScanEntry = {
+    if (opts.protect === false) {
+      reportMatch(project, match);
+      return;
+    }
+    pendingTasks++;
+    void limit(async () => {
+      try {
+        if (signal?.aborted) return;
+        const reason = await findProtection(match.path);
+        if (signal?.aborted) return;
+        if (reason === undefined) reportMatch(project, match);
+        else queue.push({ type: 'protected', entry: newEntry(project, match), reason });
+      } finally {
+        pendingTasks--;
+        maybeFinish();
+      }
+    });
+  }
+
+  function newEntry(project: string, match: WalkMatch): ScanEntry {
+    return {
       path: match.path,
       project,
       kind: match.kind,
@@ -220,6 +252,10 @@ export async function* scan(
       size: null,
       lastModified: null,
     };
+  }
+
+  function reportMatch(project: string, match: WalkMatch): void {
+    const entry = newEntry(project, match);
     queue.push({ type: 'found', entry });
     pendingTasks++;
     void limit(async () => {

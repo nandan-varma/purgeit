@@ -1,3 +1,4 @@
+import { homedir } from 'node:os';
 import { basename, relative, resolve, sep } from 'node:path';
 import { loadConfig } from '../config/resolve.js';
 import { deleteEntries } from '../delete/deleter.js';
@@ -10,6 +11,7 @@ import {
 } from '../format.js';
 import { applyCliFilters, defaultRuleSet, mergeRuleSets } from '../rules/merge.js';
 import { createExcludeMatcher, createPathMatcher } from '../scan/exclude.js';
+import { PROTECTION_DESCRIPTIONS, type ProtectionReason } from '../scan/protection.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { scan } from '../scan/scanner.js';
 import type { ParsedCli } from './args.js';
@@ -20,6 +22,18 @@ const SAFETY_LABELS: Readonly<Record<ScanEntry['kind'], string>> = {
   gated: 'gated',
   marker: 'tagged',
 };
+
+/**
+ * Folders synced by iCloud Drive or a File Provider app (Dropbox, Google
+ * Drive, OneDrive, ...): deleting an artifact there also deletes it from the
+ * cloud copy and every other synced device, so entries are flagged.
+ */
+export function isCloudSynced(path: string, home = homedir()): boolean {
+  return [
+    resolve(home, 'Library', 'CloudStorage'),
+    resolve(home, 'Library', 'Mobile Documents'),
+  ].some((dir) => path === dir || path.startsWith(`${dir}${sep}`));
+}
 
 export interface HeadlessIO {
   stdout?: (text: string) => void;
@@ -104,6 +118,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   const sizes = new Map<string, number>();
   const lastModifieds = new Map<string, number>();
   const warnings: string[] = [];
+  const protectedEntries: { entry: ScanEntry; reason: ProtectionReason }[] = [];
 
   try {
     for await (const event of scan(root, ruleSet, {
@@ -119,6 +134,8 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
         sizes.set(event.path, event.bytes);
       } else if (event.type === 'lastModified') {
         lastModifieds.set(event.path, event.mtimeMs);
+      } else if (event.type === 'protected') {
+        if (!isExcluded(event.entry.path)) protectedEntries.push(event);
       } else if (event.type === 'warning') {
         warnings.push(`${event.warning.file}: ${event.warning.message}`);
       }
@@ -130,6 +147,18 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
 
   for (const warning of warnings) {
     stderr(`warning: ${warning}`);
+  }
+  const relativeTo = (path: string) => relative(root, path).split(sep).join('/');
+  const protectedDiagnostics = protectedEntries.map(({ entry, reason }) => ({
+    code: 'protected' as const,
+    reason,
+    path: entry.path,
+    relativePath: relativeTo(entry.path),
+    ruleName: entry.ruleName,
+    message: `${relativeTo(entry.path)} matches '${entry.ruleName}' but ${PROTECTION_DESCRIPTIONS[reason]}; not offered for deletion`,
+  }));
+  for (const diagnostic of protectedDiagnostics) {
+    stderr(`protected: ${diagnostic.message}`);
   }
 
   const sizeOf = (path: string) => sizes.get(path) ?? 0;
@@ -160,12 +189,13 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
   const elapsedMs = performance.now() - startedAt;
   const entries = filtered.map((e) => ({
     path: e.path,
-    relativePath: relative(root, e.path).split(sep).join('/'),
+    relativePath: relativeTo(e.path),
     project: e.project,
     kind: e.kind,
     ruleName: e.ruleName,
     size: sizeOf(e.path),
     lastModified: lastModifiedOf(e.path) ?? null,
+    cloudSynced: isCloudSynced(e.path),
   }));
   const report = {
     schemaVersion: 1,
@@ -175,7 +205,10 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     // Legacy aliases remain while the former --json mode transitions to scan --format json.
     totalBytes,
     entries,
-    diagnostics: warnings.map((message) => ({ code: 'manifest-warning', message })),
+    diagnostics: [
+      ...warnings.map((message) => ({ code: 'manifest-warning', message })),
+      ...protectedDiagnostics,
+    ],
     warnings,
   };
   const outputFormat = parsed.format ?? (parsed.json ? 'json' : 'table');
@@ -207,7 +240,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
     }
     const age = lastModifiedOf(entry.path);
     const safety = SAFETY_LABELS[entry.kind];
-    const relativePath = relative(root, entry.path).split(sep).join('/');
+    const relativePath = `${isCloudSynced(entry.path) ? '[cloud] ' : ''}${relativeTo(entry.path)}`;
     stdout(
       `${formatBytes(sizeOf(entry.path)).padStart(9)}  ${(age === undefined ? '?' : formatDuration(Date.now() - age)).padStart(5)}  ${entry.project.padEnd(22)}  ${entry.ruleName.padEnd(14)}  ${safety.padEnd(6)}  ${relativePath}`,
     );

@@ -1,4 +1,5 @@
 import { readdir } from 'node:fs/promises';
+import { homedir } from 'node:os';
 import { join } from 'node:path';
 import pLimit, { type LimitFunction } from 'p-limit';
 import { createGateContext } from '../rules/gate-context.js';
@@ -11,6 +12,15 @@ export interface WalkMatch {
   readonly kind: 'always-safe' | 'gated' | 'marker';
   readonly ruleName: string;
 }
+
+/**
+ * Directories directly under the user's home that are never scanned: machine
+ * caches and app data (~/Library, including Xcode's global DerivedData), the
+ * Trash, and installed apps. Cleaning those is a system cleaner's job, not an
+ * artifact scanner's. Only pruned at the home level — a project's own
+ * `Library/` (e.g. Unity's) is scanned normally.
+ */
+export const HOME_PRUNE_NAMES: ReadonlySet<string> = new Set(['Library', '.Trash', 'Applications']);
 
 export interface WalkOptions {
   readonly signal?: AbortSignal | undefined;
@@ -49,6 +59,7 @@ export async function* walk(
 ): AsyncGenerator<WalkMatch> {
   const limit = opts.limit ?? pLimit(opts.concurrency ?? 8);
   const queue = new AsyncQueue<WalkMatch>();
+  const home = homedir();
   let pending = 0;
 
   function maybeFinish(): void {
@@ -83,6 +94,7 @@ export async function* walk(
 
           const name = entry.name;
           if (ruleSet.pruneMeta.has(name) || ruleSet.skipDirs.has(name)) continue;
+          if (dir === home && HOME_PRUNE_NAMES.has(name)) continue;
 
           const path = join(dir, name);
 

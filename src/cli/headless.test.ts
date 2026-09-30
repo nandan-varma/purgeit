@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import type { ParsedCli } from './args.js';
-import { runHeadless } from './headless.js';
+import { isCloudSynced, runHeadless } from './headless.js';
 
 function baseArgs(overrides: Partial<ParsedCli> = {}): ParsedCli {
   return {
@@ -81,6 +81,45 @@ describe('runHeadless', () => {
     expect(payload.entries).toHaveLength(1);
     expect(payload.entries[0].ruleName).toBe('node_modules');
     expect(payload.totalBytes).toBeGreaterThan(0);
+  });
+
+  it('reports a protected match as a diagnostic instead of an entry, and says so on stderr', async () => {
+    root = buildTree({ dist: { vendored: { '.git': {} } }, node_modules: { f: 'x' } });
+    const io = captureIO();
+    const code = await runHeadless(baseArgs({ directory: root, json: true }), io);
+    expect(code).toBe(0);
+    const payload = JSON.parse(io.out.join(''));
+    expect(payload.entries.map((e: { ruleName: string }) => e.ruleName)).toEqual(['node_modules']);
+    expect(payload.diagnostics).toEqual([
+      expect.objectContaining({
+        code: 'protected',
+        reason: 'nested-repository',
+        relativePath: 'dist',
+      }),
+    ]);
+    expect(io.err).toEqual([
+      "protected: dist matches 'dist' but contains its own .git repository; not offered for deletion",
+    ]);
+  });
+
+  it('drops protected matches that --exclude already removes', async () => {
+    root = buildTree({ dist: { '.git': {} } });
+    const io = captureIO();
+    await runHeadless(baseArgs({ directory: root, json: true, exclude: ['dist'] }), io);
+    expect(JSON.parse(io.out.join('')).diagnostics).toEqual([]);
+  });
+
+  it('marks entries inside iCloud Drive or File Provider folders as cloudSynced', async () => {
+    root = buildTree({ node_modules: { f: 'x' } });
+    const io = captureIO();
+    await runHeadless(baseArgs({ directory: root, json: true }), io);
+    expect(JSON.parse(io.out.join('')).entries[0].cloudSynced).toBe(false);
+    expect(
+      isCloudSynced('/Users/me/Library/CloudStorage/Dropbox/app/node_modules', '/Users/me'),
+    ).toBe(true);
+    expect(isCloudSynced('/Users/me/Library/Mobile Documents', '/Users/me')).toBe(true);
+    expect(isCloudSynced('/Users/me/Library/CloudStorageX/node_modules', '/Users/me')).toBe(false);
+    expect(isCloudSynced('/Users/me/dev/node_modules', '/Users/me')).toBe(false);
   });
 
   it('exits 1 with --json when nothing is found', async () => {

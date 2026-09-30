@@ -4,6 +4,7 @@ import { deleteEntries } from '../delete/deleter.js';
 import { formatErrorMessage } from '../format.js';
 import { MARKER_RULES } from '../rules/default-rules.js';
 import { hasMarker } from '../rules/markers.js';
+import { findProtection, PROTECTION_DESCRIPTIONS } from '../scan/protection.js';
 import type { ScanEntry } from '../scan/scanner.js';
 import { confirmAndDelete, defaultConfirm } from './report.js';
 
@@ -121,6 +122,14 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
       ) {
         skipped++;
         stderr(`warning: skipped changed artifact ${entry.relativePath}`);
+        continue;
+      }
+      const reason = await findProtection(expectedPath);
+      if (reason !== undefined) {
+        skipped++;
+        stderr(
+          `warning: skipped protected artifact ${entry.relativePath} (${PROTECTION_DESCRIPTIONS[reason]})`,
+        );
         continue;
       }
       approved.push(expectedPath);

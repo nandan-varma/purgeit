@@ -133,6 +133,52 @@ describe('scan (projects mode, default)', () => {
     );
   });
 
+  it('emits protected instead of found for a match holding authored content', async () => {
+    root = buildTree({
+      app: { 'package.json': '{}', dist: { lib: { '.git': {} } }, node_modules: null },
+    });
+    const events = await collect(root);
+    expect(events.filter((e) => e.type === 'protected')).toEqual([
+      {
+        type: 'protected',
+        reason: 'nested-repository',
+        entry: expect.objectContaining({ path: join(root, 'app', 'dist'), ruleName: 'dist' }),
+      },
+    ]);
+    const found = events.flatMap((e) => (e.type === 'found' ? [e.entry.ruleName] : []));
+    expect(found).toEqual(['node_modules']);
+  });
+
+  it('reports protected matches as found when protection is disabled', async () => {
+    root = buildTree({ app: { dist: { '.git': {} } } });
+    const events = await collect(root, { protect: false });
+    expect(events.filter((e) => e.type === 'protected')).toEqual([]);
+    expect(events.some((e) => e.type === 'found')).toBe(true);
+  });
+
+  it('never scans ~/Library, ~/.Trash or ~/Applications when the root is the home directory', async () => {
+    root = buildTree({
+      Library: { Developer: { Xcode: { DerivedData: null } } },
+      '.Trash': { old: { node_modules: null } },
+      Applications: { tool: { node_modules: null } },
+      dev: { app: { node_modules: null } },
+    });
+    const saved = process.env.HOME;
+    process.env.HOME = root;
+    try {
+      const flat = (await collect(root, { mode: 'flat' })).flatMap((e) =>
+        e.type === 'found' ? [e.entry.path] : [],
+      );
+      expect(flat).toEqual([join(root, 'dev', 'app', 'node_modules')]);
+      const starts = (await collect(root)).flatMap((e) =>
+        e.type === 'project-start' ? [e.project] : [],
+      );
+      expect(starts).toEqual(['dev']);
+    } finally {
+      process.env.HOME = saved;
+    }
+  });
+
   it('honors maxDepth within each project too', async () => {
     root = buildTree({ proj: { a: { b: { node_modules: null } } } });
     const events = await collect(root, { maxDepth: 1 });
@@ -213,6 +259,9 @@ describe('scan (projects mode, default)', () => {
     for await (const event of scan(root, defaultRuleSet(), {
       signal: controller.signal,
       concurrency: 1,
+      // Protection probes run on the same limiter and would serialize 'found'
+      // events behind them; this test is about size scheduling only.
+      protect: false,
     })) {
       events.push(event);
       if (!aborted && event.type === 'found') {
