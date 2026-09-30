@@ -342,6 +342,7 @@ export async function runHeadless(parsed: ParsedCli, io: HeadlessIO = {}): Promi
           concurrency: parsed.concurrency,
           roots,
           idleForMs: minAgeMs ?? DEFAULT_IDLE_MS,
+          recordHistory: true,
         },
       )) {
         if (event.type === 'deleting') yield { type: 'deleting', key: event.path };

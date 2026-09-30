@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { backdate, buildTree, cleanupTree } from '../../test/fixtures/build-tmp-tree.js';
 import { DEFAULT_IDLE_MS, deleteEntries } from './deleter.js';
+import { readHistory } from './history.js';
 
 async function collect(paths: readonly string[], opts?: Parameters<typeof deleteEntries>[1]) {
   const events = [];
@@ -184,5 +185,29 @@ describe('deleteEntries', () => {
     });
     const off = await collect([join(root, 'fresh')], { idleForMs: 0 });
     expect(off.at(-1)).toEqual({ type: 'done', deleted: 1, failed: 0 });
+  });
+
+  it('records real outcomes to the history when asked, but not dry runs or when disabled', async () => {
+    root = buildTree({ a: { f: 'x' }, b: { f: 'x' }, c: { f: 'x' } });
+    const file = join(root, 'history.jsonl');
+    const saved = { ...process.env };
+    process.env.PURGEIT_HISTORY_FILE = file;
+    delete process.env.PURGEIT_NO_HISTORY;
+    try {
+      await collect([join(root, 'a'), root], { recordHistory: true, roots: [root] });
+      await collect([join(root, 'b')], { recordHistory: true, dryRun: true });
+      await collect([join(root, 'c')]);
+      process.env.PURGEIT_NO_HISTORY = '1';
+      await collect([join(root, 'c')], { recordHistory: true });
+    } finally {
+      process.env = saved;
+    }
+    const records = await readHistory(file);
+    // Newest first: both outcomes come from one chunk, written in input order.
+    expect(records.map((r) => [r.action, r.path])).toEqual([
+      ['failed', root],
+      ['deleted', join(root, 'a')],
+    ]);
+    expect(records.find((r) => r.action === 'failed')?.message).toMatch(/refusing|outside/);
   });
 });

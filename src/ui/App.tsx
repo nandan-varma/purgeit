@@ -96,6 +96,7 @@ export function App({
           signal: controller.signal,
           dryRun,
           roots: [root],
+          recordHistory: true,
           concurrency: scanOpts.concurrency ?? 8,
         })) {
           if (event.type === 'done') {

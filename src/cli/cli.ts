@@ -6,6 +6,7 @@ import { parseCliArgs, USAGE } from './args.js';
 import { USAGE as COMMAND_USAGE } from './guide.js';
 import { runHeadless } from './headless.js';
 import { runHeadlessCloud } from './headless-cloud.js';
+import { runHistoryCommand } from './history.js';
 import { applyPlan, writePlan } from './plans.js';
 import { runSkillsCommand } from './skills.js';
 
@@ -50,6 +51,9 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
       signal: io.signal,
       idleForMs,
     });
+  }
+  if (argv[0] === 'history') {
+    return runHistoryCommand(argv.slice(1), { stdout, stderr });
   }
   if (argv[0] === 'skills') {
     return runSkillsCommand(argv.slice(1), { stdout, stderr });

@@ -4,6 +4,7 @@ import { isAbsolute, parse, relative, resolve } from 'node:path';
 import pLimit from 'p-limit';
 import { formatDuration } from '../format.js';
 import { checkActivity } from '../scan/activity.js';
+import { appendHistory, type HistoryRecord, historyEnabled } from './history.js';
 
 /**
  * Default recency window for unattended (headless / plan) deletions, matching
@@ -29,6 +30,11 @@ export interface DeleteOptions {
    * skip the check.
    */
   readonly idleForMs?: number | undefined;
+  /**
+   * Append each real (non-dry-run) outcome to the deletion history (see
+   * history.ts). Off by default for library callers; the CLI turns it on.
+   */
+  readonly recordHistory?: boolean | undefined;
 }
 
 export type DeleteEvent =
@@ -120,6 +126,23 @@ export async function* deleteEntries(
       yield { type: 'deleting', path };
     }
     const results = await Promise.all(chunk.map((path) => limit(() => deleteOne(path))));
+    if (opts.recordHistory && !opts.dryRun && historyEnabled()) {
+      const time = new Date().toISOString();
+      await appendHistory(
+        results.map(
+          (result): HistoryRecord =>
+            'error' in result
+              ? {
+                  schemaVersion: 1,
+                  time,
+                  action: 'failed',
+                  path: result.path,
+                  message: result.error.message,
+                }
+              : { schemaVersion: 1, time, action: 'deleted', path: result.path },
+        ),
+      );
+    }
     for (const result of results) {
       if ('error' in result) {
         failed++;

@@ -142,6 +142,12 @@ describe('runCli', () => {
     );
   });
 
+  it('dispatches history to its own command', async () => {
+    const io = captureIO();
+    expect(await runCli(['history', '--help'], io)).toBe(0);
+    expect(io.out[0]).toMatch(/^Usage: purgeit history/);
+  });
+
   it('runs headless when --json is passed', async () => {
     const io = captureIO();
     const code = await runCli(['--json', '--headless', '.'], { ...io, cwd: EMPTY_ROOT });

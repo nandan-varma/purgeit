@@ -13,6 +13,9 @@ export default defineConfig({
     // parallelism off avoids exhausting posix_spawn on macOS, same rationale
     // as platex's vitest config.
     fileParallelism: false,
+    // CLI delete paths append to the user's real deletion history; tests must
+    // never touch it. History tests opt back in with an explicit temp file.
+    env: { PURGEIT_NO_HISTORY: '1' },
     coverage: {
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],

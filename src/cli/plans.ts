@@ -188,6 +188,7 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
         concurrency: 8,
         roots: plan.roots,
         idleForMs: io.idleForMs ?? DEFAULT_IDLE_MS,
+        recordHistory: true,
       })) {
         if (event.type === 'deleting') yield { type: 'deleting', key: event.path };
         else if (event.type === 'deleted')
