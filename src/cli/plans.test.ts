@@ -15,9 +15,10 @@ describe('cleanup plans', () => {
     const planFile = join(root, 'cleanup-plan.json');
     const code = await writePlan(
       {
-        root,
+        roots: [root],
         entries: [
           {
+            root,
             path: target,
             relativePath: 'node_modules',
             ruleName: 'node_modules',
@@ -39,9 +40,10 @@ describe('cleanup plans', () => {
     const planFile = join(root, 'cleanup-plan.json');
     await writePlan(
       {
-        root,
+        roots: [root],
         entries: [
           {
+            root,
             path: target,
             relativePath: 'node_modules',
             ruleName: 'node_modules',
@@ -65,6 +67,7 @@ describe('cleanup plans', () => {
     });
     backdate(root);
     const entry = (name: string) => ({
+      root,
       path: join(root, name),
       relativePath: name,
       ruleName: 'CACHEDIR.TAG',
@@ -72,7 +75,7 @@ describe('cleanup plans', () => {
       lastModified: null,
     });
     const planFile = join(root, 'plan.json');
-    await writePlan({ root, entries: [entry('kept'), entry('untagged')] }, planFile);
+    await writePlan({ roots: [root], entries: [entry('kept'), entry('untagged')] }, planFile);
     writeFileSync(join(root, 'untagged', 'CACHEDIR.TAG'), 'no longer a cache');
     const err: string[] = [];
     expect(await applyPlan(planFile, true, { stderr: (t) => err.push(t), stdout: () => {} })).toBe(
@@ -88,9 +91,10 @@ describe('cleanup plans', () => {
     const planFile = join(root, 'plan.json');
     await writePlan(
       {
-        root,
+        roots: [root],
         entries: [
           {
+            root,
             path: join(root, 'cache'),
             relativePath: 'cache',
             ruleName: 'NOT.A.MARKER',
@@ -110,9 +114,15 @@ describe('cleanup plans', () => {
     const planFile = join(root, 'plan.json');
     await writePlan(
       {
-        root,
+        roots: [root],
         entries: [
-          { path: join(root, 'dist'), relativePath: 'dist', ruleName: 'dist', lastModified: null },
+          {
+            root,
+            path: join(root, 'dist'),
+            relativePath: 'dist',
+            ruleName: 'dist',
+            lastModified: null,
+          },
         ],
       },
       planFile,
@@ -126,5 +136,51 @@ describe('cleanup plans', () => {
     expect(err).toEqual([
       'warning: skipped protected artifact dist (contains a *-keypair.json deploy key)',
     ]);
+  });
+
+  it('applies a v2 plan across several roots but rejects an entry whose root is not listed', async () => {
+    root = buildTree({ a: { dist: { f: 'x' } }, b: { dist: { f: 'x' } } });
+    backdate(root);
+    const entry = (dir: string) => ({
+      root: join(root, dir),
+      path: join(root, dir, 'dist'),
+      relativePath: 'dist',
+      ruleName: 'dist',
+      lastModified: null,
+    });
+    const planFile = join(root, 'plan.json');
+    await writePlan({ roots: [join(root, 'a')], entries: [entry('a'), entry('b')] }, planFile);
+    const err: string[] = [];
+    expect(await applyPlan(planFile, true, { stderr: (t) => err.push(t), stdout: () => {} })).toBe(
+      1,
+    );
+    expect(existsSync(join(root, 'a', 'dist'))).toBe(false);
+    expect(existsSync(join(root, 'b', 'dist'))).toBe(true);
+    expect(err).toEqual(['warning: skipped invalid plan entry dist']);
+  });
+
+  it('rejects files that are not a purgeit plan', async () => {
+    root = buildTree({
+      'v2-no-roots.json': JSON.stringify({ schemaVersion: 2, entries: [] }),
+      'v2-entry-without-root.json': JSON.stringify({
+        schemaVersion: 2,
+        roots: ['/x'],
+        entries: [{ path: '/x/dist', relativePath: 'dist', ruleName: 'dist' }],
+      }),
+      'v3.json': JSON.stringify({ schemaVersion: 3, roots: [], entries: [] }),
+      'not-json.json': '{',
+    });
+    for (const file of [
+      'v2-no-roots.json',
+      'v2-entry-without-root.json',
+      'v3.json',
+      'not-json.json',
+    ]) {
+      const err: string[] = [];
+      expect(
+        await applyPlan(join(root, file), true, { stderr: (t) => err.push(t), stdout: () => {} }),
+      ).toBe(2);
+      expect(err[0]).toMatch(/^purgeit: /);
+    }
   });
 });

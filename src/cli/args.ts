@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 
-export const USAGE = `Usage: purgeit scan [directory] [options]
+export const USAGE = `Usage: purgeit scan [directory...] [options]
 
 Scan options:
 
@@ -9,7 +9,11 @@ Pods, ...) across your projects. Interactive by default in a terminal;
 scriptable via flags otherwise.
 
 Options:
-  -d, --directory <path>     Root directory to scan (default: cwd)
+  -d, --directory <path>     Root directory to scan (default: cwd). Several
+                              directories can instead be passed as arguments.
+      --discover             Also scan the usual project folders under your home
+                              directory (~/dev, ~/Projects, ~/Code, AI agent
+                              worktrees, ...) and any home folder holding projects
       --full                 Flat scan mode: treat <directory> as one unit
                               instead of grouping its immediate children as
                               separate projects (default: "projects" mode)
@@ -23,6 +27,7 @@ Options:
       --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
       --min-age <duration>    Skip matches newer than this age (e.g. 7d, 24h)
       --max-age <duration>    Skip matches older than this age (e.g. 30d)
+      --include-empty         Also list zero-byte artifacts (hidden by default)
       --depth <n>             Max recursion depth safety valve (default: unlimited)
       --provider <local|aws|gcp> Resource domain to scan (default: local). aws/gcp scan
                               cloud resources (tagged CloudFormation stacks / labeled
@@ -65,7 +70,14 @@ export type CliProvider = 'local' | 'aws' | 'gcp';
 export type OutputFormat = 'table' | 'json' | 'jsonl';
 
 export interface ParsedCli {
+  /** First scan root (or '.'); kept for single-root callers such as the TUI. */
   directory: string;
+  /** Every explicitly passed scan root, in order (empty when none were passed). */
+  directories?: string[] | undefined;
+  /** Also scan the discovered default roots (see scan/discover.ts). */
+  discover?: boolean | undefined;
+  /** List zero-byte artifacts too. */
+  includeEmpty?: boolean | undefined;
   full: boolean;
   project: string | undefined;
   exclude: string[];
@@ -131,6 +143,8 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
     allowPositionals: true,
     options: {
       directory: { type: 'string', short: 'd' },
+      discover: { type: 'boolean' },
+      'include-empty': { type: 'boolean' },
       full: { type: 'boolean' },
       project: { type: 'string' },
       exclude: { type: 'string', multiple: true },
@@ -170,9 +184,6 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
   if (values.help) return 'help';
   if (values.version) return 'version';
 
-  if (positionals.length > 1) {
-    throw new Error(`unexpected extra argument '${positionals[1]}'`);
-  }
   if (values.directory !== undefined && positionals[0] !== undefined) {
     throw new Error('pass the directory as either a positional argument or --directory, not both');
   }
@@ -207,6 +218,7 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
   if (provider !== 'local') {
     const localOnly: string[] = [];
     if (directoryExplicit) localOnly.push('a directory argument');
+    if (values.discover) localOnly.push('--discover');
     if (values.full) localOnly.push('--full');
     if (values.project !== undefined) localOnly.push('--project');
     if (values.depth !== undefined) localOnly.push('--depth');
@@ -246,8 +258,12 @@ export function parseCliArgs(argv: string[]): ParsedCli | 'help' | 'version' {
 
   const tags = (values.tag ?? []).map(parseTag);
 
+  const directories = values.directory !== undefined ? [values.directory] : positionals;
   return {
-    directory: values.directory ?? positionals[0] ?? '.',
+    directory: directories[0] ?? '.',
+    directories,
+    discover: values.discover ?? false,
+    includeEmpty: values['include-empty'] ?? false,
     full: values.full ?? false,
     project: values.project,
     exclude: values.exclude ?? [],

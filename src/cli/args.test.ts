@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { ParsedCli } from './args.js';
 import { parseCliArgs } from './args.js';
 
 describe('parseCliArgs', () => {
@@ -16,6 +17,9 @@ describe('parseCliArgs', () => {
     const parsed = parseCliArgs([]);
     expect(parsed).toEqual({
       directory: '.',
+      directories: [],
+      discover: false,
+      includeEmpty: false,
       full: false,
       project: undefined,
       exclude: [],
@@ -56,8 +60,21 @@ describe('parseCliArgs', () => {
     if (typeof parsed !== 'string') expect(parsed.directory).toBe('~/dev');
   });
 
-  it('throws on an unexpected extra positional', () => {
-    expect(() => parseCliArgs(['a', 'b'])).toThrow(/unexpected extra argument/);
+  it('accepts several directory arguments, keeping the first as directory', () => {
+    const parsed = parseCliArgs(['a', 'b']) as ParsedCli;
+    expect(parsed.directories).toEqual(['a', 'b']);
+    expect(parsed.directory).toBe('a');
+  });
+
+  it('parses --discover and --include-empty', () => {
+    const parsed = parseCliArgs(['--discover', '--include-empty']) as ParsedCli;
+    expect(parsed.discover).toBe(true);
+    expect(parsed.includeEmpty).toBe(true);
+    expect(parsed.directories).toEqual([]);
+  });
+
+  it('rejects --discover for cloud providers', () => {
+    expect(() => parseCliArgs(['--provider', 'aws', '--discover'])).toThrow(/--discover/);
   });
 
   it('parses repeatable --exclude', () => {

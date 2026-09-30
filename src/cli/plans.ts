@@ -10,6 +10,8 @@ import { confirmAndDelete, defaultConfirm } from './report.js';
 
 interface PlanEntry {
   readonly path: string;
+  /** The scan root `relativePath` is relative to. Absent in v1 plans, whose single `root` applies. */
+  readonly root?: string | undefined;
   readonly relativePath: string;
   readonly ruleName: string;
   /** Absent in plans written before marker rules existed; those entries are name-matched. */
@@ -17,11 +19,21 @@ interface PlanEntry {
   readonly lastModified: number | null;
 }
 
-interface CleanupPlan {
+/** v2: one plan can span several scan roots; each entry names its own. */
+interface CleanupPlanV2 {
+  readonly schemaVersion: 2;
+  readonly roots: readonly string[];
+  readonly entries: readonly (PlanEntry & { readonly root: string })[];
+}
+
+/** v1 (single root) is still accepted by `apply`. */
+interface CleanupPlanV1 {
   readonly schemaVersion: 1;
   readonly root: string;
   readonly entries: readonly PlanEntry[];
 }
+
+type CleanupPlan = CleanupPlanV1 | CleanupPlanV2;
 
 interface PlanIO {
   stdout?: (text: string) => void;
@@ -43,15 +55,15 @@ function errorOutput(io: PlanIO): (text: string) => void {
 
 export async function writePlan(
   report: {
-    root: string;
-    entries: readonly PlanEntry[];
+    roots: readonly string[];
+    entries: readonly (PlanEntry & { readonly root: string })[];
   },
   file: string,
   io: PlanIO = {},
 ): Promise<number> {
   const stdout = output(io);
   const path = resolve(io.cwd ?? process.cwd(), file);
-  const plan: CleanupPlan = { schemaVersion: 1, root: report.root, entries: report.entries };
+  const plan: CleanupPlanV2 = { schemaVersion: 2, roots: report.roots, entries: report.entries };
   try {
     await writeFile(path, `${JSON.stringify(plan, null, 2)}\n`, { encoding: 'utf8', flag: 'wx' });
     stdout(`Wrote ${plan.entries.length} approved artifact(s) to ${path}.`);
@@ -71,10 +83,18 @@ async function stillMatchesRule(path: string, entry: PlanEntry): Promise<boolean
 
 function isValidPlan(value: unknown): value is CleanupPlan {
   if (typeof value !== 'object' || value === null) return false;
-  const plan = value as { schemaVersion?: unknown; root?: unknown; entries?: unknown };
+  const plan = value as {
+    schemaVersion?: unknown;
+    root?: unknown;
+    roots?: unknown;
+    entries?: unknown;
+  };
+  const isStringArray = (v: unknown) => Array.isArray(v) && v.every((x) => typeof x === 'string');
+  const header =
+    (plan.schemaVersion === 1 && typeof plan.root === 'string') ||
+    (plan.schemaVersion === 2 && isStringArray(plan.roots));
   return (
-    plan.schemaVersion === 1 &&
-    typeof plan.root === 'string' &&
+    header &&
     Array.isArray(plan.entries) &&
     plan.entries.every(
       (entry) =>
@@ -83,21 +103,34 @@ function isValidPlan(value: unknown): value is CleanupPlan {
         typeof (entry as PlanEntry).path === 'string' &&
         typeof (entry as PlanEntry).relativePath === 'string' &&
         typeof (entry as PlanEntry).ruleName === 'string' &&
-        ['undefined', 'string'].includes(typeof (entry as PlanEntry).kind),
+        ['undefined', 'string'].includes(typeof (entry as PlanEntry).kind) &&
+        (plan.schemaVersion === 1 || typeof (entry as PlanEntry).root === 'string'),
     )
   );
+}
+
+/** Both schema versions as one list of roots and entries that each carry their root. */
+function normalizePlan(plan: CleanupPlan): {
+  roots: readonly string[];
+  entries: (PlanEntry & { root: string })[];
+} {
+  if (plan.schemaVersion === 2) return { roots: plan.roots, entries: [...plan.entries] };
+  return {
+    roots: [plan.root],
+    entries: plan.entries.map((entry) => ({ ...entry, root: plan.root })),
+  };
 }
 
 export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Promise<number> {
   const stdout = output(io);
   const stderr = errorOutput(io);
-  let plan: CleanupPlan;
+  let plan: ReturnType<typeof normalizePlan>;
   try {
     const parsed: unknown = JSON.parse(
       await readFile(resolve(io.cwd ?? process.cwd(), file), 'utf8'),
     );
     if (!isValidPlan(parsed)) throw new Error('invalid purgeit plan schema');
-    plan = parsed;
+    plan = normalizePlan(parsed);
   } catch (err) {
     stderr(`purgeit: ${formatErrorMessage(err)}`);
     return 2;
@@ -106,10 +139,11 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
   const approved: string[] = [];
   let skipped = 0;
   for (const entry of plan.entries) {
-    const expectedPath = resolve(plan.root, entry.relativePath);
+    const expectedPath = resolve(entry.root, entry.relativePath);
     if (
+      !plan.roots.includes(entry.root) ||
       entry.path !== expectedPath ||
-      relative(plan.root, expectedPath).startsWith('..') ||
+      relative(entry.root, expectedPath).startsWith('..') ||
       !(await stillMatchesRule(expectedPath, entry))
     ) {
       skipped++;
@@ -152,7 +186,7 @@ export async function applyPlan(file: string, yes: boolean, io: PlanIO = {}): Pr
       for await (const event of deleteEntries(approved, {
         signal: io.signal,
         concurrency: 8,
-        roots: [plan.root],
+        roots: plan.roots,
         idleForMs: io.idleForMs ?? DEFAULT_IDLE_MS,
       })) {
         if (event.type === 'deleting') yield { type: 'deleting', key: event.path };

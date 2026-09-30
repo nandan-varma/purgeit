@@ -120,6 +120,28 @@ describe('runCli', () => {
     }
   });
 
+  it('refuses to open the TUI on several directories or --discover', async () => {
+    for (const argv of [
+      ['tui', 'a', 'b'],
+      ['tui', '--discover'],
+    ]) {
+      const io = captureIO();
+      expect(await runCli(argv, io)).toBe(2);
+      expect(io.err[0]).toMatch(/one directory at a time/);
+    }
+    expect(runTuiMock).not.toHaveBeenCalled();
+  });
+
+  it('hides zero-byte artifacts in the TUI unless --include-empty', async () => {
+    runTuiMock.mockResolvedValue(0);
+    await runCli(['--tui', '.'], { cwd: EMPTY_ROOT });
+    expect(runTuiMock).toHaveBeenLastCalledWith(expect.objectContaining({ minSizeBytes: 1 }));
+    await runCli(['--tui', '--include-empty', '.'], { cwd: EMPTY_ROOT });
+    expect(runTuiMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ minSizeBytes: undefined }),
+    );
+  });
+
   it('runs headless when --json is passed', async () => {
     const io = captureIO();
     const code = await runCli(['--json', '--headless', '.'], { ...io, cwd: EMPTY_ROOT });

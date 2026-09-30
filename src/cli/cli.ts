@@ -106,9 +106,10 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     if (code !== 0) return code;
     try {
       const report = JSON.parse(captured.join('')) as {
-        root: string;
+        roots: string[];
         entries: {
           path: string;
+          root: string;
           relativePath: string;
           ruleName: string;
           kind: 'always-safe' | 'gated' | 'marker';
@@ -130,6 +131,13 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
     parsed.provider === 'local' &&
     (parsed.tui ||
       (!parsed.headless && !parsed.json && !parsed.delete && Boolean(process.stdout.isTTY)));
+
+  if (wantsTui && ((parsed.directories?.length ?? 0) > 1 || parsed.discover)) {
+    stderr(
+      'purgeit: the TUI reviews one directory at a time; use `purgeit scan` for several directories or --discover',
+    );
+    return 2;
+  }
 
   if (wantsTui) {
     let minSizeBytes: number | undefined;
@@ -170,7 +178,8 @@ export async function runCli(argv: string[], io: CliIO = {}): Promise<number> {
         noGated: parsed.noGated,
         targets: parsed.targets,
         exclude: parsed.exclude,
-        minSizeBytes,
+        // Zero-byte artifacts free nothing, so they're hidden unless asked for.
+        minSizeBytes: parsed.includeEmpty ? minSizeBytes : Math.max(minSizeBytes ?? 0, 1),
         minAgeMs,
         maxAgeMs,
         sort: parsed.sort,
