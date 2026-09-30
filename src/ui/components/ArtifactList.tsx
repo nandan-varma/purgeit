@@ -8,7 +8,7 @@ import { useTerminalSize } from '../useTerminalSize.js';
 import { Row } from './Row.js';
 import { TableHeader } from './TableHeader.js';
 
-export function ArtifactList({ state }: { state: AppState }) {
+export function ArtifactList({ state, root }: { state: AppState; root: string }) {
   const { columns, rows } = useTerminalSize();
   const showWideColumns = columns >= NARROW_TERMINAL_COLUMNS;
   const visibleRows = computeVisibleRows(rows);
@@ -41,6 +41,7 @@ export function ArtifactList({ state }: { state: AppState }) {
           index={start + i}
           selected={state.selected.has(entry.path)}
           showWideColumns={showWideColumns}
+          root={root}
         />
       ))}
       {hiddenAfter > 0 && (

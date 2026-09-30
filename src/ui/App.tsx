@@ -231,7 +231,7 @@ export function App({
             {state.view === 'projects' ? (
               <ProjectList state={state} />
             ) : (
-              <ArtifactList state={state} />
+              <ArtifactList state={state} root={root} />
             )}
           </Box>
         )}

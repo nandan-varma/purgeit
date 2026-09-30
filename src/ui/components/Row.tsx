@@ -1,4 +1,4 @@
-import { basename } from 'node:path';
+import { basename, relative } from 'node:path';
 import { Box, Text } from 'ink';
 import type { ScanEntry } from '../../scan/scanner.js';
 import { fmtAge, fmtSize } from '../format.js';
@@ -11,12 +11,14 @@ export function Row({
   index,
   selected,
   showWideColumns,
+  root,
 }: {
   entry: ScanEntry;
   cursor: number;
   index: number;
   selected: boolean;
   showWideColumns: boolean;
+  root: string;
 }) {
   const isCursor = index === cursor;
   // Selection wins over cursor when both are true — a green row is the
@@ -29,6 +31,7 @@ export function Row({
   // to something short enough for a fixed-width column.
   const project = entry.project ? `(${basename(entry.project)})` : '';
   const ageColorValue = ageColor(entry.lastModified);
+  const path = relative(root, entry.path) || basename(entry.path);
 
   // Ink Box defaults to flexShrink: 1, so a "fixed" width column would
   // otherwise still get squeezed (and its Text wrapped, since only the path
@@ -84,7 +87,7 @@ export function Row({
           rather than the root prefix. */}
       <Box flexGrow={1} flexShrink={1} minWidth={MIN_PATH_WIDTH}>
         <Text dimColor={dim} wrap="truncate-start">
-          {entry.path}
+          {path}
         </Text>
       </Box>
     </Box>

@@ -1,10 +1,10 @@
 import { Box, Text } from 'ink';
 import { useMemo } from 'react';
 import { fmtAge, fmtSize } from '../format.js';
-import { computeVisibleRows } from '../layout.js';
+import { computeVisibleRows, MIN_PATH_WIDTH } from '../layout.js';
 import type { AppState } from '../state.js';
 import { projectGroups } from '../state.js';
-import { glyphs, theme } from '../theme.js';
+import { ageColor, COLUMN_GAP, glyphs, PROJECT_COLUMN_WIDTHS, theme } from '../theme.js';
 import { useTerminalSize } from '../useTerminalSize.js';
 
 /** A compact overview that answers where cleanup matters before showing files. */
@@ -20,9 +20,30 @@ export function ProjectList({ state }: { state: AppState }) {
 
   return (
     <Box flexDirection="column">
-      <Text bold color={theme.accent}>
-        {'SIZE'.padStart(9)} ITEMS LAST USED PROJECT
-      </Text>
+      <Box columnGap={COLUMN_GAP} overflow="hidden">
+        <Box width={PROJECT_COLUMN_WIDTHS.cursor} flexShrink={0} />
+        <Box width={PROJECT_COLUMN_WIDTHS.check} flexShrink={0} />
+        <Box width={PROJECT_COLUMN_WIDTHS.size} flexShrink={0}>
+          <Text bold color={theme.accent}>
+            {'SIZE'.padStart(PROJECT_COLUMN_WIDTHS.size)}
+          </Text>
+        </Box>
+        <Box width={PROJECT_COLUMN_WIDTHS.items} flexShrink={0}>
+          <Text bold color={theme.accent}>
+            ITEMS
+          </Text>
+        </Box>
+        <Box width={PROJECT_COLUMN_WIDTHS.age} flexShrink={0}>
+          <Text bold color={theme.accent}>
+            AGE
+          </Text>
+        </Box>
+        <Box flexGrow={1} flexShrink={1} minWidth={MIN_PATH_WIDTH}>
+          <Text bold color={theme.accent} wrap="truncate-end">
+            PROJECT · LARGEST ARTIFACTS
+          </Text>
+        </Box>
+      </Box>
       <Box
         borderStyle="single"
         borderTop
@@ -42,6 +63,8 @@ export function ProjectList({ state }: { state: AppState }) {
         ).length;
         const allSelected = selectedCount === group.entries.length;
         const rowBg = allSelected ? theme.selectedBg : cursor ? theme.cursorBg : undefined;
+        const dim = !rowBg;
+        const ageColorValue = ageColor(group.newestModified);
         const topArtifacts = group.entries
           .slice()
           .sort((a, b) => (b.size ?? 0) - (a.size ?? 0))
@@ -49,17 +72,34 @@ export function ProjectList({ state }: { state: AppState }) {
           .map((entry) => entry.ruleName)
           .join(', ');
         return (
-          <Box key={group.name} backgroundColor={rowBg} overflow="hidden">
-            <Text bold={cursor}>{cursor ? glyphs.cursor : ' '}</Text>
-            <Text>
-              {allSelected ? glyphs.checkboxOn : selectedCount > 0 ? '[-]' : glyphs.checkboxOff}
-            </Text>
-            <Text bold>{fmtSize(group.totalSize).padStart(9)}</Text>
-            <Text> {String(group.entries.length).padStart(3)} </Text>
-            <Text>{fmtAge(group.newestModified).padEnd(9)}</Text>
-            <Text bold wrap="truncate-end">
-              {group.name} <Text dimColor>· {topArtifacts}</Text>
-            </Text>
+          <Box key={group.name} backgroundColor={rowBg} columnGap={COLUMN_GAP} overflow="hidden">
+            <Box width={PROJECT_COLUMN_WIDTHS.cursor} flexShrink={0}>
+              <Text bold={cursor}>{cursor ? glyphs.cursor : ' '}</Text>
+            </Box>
+            <Box width={PROJECT_COLUMN_WIDTHS.check} flexShrink={0}>
+              <Text>
+                {allSelected ? glyphs.checkboxOn : selectedCount > 0 ? '[-]' : glyphs.checkboxOff}
+              </Text>
+            </Box>
+            <Box width={PROJECT_COLUMN_WIDTHS.size} flexShrink={0}>
+              <Text bold>{fmtSize(group.totalSize).padStart(PROJECT_COLUMN_WIDTHS.size)}</Text>
+            </Box>
+            <Box width={PROJECT_COLUMN_WIDTHS.items} flexShrink={0}>
+              <Text>{String(group.entries.length).padStart(5)}</Text>
+            </Box>
+            <Box width={PROJECT_COLUMN_WIDTHS.age} flexShrink={0}>
+              <Text
+                {...(ageColorValue !== undefined ? { color: ageColorValue } : {})}
+                dimColor={dim && ageColorValue === undefined}
+              >
+                {fmtAge(group.newestModified)}
+              </Text>
+            </Box>
+            <Box flexGrow={1} flexShrink={1} minWidth={MIN_PATH_WIDTH}>
+              <Text bold wrap="truncate-end">
+                {group.name} <Text dimColor>· {topArtifacts}</Text>
+              </Text>
+            </Box>
           </Box>
         );
       })}

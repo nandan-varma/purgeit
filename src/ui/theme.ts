@@ -32,6 +32,15 @@ export const COLUMN_WIDTHS = {
   age: 5,
 } as const;
 
+/** Fixed columns for the project opportunity overview; details consume the remaining width. */
+export const PROJECT_COLUMN_WIDTHS = {
+  cursor: 2,
+  check: 4,
+  size: 9,
+  items: 6,
+  age: 5,
+} as const;
+
 /** Gap between adjacent table columns — pass to Box's `columnGap`, keep row/header widths in sync with it. */
 export const COLUMN_GAP = 1;
 
