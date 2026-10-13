@@ -7,7 +7,6 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'purgeit',
-      tagline: 'Find and delete regenerable dev build artifacts across your projects.',
       description: 'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
       favicon: '/favicon.svg',
       logo: {
