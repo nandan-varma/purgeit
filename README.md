@@ -64,7 +64,7 @@ Documentation: <https://purgeit.nandan.fyi>
 ## Develop
 
 ```bash
-npm ci && npm run typecheck && npm run lint && npm test && npm run build
+bun install && bun run check
 ```
 
 MIT

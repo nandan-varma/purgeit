@@ -4,7 +4,7 @@ import { isAbsolute, parse, relative, resolve } from 'node:path';
 
 import { errorMessage } from '../errors.js';
 import { hasActivitySince } from '../fs/activity.js';
-import type { Io } from '../fs/io.js';
+import { statEntry } from '../fs/io.js';
 import { findProtection, PROTECTION_LABELS } from '../fs/protection.js';
 import { matchPath } from '../rules/match.js';
 import type { RuleSet } from '../rules/rule-set.js';
@@ -28,7 +28,6 @@ export interface Refusal {
 
 export interface GuardContext {
   readonly rules: RuleSet;
-  readonly io: Io;
   /** Real paths of the scan roots every target must resolve strictly inside. */
   readonly realRoots: readonly string[];
   /** Refuse anything modified within this many ms of `now`. 0 disables. */
@@ -79,17 +78,17 @@ export async function inspect(
     if (!context.realRoots.some((root) => isInside(root, real))) {
       return refuse('outside-roots', 'resolves outside the scanned roots');
     }
-    const lstats = await context.io.lstat(path);
+    const lstats = await statEntry(path);
     if (!lstats.isDirectory() || (await matchPath(context.rules, path)) === undefined) {
       return refuse('no-longer-matches', 'is no longer claimed by any rule');
     }
 
-    const protection = await findProtection(path, context.io);
+    const protection = await findProtection(path);
     if (protection !== undefined) return refuse('protected', PROTECTION_LABELS[protection]);
 
     if (context.idleFor > 0) {
       const since = context.now - context.idleFor;
-      if (await hasActivitySince(path, since, context.io)) {
+      if (await hasActivitySince(path, since)) {
         return refuse(
           'recently-active',
           `modified within the last ${formatDuration(context.idleFor)}`,
@@ -97,7 +96,7 @@ export async function inspect(
       }
     }
     if (candidate.unchangedSince !== undefined) {
-      if (await hasActivitySince(path, candidate.unchangedSince + 1, context.io)) {
+      if (await hasActivitySince(path, candidate.unchangedSince + 1)) {
         return refuse('changed-since-scan', 'was modified after it was scanned');
       }
     }
