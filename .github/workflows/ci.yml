@@ -3,8 +3,9 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore: ['docs/**']
   pull_request:
-    branches: [main]
+    paths-ignore: ['docs/**']
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -14,53 +15,19 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Static checks
+  ci:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version-file: .bun-version
-      - run: bun install --frozen-lockfile
-      - run: bun run fmt:check
-      - run: bun run lint
-      - run: bun run typecheck
-      - run: bun run knip
-      - run: bun run doctor
-      - run: bun run build
-      - run: bun run check:package
-
-      # The scanner, rules, config and cleaner are a plain library; only the
-      # terminal UI may depend on React and Ink.
-      - name: React and Ink stay inside src/tui
-        run: |
-          if grep -rnE "from '(react|ink)'" src --include='*.ts' --include='*.tsx' | grep -v '^src/tui/'; then
-            echo "::error::react/ink imported outside src/tui/"
-            exit 1
-          fi
-
-  test:
-    name: Test (${{ matrix.os }}, Node ${{ matrix.node-version }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [22, 24]
-    defaults:
-      run:
-        shell: bash
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 24
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
-      - run: bun run coverage
-      - run: bun run build
-      - name: Smoke test the built CLI
-        run: node scripts/smoke.mjs
+      # One gate for CI, releases and local use: format, oxlint, tsgo, knip,
+      # React Doctor (in parallel), then tests + coverage, build, package
+      # checks, and a smoke test of the built CLI.
+      - run: bun run check
