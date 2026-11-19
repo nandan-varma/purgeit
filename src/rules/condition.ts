@@ -4,6 +4,8 @@ import { join } from 'node:path';
 import picomatch from 'picomatch';
 import { z } from 'zod';
 
+import { toConditions } from './catalog/describe.js';
+
 /** A bare entry name — never a path, so it can be proven against a directory listing alone. */
 const entryName = z
   .string()
@@ -33,23 +35,6 @@ export type Condition = z.infer<typeof ConditionSchema>;
 /** One condition, or a list of which any one suffices. */
 export const WhenSchema = z.union([ConditionSchema, z.array(ConditionSchema).min(1)]);
 export type When = z.infer<typeof WhenSchema>;
-
-export function describeCondition(condition: Condition): string {
-  if ('file' in condition) return condition.file;
-  if ('glob' in condition) return condition.glob;
-  return `${condition.grep.file} matching /${condition.grep.pattern}/`;
-}
-
-/** A `when` as prose: "Podfile or *.xcodeproj". */
-export function describeWhen(when: When | readonly Condition[]): string {
-  return toList(when).map(describeCondition).join(' or ');
-}
-
-const isList = (when: When | readonly Condition[]): when is readonly Condition[] =>
-  Array.isArray(when);
-
-const toList = (when: When | readonly Condition[]): readonly Condition[] =>
-  isList(when) ? when : [when];
 
 const matchers = new Map<string, (name: string) => boolean>();
 
@@ -93,7 +78,7 @@ export async function findProof(
   dir: string,
   names: ReadonlySet<string>,
 ): Promise<Condition | undefined> {
-  for (const condition of toList(when)) {
+  for (const condition of toConditions(when)) {
     if (await holds(condition, dir, names)) return condition;
   }
   return undefined;

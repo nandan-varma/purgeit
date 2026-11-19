@@ -42,7 +42,9 @@ export interface Candidate {
   readonly unchangedSince?: number;
 }
 
-const refuse = (code: RefusalCode, message: string): Refusal => ({ code, message });
+const refuse = (code: RefusalCode, message: string): { refusal: Refusal } => ({
+  refusal: { code, message },
+});
 
 /** Filesystem root, a drive root, or the home directory. */
 function isDangerous(path: string, home: string): boolean {
@@ -58,13 +60,15 @@ const isInside = (root: string, path: string): boolean => {
 /**
  * Everything that must still be true at the moment of deletion, re-derived
  * from the filesystem as it is now — a scan result or a plan file is only a
- * suggestion. Returns the first reason to refuse, or undefined to proceed.
+ * suggestion. Returns the first reason to refuse, or the verified real path to
+ * delete: deleting that, rather than the original spelling, means an ancestor
+ * swapped for a symlink after this check cannot redirect the delete.
  * Anything that cannot be verified is refused.
  */
 export async function inspect(
   candidate: Candidate,
   context: GuardContext,
-): Promise<Refusal | undefined> {
+): Promise<{ readonly refusal: Refusal } | { readonly real: string }> {
   const path = resolve(candidate.path);
   if (isDangerous(path, context.home ?? homedir())) {
     return refuse('dangerous', 'refusing to delete a filesystem root or the home directory');
@@ -100,7 +104,7 @@ export async function inspect(
         return refuse('changed-since-scan', 'was modified after it was scanned');
       }
     }
-    return undefined;
+    return { real };
   } catch (error) {
     return refuse('unverifiable', `could not be verified: ${errorMessage(error)}`);
   }

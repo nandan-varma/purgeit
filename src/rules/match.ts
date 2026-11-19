@@ -1,7 +1,8 @@
 import { open, readdir } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 
-import { describeCondition, findProof } from './condition.js';
+import { describeCondition } from './catalog/describe.js';
+import { findProof } from './condition.js';
 import type { MarkerRule, MatchRule, NamedRule, RuleSet } from './rule-set.js';
 
 /** A directory a rule claims, with the proof that satisfied it. */

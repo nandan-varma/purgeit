@@ -1,8 +1,8 @@
 import { styleText } from 'node:util';
 
 import { PurgeitError } from '../../errors.js';
+import { describeWhen } from '../../rules/catalog/describe.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, type RuleCategory } from '../../rules/catalog/types.js';
-import { describeWhen } from '../../rules/condition.js';
 import type { MatchRule } from '../../rules/rule-set.js';
 import type { CliEnv } from '../env.js';
 import type { ScanFlags } from '../flags.js';

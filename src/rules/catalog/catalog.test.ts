@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
 import { RULE_CATALOG } from './index.js';
@@ -24,6 +26,25 @@ describe('RULE_CATALOG', () => {
   it('orders every category it uses', () => {
     for (const rule of RULE_CATALOG) {
       for (const category of rule.categories) expect(CATEGORY_ORDER).toContain(category);
+    }
+  });
+});
+
+describe('catalog dependencies', () => {
+  // The docs site imports this folder from source and installs only its own
+  // dependencies, so the catalog may import nothing at runtime beyond itself.
+  it('has no runtime imports outside the folder', () => {
+    const dir = new URL('./', import.meta.url);
+    for (const file of readdirSync(dir).filter(
+      (f) => f.endsWith('.ts') && !f.endsWith('.test.ts'),
+    )) {
+      const imports = readFileSync(new URL(file, dir), 'utf8').match(/^import .*$/gm) ?? [];
+      for (const line of imports) {
+        expect(
+          line.startsWith('import type') || /from '\.\/[^']+'/.test(line),
+          `${file}: ${line}`,
+        ).toBe(true);
+      }
     }
   });
 });
