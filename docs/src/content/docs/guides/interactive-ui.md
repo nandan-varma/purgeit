@@ -1,0 +1,49 @@
+---
+title: Interactive UI
+description: Browse, filter, select and delete in a full-screen terminal UI.
+sidebar:
+  order: 1
+---
+
+`purgeit [dirs…]` opens a full-screen UI in an interactive terminal. It uses the terminal's alternate screen, so your scrollback is untouched when you leave. Rows appear as they are measured, and the header shows progress and running totals.
+
+```text
+purgeit ~/dev                                          scanned in 2.1s
+12.3 GB reclaimable  ·  2 selected (7.0 GB)
+          SIZE↓  AGE    RULE              PATH
+▸ [x]    6.5 GB  6h     target            ~/dev/apps/mail/target
+  [ ]    1.6 GB  2d     build             ~/dev/tools/ipa-forge/build
+  [x]  979.6 MB  1d     node_modules      ~/dev/personal/mocha/node_modules
+   ⊘       4 KB  22mo   dist              ~/dev/tracked/dist
+```
+
+- **AGE** is coloured by recency: red under a week, yellow under a month, green beyond.
+- **⊘** marks a *protected* artifact. It is shown with the reason but can never be selected.
+- The two lines under the list say which rule matched and what proved it (for example "proved by `package.json`").
+
+## Keys
+
+| Key | Action |
+| --- | --- |
+| `↑` `↓` / `k` `j` | move |
+| `PgUp` `PgDn` · `g` `G` | page · top · bottom |
+| `space` | select / unselect |
+| `a` · `n` · `i` | select all shown · none · invert |
+| `/` | filter by path or rule, live. `esc` clears |
+| `s` · `r` | cycle sort (size, age, path) · reverse |
+| `enter` | review the selection |
+| `y` | delete (in the review) |
+| `esc` | cancel the review |
+| `b` | back to the list after deleting |
+| `q` | quit |
+
+## Deleting is two deliberate steps
+
+`enter` opens a review with the count and total. Only `y` deletes. Each path is re-verified first; anything refused is listed afterwards with the reason, and what was deleted is recorded in [`purgeit history`](/reference/cli/#history).
+
+<details>
+<summary>The UI says it needs a terminal</summary>
+
+The UI requires an interactive terminal. In scripts and pipes use [`scan` and `clean`](/reference/cli/) instead; running `purgeit` without a terminal exits with code `2` and says so.
+
+</details>

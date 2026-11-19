@@ -1,42 +1,31 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import starlightLinksValidator from 'starlight-links-validator';
+import starlightLlmsTxt from 'starlight-llms-txt';
 
 export default defineConfig({
   site: 'https://purgeit.nandan.fyi',
+  redirects: {
+    '/tui': '/guides/interactive-ui/',
+    '/cli': '/reference/cli/',
+    '/configuration': '/reference/configuration/',
+    '/rules': '/reference/rules/',
+    '/architecture': '/concepts/safety-model/',
+    '/api': '/reference/library-api/',
+    '/scheduled-cleanup': '/guides/automation/',
+  },
   integrations: [
     starlight({
       title: 'purgeit',
-      description: 'Fast, safe cleanup of build artifacts: interactive UI and scriptable CLI for reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
+      description: 'Find and safely delete regenerable build artifacts — node_modules, target, dist, Pods and more — across all your projects.',
       favicon: '/favicon.svg',
       logo: {
         src: './src/assets/logo.svg',
       },
       head: [
         {
-          tag: 'link',
-          attrs: {
-            rel: 'preconnect',
-            href: 'https://fonts.googleapis.com',
-          },
-        },
-        {
-          tag: 'link',
-          attrs: {
-            rel: 'preconnect',
-            href: 'https://fonts.gstatic.com',
-            crossorigin: '',
-          },
-        },
-        {
-          tag: 'link',
-          attrs: {
-            rel: 'stylesheet',
-            href: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap',
-          },
-        },
-        {
           tag: 'meta',
-          attrs: { name: 'theme-color', content: '#1a73e8' },
+          attrs: { name: 'theme-color', content: '#0e9aa7' },
         },
         {
           tag: 'script',
@@ -66,32 +55,22 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/nandan-varma/purgeit' },
         { icon: 'npm', label: 'npm', href: 'https://www.npmjs.com/package/purgeit' },
       ],
+      plugins: [
+        starlightLinksValidator({ exclude: ['/llms.txt', '/llms-full.txt', '/llms-small.txt'] }),
+        starlightLlmsTxt({
+          projectName: 'purgeit',
+          description:
+            'purgeit finds and safely deletes regenerable build artifacts (node_modules, target, dist, Pods and more) across projects. It has an interactive terminal UI, a scriptable CLI with JSON output, and a typed library.',
+          details:
+            'Run `purgeit skill` for a guide versioned with the installed CLI. Deletions are re-verified at the moment of deletion; use `scan --format json` to review and `clean --plan` to apply.',
+        }),
+      ],
       sidebar: [
-        {
-          label: 'Start here',
-          items: [
-            { label: 'Getting started', slug: 'getting-started' },
-            { label: 'Interactive UI', slug: 'tui' },
-            { label: 'CLI reference', slug: 'cli' },
-            { label: 'Configuration', slug: 'configuration' },
-            { label: 'Built-in rules', slug: 'rules' },
-          ],
-        },
-        {
-          label: 'Advanced',
-          items: [
-            { label: 'Safety model', slug: 'architecture' },
-            { label: 'Library API', slug: 'api' },
-            { label: 'Scheduled cleanup', slug: 'scheduled-cleanup' },
-          ],
-        },
-        {
-          label: 'Community',
-          items: [
-            { label: 'FAQ & troubleshooting', slug: 'faq' },
-            { label: 'Contributing', slug: 'contributing' },
-          ],
-        },
+        { label: 'Start here', items: ['getting-started'] },
+        { label: 'Guides', items: [{ autogenerate: { directory: 'guides' } }] },
+        { label: 'Reference', items: [{ autogenerate: { directory: 'reference' } }] },
+        { label: 'Concepts', items: [{ autogenerate: { directory: 'concepts' } }] },
+        { label: 'Project', items: ['faq', 'contributing'] },
       ],
       editLink: {
         baseUrl: 'https://github.com/nandan-varma/purgeit/edit/main/docs/',

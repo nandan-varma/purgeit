@@ -7,7 +7,7 @@ bun run test                # vitest (runs on Node)
 bunx vitest run src/clean/clean.test.ts      # one file
 bun fmt                     # format (Bun's built-in formatter; config in bunfig.toml)
 bun run doctor              # React Doctor on src/tui (must stay at 100)
-bun run schema              # regenerate purgeit.schema.json after editing src/config/schema.ts
+bun run generate              # regenerate purgeit.schema.json after editing src/config/schema.ts
 ```
 
 ## Rules of the road

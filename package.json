@@ -40,8 +40,7 @@
     "./schema.json": "./purgeit.schema.json"
   },
   "scripts": {
-    "build": "bun run schema && tsdown",
-    "schema": "bun scripts/schema.ts",
+    "build": "bun run generate && tsdown",
     "fmt": "bun fmt",
     "fmt:check": "bun fmt --check",
     "lint": "oxlint",
@@ -55,7 +54,8 @@
     "check:package": "publint && attw --pack . --profile esm-only",
     "check": "bun run --parallel fmt:check lint typecheck knip doctor && bun run coverage && bun run build && bun run check:package && node scripts/smoke.mjs",
     "prepare": "lefthook install",
-    "prepublishOnly": "bun run check"
+    "prepublishOnly": "bun run check",
+    "generate": "bun scripts/schema.ts && bun scripts/cli-reference.ts"
   },
   "dependencies": {
     "bytes": "^3.1.2",

@@ -1,21 +1,23 @@
 ---
 title: Built-in rules
 description: What purgeit recognizes out of the box, across every ecosystem.
+sidebar:
+  order: 3
 ---
 
-import RuleAccordion from '../../components/RuleAccordion.astro';
+import RuleAccordion from '../../../components/RuleAccordion.astro';
 
-Every rule below is rendered from the catalog the scanner itself compiles (`src/rules/catalog/`), so this page cannot drift from what the CLI matches.
+Every rule below is rendered from the catalog the scanner itself compiles (`src/rules/catalog/`), so this page cannot drift from what the CLI matches. Run `purgeit rules` to see the rules in effect for *your* config.
 
-## Safe vs. gated
+## Kinds of rule
 
 - **safe** — deletable wherever the name appears. Once matched, the scanner never enters it.
 - **gated** — the name alone is too generic (`build`, `vendor`, `bin`), so it only counts when a manifest beside it proves it is generated output; for example `Pods/` next to a `Podfile`.
 - **tagged** — any directory, whatever its name, carrying a [`CACHEDIR.TAG`](https://bford.info/cachedir/) with the standard signature (written by Cargo, Go, Zig, ccache, pytest, …).
 - **pruned** — version-control metadata: never entered, never deleted.
 
-A matching name is not enough to delete: [protection checks](/architecture/) still apply to every match.
+A matching name is not enough to delete: [protection checks](/concepts/safety-model/) still apply to every match.
 
 <RuleAccordion />
 
-See [Configuration](/configuration/) to add, replace or disable rules, and [Contributing](/contributing/) to add an ecosystem to the catalog.
+Missing an ecosystem? [Add a rule in your config](/guides/custom-rules/), or [contribute it to the catalog](/contributing/).

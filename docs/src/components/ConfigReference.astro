@@ -1,0 +1,31 @@
+---
+// Rendered from purgeit.schema.json, the JSON Schema generated from the zod config schema.
+import schema from '../../../purgeit.schema.json';
+
+type Property = { type?: string; items?: { type?: string }; default?: unknown; description?: string };
+
+const typeOf = (property: Property) =>
+  property.type === 'array' ? `${property.items?.type ?? 'object'}[]` : (property.type ?? 'object');
+
+const rows = Object.entries(schema.properties as Record<string, Property>).filter(
+  ([key]) => key !== '$schema',
+);
+---
+
+<table>
+  <thead>
+    <tr><th>Key</th><th>Type</th><th>Default</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    {
+      rows.map(([key, property]) => (
+        <tr>
+          <td><code>{key}</code></td>
+          <td><code>{typeOf(property)}</code></td>
+          <td>{property.default !== undefined && <code>{JSON.stringify(property.default)}</code>}</td>
+          <td>{property.description}</td>
+        </tr>
+      ))
+    }
+  </tbody>
+</table>

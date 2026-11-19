@@ -1,0 +1,49 @@
+---
+title: Safety model
+description: What purgeit checks before it deletes anything, and why you can trust a scan result you acted on later.
+sidebar:
+  order: 1
+---
+
+purgeit assumes every scan result is stale by the time you act on it, and that **a directory's name never proves it is regenerable**.
+
+## At scan time
+
+1. **Rules** decide what is a candidate: names that are safe anywhere, names proved by a manifest beside them, and caches that declare themselves with a tag file.
+2. **Measure** — one traversal per candidate gives allocated size, file count and the newest modification inside. Symlinks are never followed.
+3. **Protection** marks a candidate as protected when it contains:
+   - its own `.git` (a checkout, not output),
+   - a `*-keypair.json` within three levels (for example Anchor's `target/deploy` keys, a program's on-chain identity),
+   - or any file git tracks.
+
+   If git cannot answer, the candidate is *unverified* and also protected. A protected candidate is listed with its reason and can never be selected.
+
+## At deletion time
+
+Everything is re-derived from the filesystem as it is now. A path is **refused, with a reason**, unless all of this holds:
+
+1. It is not a filesystem root or your home directory.
+2. It still exists and resolves strictly **inside a scanned root** — this defeats a symlink swapped in after the scan.
+3. It is still a real directory (not a symlink) and **a rule still claims it**.
+4. The protection checks above still pass.
+5. Nothing inside changed within `--min-age` (7 days for `clean`).
+6. If it came from a scan or plan, nothing inside changed **after** that scan.
+
+The delete then targets the *verified real path*, so an ancestor swapped for a symlink between the check and the delete cannot redirect it. Anything that cannot be verified is refused. One refusal never stops the rest.
+
+## Human in the loop
+
+- The UI preselects nothing, and needs an explicit review (`enter`) and `y`.
+- `clean` asks for confirmation unless `--yes`, and without a terminal it refuses to delete at all rather than guess.
+- `--dry-run` runs every check and deletes nothing.
+
+## Records
+
+Deletions and failures are appended to a history file (see `purgeit history`). The package itself is published with signed provenance, so you can verify what you install with `npm audit signatures`.
+
+## What it will not do
+
+- It never follows symlinks while scanning or measuring.
+- It never enters version-control directories.
+- It never deletes the directory you scanned, or anything outside it.
+- It does not send data anywhere: there is no telemetry and no network access.

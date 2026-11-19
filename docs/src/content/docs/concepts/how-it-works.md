@@ -1,0 +1,34 @@
+---
+title: How it works
+description: The scan pipeline, why it is fast, and how sizes are counted.
+sidebar:
+  order: 2
+---
+
+## The pipeline
+
+```text
+roots ─▶ walk ─▶ rules claim directories ─▶ measure ─▶ filters ─▶ protection ─▶ entry
+                                                                              │
+                                      clean: re-verify every path ◀───────────┘
+```
+
+1. **Walk.** Directories are read concurrently. A directory a rule claims is never entered (so nested `node_modules` inside `node_modules` are never reached), VCS directories are never entered, and symlinks are never followed.
+2. **Rules.** `safe` names match at once. `gated` names are checked against the listing of the directory that holds them — usually free, because the walker already has it. `tagged` caches are recognised by their marker file.
+3. **Measure.** One traversal per candidate collects size, file count and the newest modification time. The same traversal later answers "is this empty?" and "was anything touched recently?".
+4. **Filters and protection** (`--min-size`, `--min-age`, emptiness, nested repos, deploy keys, tracked files).
+5. Results stream out as they are ready, so the UI fills in while the scan is still running.
+
+## Why it is fast
+
+- A single traversal does the work `du`, `find` and a tree walk used to do separately.
+- Gated rules are proven from directory listings already in memory.
+- File-system calls are not throttled in JavaScript: libuv's thread pool is the real limit, and a JS limiter measured about 35% slower.
+- Commands are loaded lazily, so `purgeit --version` costs Node's startup plus ~30 ms.
+- Deleting uses Node's `fs.rm`, which measured on par with `rm -rf`.
+
+On a real 13 GB, ~50-artifact development folder a full scan takes about two seconds — comparable to `find | du`, while also producing activity and protection data.
+
+## How sizes are counted
+
+Size is **allocated disk blocks** (what `du` reports), not apparent file size. A file hardlinked to something *outside* the artifact — pnpm's content store is the common case — is only counted if every one of its links lives inside the artifact, because only then does deleting the artifact actually free it. So the numbers purgeit shows are what you will get back.

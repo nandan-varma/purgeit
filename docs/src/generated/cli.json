@@ -1,0 +1,340 @@
+[
+  {
+    "name": "browse",
+    "aliases": [
+      "tui"
+    ],
+    "description": "browse and select artifacts to delete in an interactive terminal UI (default)",
+    "arguments": [
+      {
+        "name": "dirs",
+        "required": false,
+        "variadic": true
+      }
+    ],
+    "options": [
+      {
+        "flags": "--discover",
+        "description": "also scan the folders where this machine keeps projects",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "-x, --exclude <glob>",
+        "description": "skip directories matching a glob (repeatable)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--only <rules>",
+        "description": "only look for these rules or groups (repeatable, comma-separated)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--safe-only",
+        "description": "skip rules that need a sibling manifest as proof",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--min-size <size>",
+        "description": "ignore artifacts smaller than this, e.g. 50MB",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--min-age <duration>",
+        "description": "ignore artifacts touched more recently than this, e.g. 7d. Nothing is ever refused in the UI unless you set this.",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--depth <n>",
+        "description": "never descend deeper than this",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--include-empty",
+        "description": "keep artifacts that contain no files",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--config <file>",
+        "description": "use this config file instead of searching the working directory",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--no-config",
+        "description": "ignore any config file",
+        "default": null,
+        "choices": null
+      }
+    ]
+  },
+  {
+    "name": "scan",
+    "aliases": [],
+    "description": "list artifacts without deleting anything",
+    "arguments": [
+      {
+        "name": "dirs",
+        "required": false,
+        "variadic": true
+      }
+    ],
+    "options": [
+      {
+        "flags": "--discover",
+        "description": "also scan the folders where this machine keeps projects",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "-x, --exclude <glob>",
+        "description": "skip directories matching a glob (repeatable)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--only <rules>",
+        "description": "only look for these rules or groups (repeatable, comma-separated)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--safe-only",
+        "description": "skip rules that need a sibling manifest as proof",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--min-size <size>",
+        "description": "ignore artifacts smaller than this, e.g. 50MB",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--min-age <duration>",
+        "description": "ignore artifacts touched more recently than this, e.g. 7d. Default: 0.",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--depth <n>",
+        "description": "never descend deeper than this",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--include-empty",
+        "description": "keep artifacts that contain no files",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--config <file>",
+        "description": "use this config file instead of searching the working directory",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--no-config",
+        "description": "ignore any config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--format <format>",
+        "description": "output format",
+        "default": "text",
+        "choices": [
+          "text",
+          "json",
+          "ndjson"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "clean",
+    "aliases": [],
+    "description": "delete artifacts, re-verifying each one at the moment of deletion",
+    "arguments": [
+      {
+        "name": "dirs",
+        "required": false,
+        "variadic": true
+      }
+    ],
+    "options": [
+      {
+        "flags": "--discover",
+        "description": "also scan the folders where this machine keeps projects",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "-x, --exclude <glob>",
+        "description": "skip directories matching a glob (repeatable)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--only <rules>",
+        "description": "only look for these rules or groups (repeatable, comma-separated)",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--safe-only",
+        "description": "skip rules that need a sibling manifest as proof",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--min-size <size>",
+        "description": "ignore artifacts smaller than this, e.g. 50MB",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--min-age <duration>",
+        "description": "ignore artifacts touched more recently than this, e.g. 7d. Also the window nothing recently active is deleted within. Default: 7d.",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--depth <n>",
+        "description": "never descend deeper than this",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--include-empty",
+        "description": "keep artifacts that contain no files",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--config <file>",
+        "description": "use this config file instead of searching the working directory",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--no-config",
+        "description": "ignore any config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--plan <file>",
+        "description": "delete exactly what a reviewed `scan --format json` report lists",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "-y, --yes",
+        "description": "do not ask for confirmation",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "-n, --dry-run",
+        "description": "run every check but delete nothing",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--format <format>",
+        "description": "output format",
+        "default": "text",
+        "choices": [
+          "text",
+          "json"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "rules",
+    "aliases": [],
+    "description": "list the rules in effect",
+    "arguments": [],
+    "options": [
+      {
+        "flags": "--category <id>",
+        "description": "only this ecosystem, e.g. rust",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--only <rules>",
+        "description": "only these rules",
+        "default": [],
+        "choices": null
+      },
+      {
+        "flags": "--safe-only",
+        "description": "only rules that need no proof",
+        "default": false,
+        "choices": null
+      },
+      {
+        "flags": "--config <file>",
+        "description": "use this config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--no-config",
+        "description": "ignore any config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--format <format>",
+        "description": "output format",
+        "default": "text",
+        "choices": [
+          "text",
+          "json"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "history",
+    "aliases": [],
+    "description": "show what purgeit has deleted, newest first",
+    "arguments": [],
+    "options": [
+      {
+        "flags": "-n, --limit <count>",
+        "description": "how many records to show",
+        "default": 20,
+        "choices": null
+      },
+      {
+        "flags": "--format <format>",
+        "description": "output format",
+        "default": "text",
+        "choices": [
+          "text",
+          "json"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "skill",
+    "aliases": [],
+    "description": "print the guide for AI agents that drive purgeit",
+    "arguments": [],
+    "options": []
+  }
+]

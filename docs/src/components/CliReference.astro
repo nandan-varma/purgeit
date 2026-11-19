@@ -1,0 +1,50 @@
+---
+// Rendered from docs/src/generated/cli.json, which `bun run generate` builds from
+// the real commander program — so this reference cannot drift from the CLI.
+import commands from '../generated/cli.json';
+
+const { command: name } = Astro.props as { command: string };
+const command = commands.find((c) => c.name === name);
+if (!command) throw new Error(`Unknown CLI command in docs: ${name}`);
+
+const usage = (command: NonNullable<typeof commands[number]>) =>
+  [
+    'purgeit',
+    command.name,
+    ...command.arguments.map((a) => (a.required ? `<${a.name}>` : `[${a.name}${a.variadic ? '…' : ''}]`)),
+    command.options.length > 0 ? '[options]' : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+const shown = (value: unknown) =>
+  value === null || value === false || (Array.isArray(value) && value.length === 0)
+    ? ''
+    : Array.isArray(value)
+      ? value.join(', ')
+      : String(value);
+---
+
+<section class="cli-command">
+  <p>{command.description}{command.aliases.length > 0 && <> (alias: <code>{command.aliases.join(', ')}</code>)</>}.</p>
+  <pre><code>{usage(command)}</code></pre>
+  {command.options.length > 0 && (
+    <table>
+      <thead>
+        <tr><th>Option</th><th>Description</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        {command.options.map((option) => (
+          <tr>
+            <td><code>{option.flags}</code></td>
+            <td>
+              {option.description}
+              {option.choices && <> One of: {option.choices.map((c) => <code>{c}</code>).reduce((a, b) => <>{a}, {b}</>)}.</>}
+            </td>
+            <td>{shown(option.default) && <code>{shown(option.default)}</code>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )}
+</section>

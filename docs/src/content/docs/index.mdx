@@ -1,9 +1,9 @@
 ---
 title: purgeit
-description: Find and safely delete regenerable dev build artifacts across your projects.
+description: Find and safely delete regenerable build artifacts — node_modules, target, dist, Pods and 60 more — across all your projects.
 template: splash
 hero:
-  tagline: Reclaim disk space from node_modules, target, dist, Pods and more — fast, with safety checks that run again at the moment of deletion.
+  tagline: Reclaim disk space from every project at once. Fast to scan, strict about what it deletes, and built for people, scripts and AI agents.
   image:
     file: ../../assets/logo.svg
   actions:
@@ -11,40 +11,74 @@ hero:
       link: /getting-started/
       icon: right-arrow
       variant: primary
-    - text: CLI reference
-      link: /cli/
-      icon: document
-    - text: View on GitHub
+    - text: How it stays safe
+      link: /concepts/safety-model/
+      icon: approve-check
+    - text: GitHub
       link: https://github.com/nandan-varma/purgeit
       icon: external
       variant: minimal
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid, Tabs, TabItem } from '@astrojs/starlight/components';
+
+<Tabs syncKey="pm">
+  <TabItem label="npx">
+    ```bash
+    npx purgeit ~/dev
+    ```
+  </TabItem>
+  <TabItem label="bunx">
+    ```bash
+    bunx purgeit ~/dev
+    ```
+  </TabItem>
+  <TabItem label="pnpm">
+    ```bash
+    pnpm dlx purgeit ~/dev
+    ```
+  </TabItem>
+  <TabItem label="global">
+    ```bash
+    npm install -g purgeit
+    purgeit ~/dev
+    ```
+  </TabItem>
+</Tabs>
+
+```text
+$ purgeit scan ~/dev --min-size 100MB
+    SIZE  AGE  RULE          PATH
+  6.5 GB  6h   target        ~/dev/apps/mail/target
+  1.6 GB  2d   build         ~/dev/tools/ipa-forge/build
+979.6 MB  1d   node_modules  ~/dev/personal/mocha/node_modules
+
+3 artifacts · 9.1 GB reclaimable — scanned 1 root in 2.1s
+```
 
 <CardGrid stagger>
-  <Card title="Safe by design" icon="approve-check">
-    Nothing is selected by default, nothing is deleted without confirmation, and every path is re-verified against the rules, git, and recent activity right before it is removed.
+  <Card title="Safe by construction" icon="approve-check">
+    Nothing is preselected. Every path is **re-verified at the moment of deletion** — rules, git, deploy keys, recent activity, symlink tricks. [Read the safety model](/concepts/safety-model/).
   </Card>
   <Card title="Fast" icon="rocket">
-    One traversal gives size, file count and last activity. Hardlinked files (pnpm) are counted only when deleting them really frees space.
+    One traversal measures size, file count and last activity — as fast as `du`. [How it works](/concepts/how-it-works/).
   </Card>
-  <Card title="Interactive UI" icon="screen">
-    A full-screen terminal UI that fills in as measurements arrive: sort, filter, select, confirm.
+  <Card title="Honest numbers" icon="information">
+    Sizes are space that deleting would actually free; hardlinked files (pnpm's store) aren't double counted.
   </Card>
-  <Card title="Scriptable" icon="document">
-    `scan --format json` produces a report you can review and feed back to `clean --plan`. Stable exit codes.
+  <Card title="Interactive UI" icon="laptop">
+    A full-screen terminal UI that fills in as results arrive: sort, filter, select, confirm. [Tour](/guides/interactive-ui/).
   </Card>
-  <Card title="65 rules, 16 ecosystems" icon="setting">
-    JS/TS, Python, Rust, Go, Apple, JVM, .NET and more — extend them with a typed, JSON-Schema-validated config.
+  <Card title="Scriptable" icon="terminal">
+    JSON and NDJSON output, reviewable plans, dry runs and stable exit codes. [Automate it](/guides/automation/).
   </Card>
-  <Card title="A library too" icon="puzzle">
-    `scan`, `clean`, and the rule engine are plain async-iterator APIs with no UI dependency.
+  <Card title="Made for AI agents" icon="seti:mcp">
+    A versioned guide (`purgeit skill`), machine-readable output and [llms.txt](/llms.txt). [Agent guide](/guides/ai-agents/).
+  </Card>
+  <Card title="65 rules, extensible" icon="setting">
+    JS/TS, Python, Rust, Go, Apple, JVM, .NET and more. Add yours in a typed, schema-validated config. [Rules](/reference/rules/).
+  </Card>
+  <Card title="A library, too" icon="puzzle">
+    `scan()` and `clean()` are plain async iterators with no UI dependency. [API](/reference/library-api/).
   </Card>
 </CardGrid>
-
-```bash
-npx purgeit ~/dev          # browse and select
-npx purgeit scan ~/dev     # just list
-npx purgeit clean ~/dev    # delete, with confirmation
-```

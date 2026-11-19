@@ -1,0 +1,68 @@
+---
+title: Library API
+description: Use purgeit's scanner, cleaner and rule engine from code.
+sidebar:
+  order: 5
+---
+
+Everything the CLI does is a plain async-iterator API with no UI dependency. ESM only, Node 22+, fully typed.
+
+```ts
+import { clean, createRuleSet, loadConfig, scan, scanAll } from 'purgeit';
+
+const { config } = await loadConfig({ cwd: process.cwd() });
+const rules = createRuleSet(config);
+const roots = ['/Users/me/dev'];
+
+// stream while the scan runs…
+for await (const event of scan(roots, { rules, minAge: 7 * 86_400_000 })) {
+  if (event.type === 'entry') console.log(event.entry.rule.name, event.entry.bytes, event.entry.path);
+}
+
+// …or collect
+const { entries, summary } = await scanAll(roots, { rules });
+
+// delete, re-verifying every path
+const targets = entries
+  .filter((entry) => !entry.protection)
+  .map((entry) => ({ path: entry.path, bytes: entry.bytes, unchangedSince: entry.lastActive }));
+
+for await (const event of clean(targets, { rules, roots, idleFor: 7 * 86_400_000 })) {
+  if (event.type === 'refused') console.log('skipped', event.path, event.refusal.message);
+}
+```
+
+## `scan(roots, options)`
+
+An async generator of events: `found` (a rule claimed a path), then `entry` (measured) or `dropped` (`empty`, `too-small`, `too-recent`, `unreadable`), and finally `done` with a summary. Stopping the iteration, or aborting `signal`, stops the work.
+
+| Option | Meaning |
+| --- | --- |
+| `rules` | **required** — a `RuleSet` from `createRuleSet()` |
+| `signal` | an `AbortSignal` |
+| `depth` | never descend deeper than this |
+| `exclude` | globs relative to each root |
+| `minBytes`, `minAge` | drop smaller / more recently active (ms) artifacts |
+| `includeEmpty` | keep artifacts with no files |
+| `home` | the home directory whose `Library`, `.Trash` and `Applications` are never entered |
+
+An `Entry` has `path`, `root`, `project`, `rule`, `evidence`, `bytes`, `files`, `lastActive` and `protection`. `scanAll` runs a scan to completion and sorts entries (deletable largest first, protected last).
+
+## `clean(targets, options)`
+
+An async generator of `start`, `deleted`, `refused` (with a typed `Refusal`), `failed`, `warning` and `done`. A refusal is a decision, not an error; one refused or failed path never stops the rest.
+
+| Option | Meaning |
+| --- | --- |
+| `rules`, `roots` | **required** — every target must resolve strictly inside a root and still be claimed by a rule |
+| `idleFor` | refuse anything modified within this many ms (default off) |
+| `dryRun` | run every check, delete nothing |
+| `concurrency` | deletions in flight (default 4) |
+| `historyFile` | append outcomes here; nothing is written without it |
+| `signal` | stop starting new deletions |
+
+A `Target` is `{ path, bytes?, unchangedSince? }` — `unchangedSince` refuses the path if anything inside changed after that time.
+
+## Rules and config
+
+`RULE_CATALOG`, `createRuleSet(config)`, `restrictRuleSet`, `onlySafeRules`, `loadConfig`, `ConfigSchema`, `defineConfig`. Lower level: `measure`, `findProtection`, `discoverRoots`, `readHistory`, `appendHistory`, `defaultHistoryFile`. User-fixable failures throw `PurgeitError`.
