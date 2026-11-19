@@ -1,4 +1,4 @@
-import { type Entry, scan, type ScanSummary } from '../../scan/scan.js';
+import { compareEntries, type Entry, scan, type ScanSummary } from '../../scan/scan.js';
 import type { CliEnv } from '../env.js';
 import type { ScanFlags } from '../flags.js';
 import { resolveScan } from '../options.js';
@@ -44,10 +44,7 @@ export async function runScan(
   if (showProgress) process.stderr.write('\r\u001b[K');
   if (summary === undefined) return 130;
 
-  entries.sort(
-    (a, b) =>
-      Number(a.protection !== undefined) - Number(b.protection !== undefined) || b.bytes - a.bytes,
-  );
+  entries.sort(compareEntries);
   if (flags.format === 'json') {
     env.out(JSON.stringify(toReport(resolved.roots, entries, summary), null, 2));
   } else if (flags.format === 'text') {

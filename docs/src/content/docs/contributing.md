@@ -4,8 +4,8 @@ description: Set up the repo and add rules.
 ---
 
 ```bash
-npm ci
-npm run typecheck && npm run lint && npm test && npm run build
+bun install      # dependencies and git hooks
+bun run check    # format, oxlint, typecheck, knip, tests, build, package checks
 ```
 
 Tests use real temporary directories (`test/tree.ts`); never scan or delete a shared directory in a test. Deletion tests need old fixtures: call `backdate(root)` or pass `minAge: 0`.
@@ -22,7 +22,7 @@ Prefer `safe` only for names that are unambiguous everywhere. Anything generic (
 
 ## Config schema
 
-`purgeit.schema.json` is generated from the zod schema: run `npm run schema` after changing `src/config/schema.ts` (a test fails if it is stale).
+`purgeit.schema.json` is generated from the zod schema: run `bun run schema` after changing `src/config/schema.ts` (a test fails if it is stale).
 
 ## Releasing
 

@@ -3,7 +3,6 @@ import { realpath, rm } from 'node:fs/promises';
 import pLimit from 'p-limit';
 
 import { errorMessage } from '../errors.js';
-import { createIo, type Io } from '../fs/io.js';
 import type { RuleSet } from '../rules/rule-set.js';
 import { stream } from '../stream.js';
 import { type Candidate, inspect, type Refusal } from './guard.js';
@@ -27,7 +26,6 @@ export interface CleanOptions {
   /** Append every outcome to this JSON Lines file. Never written on dry runs. */
   readonly historyFile?: string;
   readonly signal?: AbortSignal;
-  readonly io?: Io;
   readonly now?: number;
 }
 
@@ -62,7 +60,6 @@ export async function* clean(
   options: CleanOptions,
 ): AsyncGenerator<CleanEvent, void, undefined> {
   yield* stream<CleanEvent>(async (emit, signal) => {
-    const io = options.io ?? createIo();
     const dryRun = options.dryRun ?? false;
     const now = options.now ?? Date.now();
     const limit = pLimit(options.concurrency ?? 4);
@@ -95,7 +92,6 @@ export async function* clean(
           emit({ type: 'start', path: target.path });
           const refusal = await inspect(target, {
             rules: options.rules,
-            io,
             realRoots,
             idleFor: options.idleFor ?? 0,
             now,

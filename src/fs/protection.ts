@@ -3,8 +3,7 @@ import { join } from 'node:path';
 
 import picomatch from 'picomatch';
 
-import type { Io } from './io.js';
-import { isSkippable } from './io.js';
+import { isSkippable, listDir } from './io.js';
 
 /**
  * Why a directory that a rule matched by name must still not be deleted — a
@@ -30,18 +29,14 @@ const GIT_NOT_A_REPOSITORY = 128;
  * authored. Content markers are checked first (bounded, symlinks never
  * followed), then git is asked whether it tracks anything inside `path`.
  */
-export async function findProtection(path: string, io: Io): Promise<ProtectionReason | undefined> {
-  return (await probeContent(path, 1, io)) ?? (await probeTracked(path));
+export async function findProtection(path: string): Promise<ProtectionReason | undefined> {
+  return (await probeContent(path, 1)) ?? (await probeTracked(path));
 }
 
-async function probeContent(
-  dir: string,
-  depth: number,
-  io: Io,
-): Promise<ProtectionReason | undefined> {
-  let entries: Awaited<ReturnType<Io['readdir']>>;
+async function probeContent(dir: string, depth: number): Promise<ProtectionReason | undefined> {
+  let entries: Awaited<ReturnType<typeof listDir>>;
   try {
-    entries = await io.readdir(dir);
+    entries = await listDir(dir);
   } catch (error) {
     if (isSkippable(error)) return undefined;
     throw error;
@@ -54,7 +49,7 @@ async function probeContent(
   const verdicts = await Promise.all(
     entries
       .filter((entry) => entry.isDirectory())
-      .map((entry) => probeContent(join(dir, entry.name), depth + 1, io)),
+      .map((entry) => probeContent(join(dir, entry.name), depth + 1)),
   );
   return verdicts.find((verdict) => verdict !== undefined);
 }

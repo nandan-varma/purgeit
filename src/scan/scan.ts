@@ -3,7 +3,7 @@ import { dirname, join, relative, resolve, sep } from 'node:path';
 
 import picomatch from 'picomatch';
 
-import { createIo, type Io, isSkippable } from '../fs/io.js';
+import { isSkippable, listDir } from '../fs/io.js';
 import { measure } from '../fs/measure.js';
 import { findProtection, type ProtectionReason } from '../fs/protection.js';
 import { type Hit, matchMarker, matchNamed } from '../rules/match.js';
@@ -65,7 +65,6 @@ export interface ScanOptions {
   readonly includeEmpty?: boolean;
   /** Overrides the home directory (whose Library, Trash and Applications are never entered). */
   readonly home?: string;
-  readonly io?: Io;
 }
 
 /** Directories directly under home that belong to the system, not to any project. */
@@ -93,7 +92,6 @@ export async function* scan(
   yield* stream<ScanEvent>(async (emit, signal) => {
     const startedAt = Date.now();
     const { rules } = options;
-    const io = options.io ?? createIo();
     const home = resolve(options.home ?? homedir());
     const excluded =
       options.exclude === undefined || options.exclude.length === 0
@@ -132,7 +130,7 @@ export async function* scan(
 
       let measured: Awaited<ReturnType<typeof measure>>;
       try {
-        measured = await measure(path, io, signal);
+        measured = await measure(path, signal);
       } catch (error) {
         signal.throwIfAborted();
         if (!isSkippable(error)) throw error;
@@ -146,7 +144,7 @@ export async function* scan(
         return drop(path, 'too-recent');
       }
 
-      const protection = await findProtection(path, io);
+      const protection = await findProtection(path);
       signal.throwIfAborted();
       if (protection === undefined) {
         entries++;
@@ -172,9 +170,9 @@ export async function* scan(
 
     async function visit(root: string, dir: string, depth: number): Promise<void> {
       signal.throwIfAborted();
-      let children: Awaited<ReturnType<Io['readdir']>>;
+      let children: Awaited<ReturnType<typeof listDir>>;
       try {
-        children = await io.readdir(dir);
+        children = await listDir(dir);
       } catch (error) {
         if (!isSkippable(error)) throw error;
         unreadable++;
@@ -226,6 +224,10 @@ export async function* scan(
   }, options.signal);
 }
 
+/** Deletable entries first, largest first; protected ones last. */
+export const compareEntries = (a: Entry, b: Entry): number =>
+  Number(a.protection !== undefined) - Number(b.protection !== undefined) || b.bytes - a.bytes;
+
 export interface ScanResult {
   /** Largest first; protected entries last. */
   readonly entries: readonly Entry[];
@@ -241,9 +243,6 @@ export async function scanAll(roots: readonly string[], options: ScanOptions): P
     else if (event.type === 'done') summary = event.summary;
   }
   if (summary === undefined) throw new Error('scan ended without a summary (aborted?)');
-  entries.sort(
-    (a, b) =>
-      Number(a.protection !== undefined) - Number(b.protection !== undefined) || b.bytes - a.bytes,
-  );
+  entries.sort(compareEntries);
   return { entries, summary };
 }

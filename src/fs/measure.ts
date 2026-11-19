@@ -1,8 +1,7 @@
 import { sep } from 'node:path';
 
 import { errorCode } from '../errors.js';
-import type { Io } from './io.js';
-import { isSkippable } from './io.js';
+import { isSkippable, listDir, statEntry } from './io.js';
 
 /** What a directory tree holds, gathered in one traversal. */
 export interface Measurement {
@@ -23,13 +22,13 @@ const BLOCK = 512n;
  * tree actually free it. Directories that vanish mid-walk are skipped; any
  * other failure rejects, since a partial measurement would be a wrong one.
  */
-export async function measure(root: string, io: Io, signal?: AbortSignal): Promise<Measurement> {
+export async function measure(root: string, signal?: AbortSignal): Promise<Measurement> {
   let blocks = 0n;
   let files = 0;
   let lastActive = 0;
   const linked = new Map<string, { blocks: bigint; links: bigint; seen: bigint }>();
 
-  const tally = (stats: Awaited<ReturnType<Io['lstat']>>): void => {
+  const tally = (stats: Awaited<ReturnType<typeof statEntry>>): void => {
     lastActive = Math.max(lastActive, Number(stats.mtimeMs));
     if (stats.isDirectory() || stats.nlink <= 1n) {
       blocks += stats.blocks;
@@ -46,9 +45,9 @@ export async function measure(root: string, io: Io, signal?: AbortSignal): Promi
 
   async function visitDirectory(dir: string): Promise<void> {
     signal?.throwIfAborted();
-    let entries: Awaited<ReturnType<Io['readdir']>>;
+    let entries: Awaited<ReturnType<typeof listDir>>;
     try {
-      entries = await io.readdir(dir);
+      entries = await listDir(dir);
     } catch (error) {
       if (isGone(error)) return;
       throw error;
@@ -57,7 +56,7 @@ export async function measure(root: string, io: Io, signal?: AbortSignal): Promi
       entries.map(async (entry) => {
         const path = `${dir}${sep}${entry.name}`;
         try {
-          tally(await io.lstat(path));
+          tally(await statEntry(path));
         } catch (error) {
           if (isGone(error)) return;
           throw error;
@@ -68,7 +67,7 @@ export async function measure(root: string, io: Io, signal?: AbortSignal): Promi
     );
   }
 
-  tally(await io.lstat(root));
+  tally(await statEntry(root));
   await visitDirectory(root);
 
   for (const entry of linked.values()) {

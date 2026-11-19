@@ -2,7 +2,7 @@ import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
-import { createIo, type Io, isSkippable } from '../fs/io.js';
+import { isSkippable, listDir } from '../fs/io.js';
 import type { RuleSet } from '../rules/rule-set.js';
 import { HOME_SKIPPED } from './scan.js';
 
@@ -48,33 +48,32 @@ const PROJECT_INDICATORS: ReadonlySet<string> = new Set([
 /** How deep below a home folder to look for a project before calling it something else. */
 const PROBE_DEPTH = 2;
 
-async function list(io: Io, dir: string) {
+async function list(dir: string) {
   try {
-    return await io.readdir(dir);
+    return await listDir(dir);
   } catch (error) {
     if (isSkippable(error)) return [];
     throw error;
   }
 }
 
-async function holdsProject(io: Io, dir: string, depth: number): Promise<boolean> {
-  const subdirs = (await list(io, dir)).filter(
+async function holdsProject(dir: string, depth: number): Promise<boolean> {
+  const subdirs = (await list(dir)).filter(
     (entry) => entry.isDirectory() && !entry.name.startsWith('.'),
   );
-  const listings = await Promise.all(subdirs.map((sub) => list(io, join(dir, sub.name))));
+  const listings = await Promise.all(subdirs.map((sub) => list(join(dir, sub.name))));
   if (listings.some((names) => names.some((entry) => PROJECT_INDICATORS.has(entry.name)))) {
     return true;
   }
   if (depth >= PROBE_DEPTH) return false;
   const deeper = await Promise.all(
-    subdirs.map((sub) => holdsProject(io, join(dir, sub.name), depth + 1)),
+    subdirs.map((sub) => holdsProject(join(dir, sub.name), depth + 1)),
   );
   return deeper.some(Boolean);
 }
 
 export interface DiscoverOptions {
   readonly home?: string;
-  readonly io?: Io;
 }
 
 /**
@@ -88,7 +87,6 @@ export async function discoverRoots(
   options: DiscoverOptions = {},
 ): Promise<string[]> {
   const home = options.home ?? homedir();
-  const io = options.io ?? createIo();
 
   const known = await Promise.all(
     WELL_KNOWN_ROOTS.map(async (name) => {
@@ -102,7 +100,7 @@ export async function discoverRoots(
   );
 
   const knownTopLevel = new Set(WELL_KNOWN_ROOTS.map((name) => name.split(/[\\/]/)[0]));
-  const candidates = (await list(io, home)).filter(
+  const candidates = (await list(home)).filter(
     (entry) =>
       entry.isDirectory() &&
       !entry.name.startsWith('.') &&
@@ -112,7 +110,7 @@ export async function discoverRoots(
   );
   const containers = await Promise.all(
     candidates.map(async (entry) =>
-      (await holdsProject(io, join(home, entry.name), 1)) ? join(home, entry.name) : undefined,
+      (await holdsProject(join(home, entry.name), 1)) ? join(home, entry.name) : undefined,
     ),
   );
 

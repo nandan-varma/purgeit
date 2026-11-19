@@ -6,11 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 import { backdate, blob, buildTree, hardlink } from '../../test/tree.js';
 import { hasActivitySince } from './activity.js';
-import { createIo, isSkippable } from './io.js';
+import { isSkippable } from './io.js';
 import { measure } from './measure.js';
 import { findProtection, probeTracked } from './protection.js';
-
-const io = createIo();
 
 describe('isSkippable', () => {
   it('skips routine filesystem errors only', () => {
@@ -30,7 +28,7 @@ describe('measure', () => {
     const newest = new Date(Date.now() - 60_000);
     utimesSync(join(root, 'a/deep/two.txt'), newest, newest);
 
-    const result = await measure(root, io);
+    const result = await measure(root);
     expect(result.files).toBe(2);
     expect(result.bytes).toBeGreaterThanOrEqual(20_000);
     expect(Math.abs(result.lastActive - newest.getTime())).toBeLessThan(1500);
@@ -40,7 +38,7 @@ describe('measure', () => {
     const outside = buildTree({ 'big.bin': blob(200_000) });
     const root = buildTree({ a: { 'f.txt': 'x' } });
     symlinkSync(outside, join(root, 'a/link'));
-    const result = await measure(root, io);
+    const result = await measure(root);
     expect(result.files).toBe(2); // f.txt and the link itself
     expect(result.bytes).toBeLessThan(100_000);
   });
@@ -49,21 +47,21 @@ describe('measure', () => {
     const outside = buildTree({ 'shared.bin': blob(100_000) });
     const shared = buildTree({ pkg: {} });
     hardlink(join(outside, 'shared.bin'), join(shared, 'pkg/shared.bin'));
-    expect((await measure(shared, io)).bytes).toBeLessThan(50_000);
+    expect((await measure(shared)).bytes).toBeLessThan(50_000);
 
     const inside = buildTree({ pkg: { 'a.bin': blob(100_000) } });
     hardlink(join(inside, 'pkg/a.bin'), join(inside, 'pkg/b.bin'));
-    const result = await measure(inside, io);
+    const result = await measure(inside);
     expect(result.files).toBe(2);
     expect(result.bytes).toBeGreaterThanOrEqual(100_000);
     expect(result.bytes).toBeLessThan(150_000);
   });
 
   it('rejects when the root is missing and honours abort', async () => {
-    await expect(measure(join(buildTree({}), 'missing'), io)).rejects.toThrow();
+    await expect(measure(join(buildTree({}), 'missing'))).rejects.toThrow();
     const controller = new AbortController();
     controller.abort();
-    await expect(measure(buildTree({ a: { b: 'x' } }), io, controller.signal)).rejects.toThrow();
+    await expect(measure(buildTree({ a: { b: 'x' } }), controller.signal)).rejects.toThrow();
   });
 });
 
@@ -72,30 +70,30 @@ describe('hasActivitySince', () => {
     const root = buildTree({ a: { b: { 'f.txt': 'x' } } });
     backdate(root, 30);
     const week = Date.now() - 7 * 86_400_000;
-    expect(await hasActivitySince(root, week, io)).toBe(false);
+    expect(await hasActivitySince(root, week)).toBe(false);
 
     writeFileSync(join(root, 'a/b/f.txt'), 'changed');
-    expect(await hasActivitySince(root, week, io)).toBe(true);
+    expect(await hasActivitySince(root, week)).toBe(true);
   });
 
   it('counts the directory itself and rejects on unreadable paths', async () => {
     const root = buildTree({ a: 'x' });
-    expect(await hasActivitySince(root, 0, io)).toBe(true);
-    await expect(hasActivitySince(join(root, 'nope'), 0, io)).rejects.toThrow();
+    expect(await hasActivitySince(root, 0)).toBe(true);
+    await expect(hasActivitySince(join(root, 'nope'), 0)).rejects.toThrow();
   });
 });
 
 describe('findProtection', () => {
   it('protects a nested repository', async () => {
     const dir = buildTree({ vendor: { lib: { '.git': { HEAD: 'ref' } } } });
-    expect(await findProtection(dir, io)).toBe('nested-repository');
+    expect(await findProtection(dir)).toBe('nested-repository');
   });
 
   it('protects deploy keypairs up to three levels down, not four', async () => {
     const near = buildTree({ deploy: { 'prog-keypair.json': '[]' } });
-    expect(await findProtection(near, io)).toBe('deploy-keypair');
+    expect(await findProtection(near)).toBe('deploy-keypair');
     const far = buildTree({ a: { b: { c: { 'prog-keypair.json': '[]' } } } });
-    expect(await findProtection(far, io)).toBeUndefined();
+    expect(await findProtection(far)).toBeUndefined();
   });
 
   it('protects files tracked by git and leaves untracked ones alone', async () => {
@@ -113,13 +111,13 @@ describe('findProtection', () => {
     git('init', '-q');
     git('add', 'dist/keep.js');
     git('commit', '-qm', 'x');
-    expect(await findProtection(join(repo, 'app/dist'), io)).toBe('tracked-files');
-    expect(await findProtection(join(repo, 'app/out'), io)).toBeUndefined();
+    expect(await findProtection(join(repo, 'app/dist'))).toBe('tracked-files');
+    expect(await findProtection(join(repo, 'app/out'))).toBeUndefined();
   });
 
   it('treats a non-repository as unprotected and a broken git as unverified', async () => {
     const plain = buildTree({ dist: { 'a.js': 'x' } });
-    expect(await findProtection(join(plain, 'dist'), io)).toBeUndefined();
+    expect(await findProtection(join(plain, 'dist'))).toBeUndefined();
     expect(await probeTracked(plain, 'definitely-not-git')).toBeUndefined();
     expect(await probeTracked(plain, 'false')).toBe('unverified');
   });
@@ -127,6 +125,6 @@ describe('findProtection', () => {
   it('tolerates unreadable and vanished directories', async () => {
     const dir = buildTree({ a: null });
     mkdirSync(join(dir, 'b'));
-    expect(await findProtection(join(dir, 'missing'), io)).toBeUndefined();
+    expect(await findProtection(join(dir, 'missing'))).toBeUndefined();
   });
 });

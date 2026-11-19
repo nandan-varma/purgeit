@@ -15,7 +15,6 @@ export {
 export { type LoadedConfig, loadConfig } from './config/load.js';
 export { type Config, type ConfigInput, ConfigSchema, defineConfig } from './config/schema.js';
 export { PurgeitError } from './errors.js';
-export { createIo, type Io } from './fs/io.js';
 export { type Measurement, measure } from './fs/measure.js';
 export { findProtection, PROTECTION_LABELS, type ProtectionReason } from './fs/protection.js';
 export { RULE_CATALOG } from './rules/catalog/index.js';
