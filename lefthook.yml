@@ -1,0 +1,21 @@
+# Installed by `bun install` (the "prepare" script). Skip once with LEFTHOOK=0.
+pre-commit:
+  parallel: true
+  jobs:
+    - name: format
+      glob: '*.{ts,tsx,mjs,json,yml,yaml,toml}'
+      run: bun fmt --staged
+      stage_fixed: true
+    - name: lint
+      glob: '*.{ts,tsx,mjs}'
+      run: bunx oxlint {staged_files}
+
+pre-push:
+  parallel: true
+  jobs:
+    - name: typecheck
+      run: bun run typecheck
+    - name: test
+      run: bun run test
+    - name: dead code
+      run: bun run knip

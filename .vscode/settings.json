@@ -1,0 +1,6 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "editor.formatOnSave": true,
+  "oxc.enable": true,
+  "[json][jsonc][typescript][typescriptreact]": { "editor.defaultFormatter": "oven.bun-vscode" }
+}

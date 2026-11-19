@@ -53,7 +53,7 @@ export default defineConfig({
 ## Library
 
 ```ts
-import { createRuleSet, scanAll, clean } from 'purgeit';
+import { clean, createRuleSet, scanAll } from 'purgeit';
 
 const rules = createRuleSet();
 const { entries } = await scanAll(['/Users/me/dev'], { rules });

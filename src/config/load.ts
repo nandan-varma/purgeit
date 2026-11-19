@@ -1,7 +1,9 @@
 import { stat } from 'node:fs/promises';
 import { join, normalize } from 'node:path';
+
 import { z } from 'zod';
-import { PurgeitError } from '../errors.js';
+
+import { errorMessage, PurgeitError } from '../errors.js';
 import { type Config, ConfigSchema } from './schema.js';
 
 export interface LoadedConfig {
@@ -34,13 +36,13 @@ export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConf
   const loaded = await loadC12({
     name: 'purgeit',
     cwd: options.cwd,
-    ...(options.file === undefined ? {} : { configFile: options.file }),
+    configFile: options.file,
     rcFile: false,
     globalRc: false,
     dotenv: false,
     packageJson: true,
   }).catch((error: unknown) => {
-    throw new PurgeitError(`Could not load config: ${(error as Error).message}`);
+    throw new PurgeitError(`Could not load config: ${errorMessage(error)}`);
   });
 
   const fromPackage = loaded.layers?.some(

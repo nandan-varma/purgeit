@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
+
 import { backdate, blob, buildTree } from '../../test/tree.js';
 import type { CliEnv } from './env.js';
 import { run } from './program.js';
@@ -68,7 +70,7 @@ describe('scan', () => {
       roots: [root],
       summary: { entries: 2, protected: 1 },
     });
-    expect(report.entries.map((e: { rule: string }) => e.rule).sort()).toEqual([
+    expect(report.entries.map((e: { rule: string }) => e.rule).toSorted()).toEqual([
       'dist',
       'node_modules',
       'target',
@@ -115,7 +117,7 @@ describe('scan', () => {
     expect(
       JSON.parse(text(safe.out))
         .entries.map((e: { rule: string }) => e.rule)
-        .sort(),
+        .toSorted(),
     ).toEqual(['dist', 'node_modules']);
   });
 

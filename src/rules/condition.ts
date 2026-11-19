@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+
 import picomatch from 'picomatch';
 import { z } from 'zod';
 
@@ -11,8 +12,7 @@ const entryName = z
 
 const regex = z.string().refine((value) => {
   try {
-    new RegExp(value, 'm');
-    return true;
+    return RegExp(value, 'm') instanceof RegExp;
   } catch {
     return false;
   }
@@ -45,9 +45,11 @@ export function describeWhen(when: When | readonly Condition[]): string {
   return toList(when).map(describeCondition).join(' or ');
 }
 
-function toList(when: When | readonly Condition[]): readonly Condition[] {
-  return Array.isArray(when) ? when : [when as Condition];
-}
+const isList = (when: When | readonly Condition[]): when is readonly Condition[] =>
+  Array.isArray(when);
+
+const toList = (when: When | readonly Condition[]): readonly Condition[] =>
+  isList(when) ? when : [when];
 
 const matchers = new Map<string, (name: string) => boolean>();
 

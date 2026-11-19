@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { backdate, buildTree } from '../../test/tree.js';
 import { matchMarker, matchNamed, matchPath } from './match.js';
 import { createRuleSet } from './rule-set.js';

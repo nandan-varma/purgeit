@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { ConditionSchema, WhenSchema } from '../rules/condition.js';
+
+import { WhenSchema } from '../rules/condition.js';
 import { isDuration, isSize } from '../units.js';
 
 const ruleName = z
@@ -67,8 +68,6 @@ export const ConfigSchema = z
 
 export type Config = z.infer<typeof ConfigSchema>;
 export type ConfigInput = z.input<typeof ConfigSchema>;
-
-export { ConditionSchema };
 
 /** Identity helper that types a `purgeit.config.ts`. */
 export function defineConfig(config: ConfigInput): ConfigInput {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { ConfigSchema } from '../config/schema.js';
 import { PurgeitError } from '../errors.js';
 import { createRuleSet, onlySafeRules, restrictRuleSet } from './rule-set.js';
@@ -55,7 +56,7 @@ describe('restrictRuleSet', () => {
 
   it('keeps only named rules, expanding groups', () => {
     const only = restrictRuleSet(rules, ['js', 'target']);
-    expect([...only.named.keys()].sort()).toEqual(['dist', 'node_modules', 'target']);
+    expect([...only.named.keys()].toSorted()).toEqual(['dist', 'node_modules', 'target']);
     expect(only.markers).toEqual([]);
     expect(restrictRuleSet(rules, ['CACHEDIR.TAG']).markers).toHaveLength(1);
   });

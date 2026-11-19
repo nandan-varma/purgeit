@@ -1,9 +1,10 @@
 import { stat } from 'node:fs/promises';
 import { resolve } from 'node:path';
+
 import { loadConfig } from '../config/load.js';
 import { ConfigSchema } from '../config/schema.js';
 import { PurgeitError } from '../errors.js';
-import { createRuleSet, onlySafeRules, type RuleSet, restrictRuleSet } from '../rules/rule-set.js';
+import { createRuleSet, onlySafeRules, restrictRuleSet, type RuleSet } from '../rules/rule-set.js';
 import { discoverRoots } from '../scan/discover.js';
 import type { ScanOptions } from '../scan/scan.js';
 import { parseDuration, parseSize } from '../units.js';
@@ -58,7 +59,7 @@ export async function resolveScan(
 
   let roots = dirs.map((dir) => resolve(env.cwd, dir));
   if (flags.discover) {
-    const found = await discoverRoots(rules, env.home === undefined ? {} : { home: env.home });
+    const found = await discoverRoots(rules, { home: env.home });
     roots = [...roots, ...found];
     if (roots.length === 0) throw new PurgeitError('No project folders found to discover.');
   } else if (roots.length === 0) {
@@ -79,9 +80,9 @@ export async function resolveScan(
       exclude: [...config.exclude, ...flags.exclude],
       minAge,
       includeEmpty: flags.includeEmpty,
-      ...(minSize === undefined ? {} : { minBytes: parseSize(minSize) }),
-      ...(depth === undefined ? {} : { depth }),
-      ...(env.home === undefined ? {} : { home: env.home }),
+      minBytes: minSize === undefined ? undefined : parseSize(minSize),
+      depth,
+      home: env.home,
     },
   };
 }

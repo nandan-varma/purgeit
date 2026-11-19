@@ -1,7 +1,10 @@
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+
 import envPaths from 'env-paths';
 import { z } from 'zod';
+
+import { errorCode } from '../errors.js';
 
 const HistoryRecordSchema = z.object({
   time: z.iso.datetime(),
@@ -37,7 +40,7 @@ export async function readHistory(file: string): Promise<HistoryRecord[]> {
   try {
     raw = await readFile(file, 'utf8');
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    if (errorCode(error) === 'ENOENT') return [];
     throw error;
   }
   const records: HistoryRecord[] = [];
@@ -50,5 +53,5 @@ export async function readHistory(file: string): Promise<HistoryRecord[]> {
       // torn line
     }
   }
-  return records.reverse();
+  return records.toReversed();
 }

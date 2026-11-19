@@ -1,0 +1,6 @@
+# generated or hand-formatted
+bun.lock
+purgeit.schema.json
+CHANGELOG.md
+docs/
+skills/

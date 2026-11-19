@@ -1,4 +1,5 @@
 import { Option } from 'commander';
+
 import { PurgeitError } from '../errors.js';
 
 /** The flags every command that looks for artifacts shares. */

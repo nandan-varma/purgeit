@@ -1,6 +1,8 @@
 import { realpath, stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { isAbsolute, parse, relative, resolve } from 'node:path';
+
+import { errorMessage } from '../errors.js';
 import { hasActivitySince } from '../fs/activity.js';
 import type { Io } from '../fs/io.js';
 import { findProtection, PROTECTION_LABELS } from '../fs/protection.js';
@@ -101,6 +103,6 @@ export async function inspect(
     }
     return undefined;
   } catch (error) {
-    return refuse('unverifiable', `could not be verified: ${(error as Error).message}`);
+    return refuse('unverifiable', `could not be verified: ${errorMessage(error)}`);
   }
 }

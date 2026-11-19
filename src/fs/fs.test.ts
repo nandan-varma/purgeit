@@ -1,7 +1,9 @@
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, symlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
+
 import { backdate, blob, buildTree, hardlink } from '../../test/tree.js';
 import { hasActivitySince } from './activity.js';
 import { createIo, isSkippable } from './io.js';

@@ -1,4 +1,5 @@
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
+
 import { PurgeitError } from '../errors.js';
 import type { CleanCommandFlags } from './commands/clean.js';
 import type { RulesFlags } from './commands/rules.js';
@@ -9,6 +10,11 @@ import { type ScanFlags, scanOptions } from './flags.js';
 declare const __VERSION__: string | undefined;
 
 const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0-dev';
+
+const withScanOptions = (command: Command, minAgeHint: string): Command => {
+  for (const option of scanOptions(minAgeHint)) command.addOption(option);
+  return command;
+};
 
 const format = (...choices: string[]): Option =>
   new Option('--format <format>', 'output format').choices(choices).default(choices[0]);
@@ -23,11 +29,6 @@ function createProgram(env: CliEnv, setExit: (code: number) => void): Command {
       writeOut: (text) => env.out(text.trimEnd()),
       writeErr: (text) => env.err(text.trimEnd()),
     });
-
-  const withScanOptions = (command: Command, minAgeHint: string): Command => {
-    for (const option of scanOptions(minAgeHint)) command.addOption(option);
-    return command;
-  };
 
   withScanOptions(
     program

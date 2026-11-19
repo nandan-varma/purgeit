@@ -1,41 +1,61 @@
 import bytes from 'bytes';
-import ms from 'ms';
+
 import { PurgeitError } from './errors.js';
 
-const DURATION = /^(?:0|\d+(?:\.\d+)?\s*(?:ms|s|m|h|d|w|y))$/i;
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
+const HOUR = 60 * MINUTE;
+const DAY = 24 * HOUR;
 
-export function isDuration(input: string): boolean {
-  return DURATION.test(input.trim());
+const UNITS: Readonly<Record<string, number>> = {
+  ms: 1,
+  s: SECOND,
+  m: MINUTE,
+  h: HOUR,
+  d: DAY,
+  w: 7 * DAY,
+  y: 365 * DAY,
+};
+
+const DURATION = /^(\d+(?:\.\d+)?)\s*(ms|s|m|h|d|w|y)$/i;
+
+function toDuration(input: string): number | undefined {
+  const text = input.trim();
+  if (text === '0') return 0;
+  const match = DURATION.exec(text);
+  const unit = UNITS[match?.[2]?.toLowerCase() ?? ''];
+  return match?.[1] === undefined || unit === undefined ? undefined : Number(match[1]) * unit;
 }
 
-export function isSize(input: string): boolean {
+function toSize(input: string): number | undefined {
   const parsed = bytes.parse(input.trim());
-  return parsed !== null && Number.isFinite(parsed) && parsed >= 0;
+  return parsed !== null && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 }
+
+export const isDuration = (input: string): boolean => toDuration(input) !== undefined;
+export const isSize = (input: string): boolean => toSize(input) !== undefined;
 
 /** "7d", "36h", "0" → milliseconds. */
 export function parseDuration(input: string): number {
-  if (!isDuration(input)) {
+  const duration = toDuration(input);
+  if (duration === undefined) {
     throw new PurgeitError(`Invalid duration "${input}" — expected e.g. 90m, 36h, 7d, 2w, or 0.`);
   }
-  return ms(input.trim() as ms.StringValue);
+  return duration;
 }
 
 /** "10MB", "500 KB", "0" → bytes (binary units, like `du`). */
 export function parseSize(input: string): number {
-  if (!isSize(input)) {
+  const size = toSize(input);
+  if (size === undefined) {
     throw new PurgeitError(`Invalid size "${input}" — expected e.g. 500KB, 10MB, 1GB, or 0.`);
   }
-  return bytes.parse(input.trim()) as number;
+  return size;
 }
 
 export function formatSize(size: number): string {
   return bytes.format(size, { unitSeparator: ' ', decimalPlaces: 1 }) ?? '0 B';
 }
-
-const MINUTE = 60_000;
-const HOUR = 60 * MINUTE;
-const DAY = 24 * HOUR;
 
 /** Compact age for table cells: "now", "5m", "3h", "34d", "8mo", "2y". */
 export function formatAge(elapsedMs: number): string {
@@ -48,7 +68,15 @@ export function formatAge(elapsedMs: number): string {
   return `${Math.floor(days / 365)}y`;
 }
 
+const PROSE_UNITS = [
+  ['day', DAY],
+  ['hour', HOUR],
+  ['minute', MINUTE],
+] as const;
+
 /** A duration in prose: "7 days", "36 hours". */
 export function formatDuration(durationMs: number): string {
-  return ms(durationMs, { long: true });
+  const [unit, size] = PROSE_UNITS.find(([, length]) => durationMs >= length) ?? PROSE_UNITS[2];
+  const count = Math.round(durationMs / size);
+  return `${count} ${unit}${count === 1 ? '' : 's'}`;
 }

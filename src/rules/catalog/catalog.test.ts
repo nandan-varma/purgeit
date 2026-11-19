@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { RULE_CATALOG } from './index.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from './types.js';
 

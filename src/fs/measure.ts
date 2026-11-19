@@ -1,4 +1,6 @@
 import { sep } from 'node:path';
+
+import { errorCode } from '../errors.js';
 import type { Io } from './io.js';
 import { isSkippable } from './io.js';
 
@@ -76,5 +78,5 @@ export async function measure(root: string, io: Io, signal?: AbortSignal): Promi
 }
 
 function isGone(error: unknown): boolean {
-  return isSkippable(error) && (error as NodeJS.ErrnoException).code === 'ENOENT';
+  return isSkippable(error) && errorCode(error) === 'ENOENT';
 }

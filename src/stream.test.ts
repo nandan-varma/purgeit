@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { stream } from './stream.js';
 
 const collect = async <T>(source: AsyncIterable<T>): Promise<T[]> => {
@@ -19,7 +20,7 @@ describe('stream', () => {
         );
       }),
     );
-    expect(values.sort()).toEqual([1, 2, 3]);
+    expect(values.toSorted((a, b) => a - b)).toEqual([1, 2, 3]);
   });
 
   it('delivers queued values before surfacing a failure', async () => {

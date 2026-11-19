@@ -1,7 +1,9 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+
 import { buildTree } from '../../test/tree.js';
 import { PurgeitError } from '../errors.js';
 import { loadConfig } from './load.js';

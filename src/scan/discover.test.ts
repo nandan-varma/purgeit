@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { buildTree, rel } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
 import { discoverRoots } from './discover.js';
@@ -15,7 +16,7 @@ describe('discoverRoots', () => {
       '.hidden': { app: { 'package.json': '{}' } },
     });
     const roots = (await discoverRoots(createRuleSet(), { home })).map((root) => rel(home, root));
-    expect(roots.sort()).toEqual(['.claude/worktrees', 'dev', 'work']);
+    expect(roots.toSorted()).toEqual(['.claude/worktrees', 'dev', 'work']);
   });
 
   it('returns nothing for an empty home', async () => {

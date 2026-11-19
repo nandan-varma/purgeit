@@ -1,5 +1,5 @@
-import { Box, Text } from 'ink';
-import { useEffect, useState } from 'react';
+import { Box, Text, useAnimation } from 'ink';
+
 import { tildify } from '../cli/render.js';
 import { PROTECTION_LABELS } from '../fs/protection.js';
 import { describeWhen } from '../rules/condition.js';
@@ -8,9 +8,9 @@ import { formatAge, formatSize } from '../units.js';
 import {
   type Outcome,
   reclaimableBytes,
+  selectionTotals,
   type SortKey,
   type State,
-  selectionTotals,
 } from './state.js';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -21,13 +21,9 @@ function ageColor(elapsed: number): 'red' | 'yellow' | 'green' {
   return elapsed < 7 * DAY ? 'red' : elapsed < 30 * DAY ? 'yellow' : 'green';
 }
 
-export function Spinner() {
-  const [frame, setFrame] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setFrame((current) => (current + 1) % FRAMES.length), 80);
-    return () => clearInterval(timer);
-  }, []);
-  return <Text color="cyan">{FRAMES[frame]}</Text>;
+function Spinner() {
+  const { frame } = useAnimation({ interval: 80 });
+  return <Text color="cyan">{FRAMES[frame % FRAMES.length]}</Text>;
 }
 
 interface HeaderProps {
@@ -39,7 +35,7 @@ interface HeaderProps {
 export function Header({ state, roots, home }: HeaderProps) {
   const scanning = state.summary === undefined;
   const totals = selectionTotals(state);
-  const where = roots.length === 1 ? tildify(roots[0] as string, home) : `${roots.length} folders`;
+  const where = roots.length === 1 ? tildify(roots[0] ?? '', home) : `${roots.length} folders`;
   return (
     <Box flexDirection="column" flexShrink={0}>
       <Box justifyContent="space-between" columnGap={2}>
@@ -127,7 +123,7 @@ interface RowProps {
   readonly home: string | undefined;
 }
 
-export function Row({ entry, cursor, selected, layout, now, home }: RowProps) {
+function Row({ entry, cursor, selected, layout, now, home }: RowProps) {
   const locked = entry.protection !== undefined;
   const elapsed = now - entry.lastActive;
   const dim = locked;
@@ -291,7 +287,8 @@ export function ConfirmDialog(props: {
 }
 
 export function Cleaning({ state, height }: { state: State; height: number }) {
-  const { total, handled, current } = state.cleaning;
+  const { targets, handled, current } = state.cleaning;
+  const total = targets.length;
   return (
     <Box flexDirection="column" height={height} flexShrink={0}>
       <Text wrap="truncate-end">
