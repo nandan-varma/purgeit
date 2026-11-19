@@ -1,0 +1,89 @@
+---
+title: Output formats
+description: The JSON, NDJSON and history formats purgeit emits, for scripts and agents.
+---
+
+All paths are absolute. Sizes are bytes of allocated disk space. Timestamps are epoch milliseconds unless noted.
+
+## `scan --format json`
+
+One report. It doubles as a [plan](/docs/guides/clean-safely#3-review-then-apply-a-plan) for `clean --plan`.
+
+```json
+{
+  "version": 1,
+  "roots": ["/Users/me/dev"],
+  "entries": [
+    {
+      "path": "/Users/me/dev/app/node_modules",
+      "rule": "node_modules",
+      "kind": "safe",
+      "categories": ["javascript-typescript"],
+      "evidence": null,
+      "bytes": 979600000,
+      "files": 41230,
+      "lastActive": 1763500000000,
+      "protection": null
+    }
+  ],
+  "summary": {
+    "found": 12,
+    "entries": 10,
+    "protected": 1,
+    "dropped": { "empty": 1, "too-small": 0, "too-recent": 0, "unreadable": 0 },
+    "unreadable": 0,
+    "bytes": 13100000000,
+    "durationMs": 2100
+  }
+}
+```
+
+| Field | Meaning |
+| --- | --- |
+| `kind` | `safe`, `gated` or `marker` |
+| `evidence` | what proved a gated or tagged rule (e.g. `package.json`), else `null` |
+| `lastActive` | newest modification time of anything inside |
+| `protection` | `null` when deletable, otherwise `nested-repository`, `deploy-keypair`, `tracked-files` or `unverified` |
+| `summary.dropped` | entries hidden by filters, by reason |
+| `summary.unreadable` | directories that could not be listed |
+
+Entries are sorted largest first, protected last.
+
+## `scan --format ndjson`
+
+One JSON object per line, streamed as results are measured:
+
+```text
+{"type":"entry","entry":{ …same shape as above… }}
+{"type":"done","summary":{ …same shape as above… }}
+```
+
+## `clean --format json`
+
+Requires `--yes` or `--dry-run`.
+
+```json
+{
+  "dryRun": false,
+  "deleted": [{ "path": "…", "bytes": 979600000 }],
+  "refused": [{ "path": "…", "code": "recently-active", "message": "modified within the last 7 days" }],
+  "failed": [{ "path": "…", "message": "EBUSY: resource busy or locked" }],
+  "summary": { "deleted": 1, "refused": 1, "failed": 0, "bytes": 979600000, "dryRun": false }
+}
+```
+
+`refused[].code` is one of `dangerous`, `missing`, `outside-roots`, `no-longer-matches`, `protected`, `recently-active`, `changed-since-scan`, `unverifiable`. When there is nothing to clean the output is `{"deleted":[],"refused":[],"failed":[]}`.
+
+## `history --format json`
+
+An array, newest first:
+
+```json
+[{ "time": "2026-11-19T06:20:11.000Z", "action": "deleted", "path": "…", "bytes": 979600000 }]
+```
+
+`action` is `deleted` or `failed` (`message` explains a failure). The file itself is JSON Lines; a line cut short by a crash is skipped when read.
+
+## `rules --format json`
+
+The rules in effect: `name`, `kind`, `categories`, `description`, and `when` (gated) or `file`/`signature` (tagged).

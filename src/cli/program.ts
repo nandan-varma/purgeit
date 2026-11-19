@@ -19,7 +19,7 @@ const withScanOptions = (command: Command, minAgeHint: string): Command => {
 const format = (...choices: string[]): Option =>
   new Option('--format <format>', 'output format').choices(choices).default(choices[0]);
 
-function createProgram(env: CliEnv, setExit: (code: number) => void): Command {
+export function createProgram(env: CliEnv, setExit: (code: number) => void): Command {
   const program = new Command('purgeit')
     .description('Find and safely delete regenerable dev build artifacts.')
     .version(VERSION)

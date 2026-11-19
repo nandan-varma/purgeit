@@ -10,6 +10,7 @@ src/clean/    guard.ts inspect() · clean() → events · history.ts (JSONL)
 src/config/   zod schema · c12 loader (→ purgeit.schema.json)
 src/cli/      program.ts: run(argv, env) is pure and in-process testable · commands/* (lazy-loaded)
 src/tui/      Ink app (alternate screen) · state.ts pure reducer incl. keymap
+docs/         Fumadocs (Next.js) site, self-contained; reads only docs/src/generated/*.json
 ```
 
 Data flow: `scan` streams measured entries → CLI renders or the TUI reducer collects → `clean` re-verifies each target and deletes.

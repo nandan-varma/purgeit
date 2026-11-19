@@ -5,7 +5,7 @@ bun install        # installs dependencies and git hooks
 bun run check      # fmt, oxlint, typecheck, knip, tests + coverage, build, package checks
 ```
 
-See <https://purgeit.nandan.fyi/contributing/> for adding rules and the test conventions. Short version:
+See <https://purgeit.nandan.fyi/docs/community/contributing> for adding rules and the test conventions. Short version:
 
 - Tests use real temp directories (`test/tree.ts`). Never scan or delete a shared directory (`/tmp`, `$HOME`).
 - Anything that deletes needs old fixtures: `backdate(root)` or `minAge: 0`.

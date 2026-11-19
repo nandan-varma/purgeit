@@ -1,0 +1,57 @@
+---
+title: CLI reference
+description: Every command and option, generated from the CLI itself.
+---
+
+<Terminal title="purgeit --help">
+{`purgeit [dirs…]            browse and select in the interactive UI (default)
+purgeit scan [dirs…]       list artifacts, delete nothing
+purgeit clean [dirs…]      delete artifacts
+purgeit rules              list the rules in effect
+purgeit history            show what has been deleted
+purgeit skill              print the guide for AI agents`}
+</Terminal>
+
+Flags beat the [config file](/docs/reference/configuration). Sizes use binary units (`1KB` = 1024 bytes); durations accept `ms`, `s`, `m`, `h`, `d`, `w`, `y` (and `0`). Output formats are described in [Output formats](/docs/reference/output-formats).
+
+## browse
+
+The default command: running `purgeit` with directories (or none) opens this. See the [interactive UI guide](/docs/guides/interactive-ui).
+
+<CliReference command="browse" />
+
+## scan
+
+<CliReference command="scan" />
+
+## clean
+
+<CliReference command="clean" />
+
+`--min-age` defaults to `7d` for `clean` and doubles as a guard: anything with a change inside that window is skipped at deletion time, whatever the scan said. See [Clean safely](/docs/guides/clean-safely).
+
+## rules
+
+<CliReference command="rules" />
+
+## history
+
+<CliReference command="history" />
+
+## skill
+
+<CliReference command="skill" />
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | success |
+| `1` | some paths were skipped or failed, or you declined the confirmation |
+| `2` | bad arguments, config or plan |
+| `70` | internal error |
+| `130` | interrupted |
+
+## Environment
+
+purgeit honours `NO_COLOR`. History lives in `~/Library/Logs/purgeit/history.jsonl` on macOS, `$XDG_STATE_HOME/purgeit/` (default `~/.local/state/purgeit/`) on Linux and `%LOCALAPPDATA%\purgeit\Log\` on Windows.

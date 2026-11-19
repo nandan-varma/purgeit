@@ -1,0 +1,77 @@
+---
+title: Automation
+description: Run purgeit unattended with cron, launchd, systemd or CI, and act on its exit codes.
+---
+
+Unattended runs should be conservative and leave a trail.
+
+```bash
+# anything untouched for 30+ days and larger than 100 MB
+purgeit clean ~/dev --min-age 30d --min-size 100MB --yes
+```
+
+`clean` already skips recent activity (default 7 days), re-verifies every path, logs to `purgeit history`, and reports problems through its exit code, so a scheduler can notice.
+
+## Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | success |
+| `1` | some paths were skipped or failed, or you declined the confirmation |
+| `2` | bad arguments, config or plan |
+| `70` | internal error |
+| `130` | interrupted (`SIGINT`/`SIGTERM`) |
+
+Without a terminal and without `--yes`, `clean` refuses to delete rather than guessing.
+
+## Schedulers
+
+<Tabs items={['cron', 'launchd', 'systemd', 'GitHub Actions']}>
+  <Tab value="cron">
+```text
+0 3 * * 0  /usr/local/bin/purgeit clean ~/dev --min-age 30d --yes >> ~/purgeit.log 2>&1
+```
+  </Tab>
+  <Tab value="launchd">
+```xml
+<!-- ~/Library/LaunchAgents/dev.purgeit.plist -->
+<plist version="1.0"><dict>
+  <key>Label</key><string>dev.purgeit</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/local/bin/purgeit</string><string>clean</string>
+    <string>/Users/you/dev</string><string>--min-age</string><string>30d</string><string>--yes</string>
+  </array>
+  <key>StartCalendarInterval</key><dict><key>Weekday</key><integer>0</integer><key>Hour</key><integer>3</integer></dict>
+</dict></plist>
+```
+  </Tab>
+  <Tab value="systemd">
+```ini
+# ~/.config/systemd/user/purgeit.service
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env purgeit clean %h/dev --min-age 30d --yes
+
+# ~/.config/systemd/user/purgeit.timer
+[Timer]
+OnCalendar=weekly
+Persistent=true
+[Install]
+WantedBy=timers.target
+```
+  </Tab>
+  <Tab value="GitHub Actions">
+```yaml
+# free space on a runner before a big build
+- run: npx purgeit clean ~/ --min-age 0 --only node_modules,target --yes
+```
+  </Tab>
+</Tabs>
+
+## Reviewed automation
+
+When a person must approve what an unattended job deletes, split the job in two (see [Clean safely](/docs/guides/clean-safely#3-review-then-apply-a-plan)): the first writes a plan with `scan --format json`; the second runs `clean --plan` after approval.
+
+## Machine-readable output
+
+`scan --format json|ndjson` and `clean --format json` are documented in [Output formats](/docs/reference/output-formats).

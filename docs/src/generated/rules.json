@@ -1,0 +1,769 @@
+{
+  "categories": [
+    {
+      "id": "javascript-typescript",
+      "label": "JavaScript / TypeScript"
+    },
+    {
+      "id": "python",
+      "label": "Python"
+    },
+    {
+      "id": "rust",
+      "label": "Rust"
+    },
+    {
+      "id": "go",
+      "label": "Go"
+    },
+    {
+      "id": "apple",
+      "label": "Apple / Xcode / Swift"
+    },
+    {
+      "id": "java-jvm",
+      "label": "Java / JVM (Gradle, Maven, Android, Eclipse)"
+    },
+    {
+      "id": "dotnet",
+      "label": ".NET"
+    },
+    {
+      "id": "php",
+      "label": "PHP"
+    },
+    {
+      "id": "ruby",
+      "label": "Ruby"
+    },
+    {
+      "id": "dart-flutter",
+      "label": "Dart / Flutter"
+    },
+    {
+      "id": "elixir",
+      "label": "Elixir"
+    },
+    {
+      "id": "cpp",
+      "label": "C / C++ (CMake)"
+    },
+    {
+      "id": "haskell",
+      "label": "Haskell"
+    },
+    {
+      "id": "elm",
+      "label": "Elm"
+    },
+    {
+      "id": "zig",
+      "label": "Zig"
+    },
+    {
+      "id": "terraform",
+      "label": "Terraform / Terragrunt"
+    },
+    {
+      "id": "cache-marker",
+      "label": "Tagged cache directories (any ecosystem)"
+    },
+    {
+      "id": "vcs",
+      "label": "Version control metadata"
+    }
+  ],
+  "rules": [
+    {
+      "name": "node_modules",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "npm / yarn / pnpm dependencies",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".next",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Next.js build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".nuxt",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Nuxt dev/type-generation cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".output",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Nuxt 3 build output (Nitro)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".astro",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Astro build cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".docusaurus",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Docusaurus build cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".angular",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Angular CLI build cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".svelte-kit",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "SvelteKit build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "dist",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Generic build output (also used by many other ecosystems' bundlers)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "out",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Generic build output (e.g. Next.js static export)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".turbo",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Turborepo cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".cache",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Generic framework cache (Parcel, Gatsby, and others)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".swc",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "SWC compiler cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".vite",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Vite cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".parcel-cache",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Parcel cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".expo",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Expo cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".contentlayer",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Contentlayer generated content cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".serverless",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Serverless Framework packaged build artifacts",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "storybook-static",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Storybook build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "playwright-report",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Playwright HTML report output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "test-results",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Playwright test results",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "coverage",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Test coverage reports (Istanbul/nyc/Jest/Vitest, also SimpleCov for Ruby)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".nyc_output",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "nyc raw coverage data",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "bower_components",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "Bower dependencies (legacy)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "jspm_packages",
+      "kind": "safe",
+      "categories": [
+        "javascript-typescript"
+      ],
+      "description": "JSPM dependencies (legacy)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "__pycache__",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Python bytecode cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".venv",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Virtual environment",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "venv",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Virtual environment",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".pytest_cache",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "pytest cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".mypy_cache",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "mypy type-checker cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".ruff_cache",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Ruff linter cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".tox",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "tox test environments",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".nox",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "nox test sessions (virtualenvs)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".eggs",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "setuptools egg build cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "htmlcov",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "coverage.py HTML report output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".hypothesis",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Hypothesis property-testing cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".ipynb_checkpoints",
+      "kind": "safe",
+      "categories": [
+        "python"
+      ],
+      "description": "Jupyter notebook checkpoint snapshots",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "target",
+      "kind": "safe",
+      "categories": [
+        "rust",
+        "java-jvm"
+      ],
+      "description": "Cargo build output — also Maven's default build output directory",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "registry",
+      "kind": "safe",
+      "categories": [
+        "rust"
+      ],
+      "description": "Cargo crate registry cache (~/.cargo/registry/), regenerable via cargo build",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "DerivedData",
+      "kind": "safe",
+      "categories": [
+        "apple"
+      ],
+      "description": "Xcode derived data",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".build",
+      "kind": "safe",
+      "categories": [
+        "apple"
+      ],
+      "description": "Swift Package Manager build output (`swift build`)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".swiftpm",
+      "kind": "safe",
+      "categories": [
+        "apple"
+      ],
+      "description": "Xcode's local Swift Package Manager cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "Pods",
+      "kind": "gated",
+      "categories": [
+        "apple"
+      ],
+      "description": "CocoaPods dependencies — only meaningful next to a project's Podfile",
+      "when": "Podfile",
+      "file": null
+    },
+    {
+      "name": "Carthage",
+      "kind": "gated",
+      "categories": [
+        "apple"
+      ],
+      "description": "Carthage build/checkout output, fully regenerable via `carthage bootstrap`",
+      "when": "Cartfile or Cartfile.resolved",
+      "file": null
+    },
+    {
+      "name": ".vs",
+      "kind": "safe",
+      "categories": [
+        "dotnet"
+      ],
+      "description": "Visual Studio's local solution cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "bin",
+      "kind": "gated",
+      "categories": [
+        "dotnet",
+        "java-jvm"
+      ],
+      "description": ".NET build output next to a C#/VB#/F# project or solution file — also Eclipse's default Java output directory next to a .classpath",
+      "when": "*.csproj or *.vbproj or *.fsproj or *.sln or .classpath",
+      "file": null
+    },
+    {
+      "name": "obj",
+      "kind": "gated",
+      "categories": [
+        "dotnet"
+      ],
+      "description": ".NET intermediate build output next to a C#/VB#/F# project or solution file",
+      "when": "*.csproj or *.vbproj or *.fsproj or *.sln",
+      "file": null
+    },
+    {
+      "name": ".gradle",
+      "kind": "gated",
+      "categories": [
+        "java-jvm"
+      ],
+      "description": "Gradle project/build cache",
+      "when": "build.gradle or build.gradle.kts or settings.gradle or settings.gradle.kts",
+      "file": null
+    },
+    {
+      "name": ".cxx",
+      "kind": "gated",
+      "categories": [
+        "java-jvm"
+      ],
+      "description": "Android NDK/CMake native build cache (Android Studio)",
+      "when": "build.gradle or build.gradle.kts or settings.gradle or settings.gradle.kts",
+      "file": null
+    },
+    {
+      "name": "build",
+      "kind": "gated",
+      "categories": [
+        "javascript-typescript",
+        "python",
+        "apple",
+        "cpp",
+        "java-jvm",
+        "dart-flutter",
+        "rust"
+      ],
+      "description": "Generic build output directory name, reused by npm scripts, Python setuptools, CocoaPods/Xcode, CMake, Gradle, Flutter, and Cargo — gated on whichever manifest is actually present",
+      "when": "Podfile or *.xcodeproj or *.xcworkspace or CMakeLists.txt or package.json or pyproject.toml or requirements.txt or build.gradle or build.gradle.kts or pubspec.yaml or Cargo.toml",
+      "file": null
+    },
+    {
+      "name": "vendor",
+      "kind": "gated",
+      "categories": [
+        "php",
+        "go",
+        "rust",
+        "ruby"
+      ],
+      "description": "Composer's PHP dependency directory, a Go module's vendored dependencies, Cargo's vendored crates, or Bundler's vendored gems — gated on whichever manifest is present",
+      "when": "composer.json or go.mod or Cargo.toml or Gemfile",
+      "file": null
+    },
+    {
+      "name": ".yardoc",
+      "kind": "safe",
+      "categories": [
+        "ruby"
+      ],
+      "description": "YARD documentation generation cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "pkg",
+      "kind": "gated",
+      "categories": [
+        "ruby"
+      ],
+      "description": "Gem build output from `rake build`/`gem build`, only next to a Gemfile",
+      "when": "Gemfile",
+      "file": null
+    },
+    {
+      "name": ".dart_tool",
+      "kind": "safe",
+      "categories": [
+        "dart-flutter"
+      ],
+      "description": "Dart/Flutter tooling cache (pub, build_runner, analyzer)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".elixir_ls",
+      "kind": "safe",
+      "categories": [
+        "elixir"
+      ],
+      "description": "ElixirLS language server cache",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "_build",
+      "kind": "gated",
+      "categories": [
+        "elixir"
+      ],
+      "description": "Mix compiled build output, regenerable via `mix compile`",
+      "when": "mix.exs",
+      "file": null
+    },
+    {
+      "name": "deps",
+      "kind": "gated",
+      "categories": [
+        "elixir"
+      ],
+      "description": "Mix fetched dependencies, regenerable via `mix deps.get`",
+      "when": "mix.exs",
+      "file": null
+    },
+    {
+      "name": "dist-newstyle",
+      "kind": "safe",
+      "categories": [
+        "haskell"
+      ],
+      "description": "Cabal (new-style) build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".stack-work",
+      "kind": "safe",
+      "categories": [
+        "haskell"
+      ],
+      "description": "Stack build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "elm-stuff",
+      "kind": "safe",
+      "categories": [
+        "elm"
+      ],
+      "description": "Elm compiler cache and dependencies",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "zig-cache",
+      "kind": "safe",
+      "categories": [
+        "zig"
+      ],
+      "description": "Zig compiler cache (Zig ≤ 0.11)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".zig-cache",
+      "kind": "safe",
+      "categories": [
+        "zig"
+      ],
+      "description": "Zig compiler cache (Zig ≥ 0.12)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "zig-out",
+      "kind": "safe",
+      "categories": [
+        "zig"
+      ],
+      "description": "Zig build output",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".terragrunt-cache",
+      "kind": "safe",
+      "categories": [
+        "terraform"
+      ],
+      "description": "Terragrunt download cache (modules and providers, re-fetched on the next run)",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": "CACHEDIR.TAG",
+      "kind": "marker",
+      "categories": [
+        "cache-marker"
+      ],
+      "description": "Any directory carrying a Cache Directory Tagging Specification tag (https://bford.info/cachedir/) — written by Cargo, Go, Zig, ccache, pytest and others to declare the directory a regenerable cache",
+      "when": null,
+      "file": "CACHEDIR.TAG"
+    },
+    {
+      "name": ".git",
+      "kind": "ignore",
+      "categories": [
+        "vcs"
+      ],
+      "description": "Git metadata",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".hg",
+      "kind": "ignore",
+      "categories": [
+        "vcs"
+      ],
+      "description": "Mercurial metadata",
+      "when": null,
+      "file": null
+    },
+    {
+      "name": ".svn",
+      "kind": "ignore",
+      "categories": [
+        "vcs"
+      ],
+      "description": "Subversion metadata",
+      "when": null,
+      "file": null
+    }
+  ]
+}

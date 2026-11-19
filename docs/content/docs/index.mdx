@@ -1,0 +1,39 @@
+---
+title: purgeit documentation
+description: Find and safely delete regenerable build artifacts across all your projects.
+---
+
+purgeit scans your project folders for `node_modules`, `target`, `dist`, `Pods` and 60 more kinds of rebuildable output, shows you what each would free, and deletes only what you choose — after re-verifying every path at the moment of deletion.
+
+<Cards>
+  <Card title="Get started" href="/docs/guides/getting-started">
+    Install, scan, and reclaim your first gigabytes in a minute.
+  </Card>
+  <Card title="How it stays safe" href="/docs/concepts/safety-model">
+    Exactly what is checked before anything is deleted.
+  </Card>
+  <Card title="CLI reference" href="/docs/reference/cli">
+    Every command and option, generated from the CLI itself.
+  </Card>
+  <Card title="Use it with AI agents" href="/docs/guides/ai-agents">
+    A versioned guide, structured output and Markdown for every page.
+  </Card>
+</Cards>
+
+## Find your way
+
+| I want to… | Go to |
+| --- | --- |
+| Try it right now | [Getting started](/docs/guides/getting-started) |
+| Browse and pick what to delete | [Interactive UI](/docs/guides/interactive-ui) |
+| Delete with a safety net | [Clean safely](/docs/guides/clean-safely) |
+| Run it on a schedule or in CI | [Automation](/docs/guides/automation) |
+| Teach it about my own build output | [Custom rules](/docs/guides/custom-rules) |
+| Parse its output in a script | [Output formats](/docs/reference/output-formats) |
+| Embed it in my own tool | [Library API](/docs/reference/library-api) |
+| Understand why a path was skipped | [Clean safely → skipped](/docs/guides/clean-safely#when-something-is-skipped) |
+
+<Callout title="For AI agents">
+  Every page here is also available as Markdown: append `.md` to a URL, or send `Accept: text/markdown`.
+  The whole site is at [`/llms-full.txt`](/llms-full.txt), and `purgeit skill` prints a guide versioned with your installed CLI.
+</Callout>

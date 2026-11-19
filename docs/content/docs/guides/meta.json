@@ -1,0 +1,13 @@
+{
+  "title": "Guides",
+  "icon": "BookOpen",
+  "root": true,
+  "pages": [
+    "getting-started",
+    "interactive-ui",
+    "clean-safely",
+    "automation",
+    "custom-rules",
+    "ai-agents"
+  ]
+}

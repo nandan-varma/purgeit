@@ -1,0 +1,9 @@
+{
+  "title": "Concepts",
+  "icon": "Lightbulb",
+  "root": true,
+  "pages": [
+    "safety-model",
+    "how-it-works"
+  ]
+}

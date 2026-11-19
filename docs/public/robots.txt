@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://purgeit.nandan.fyi/sitemap-index.xml

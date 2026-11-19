@@ -1,0 +1,85 @@
+---
+title: Custom rules
+description: Teach purgeit about your own build output, caches and directories to avoid.
+---
+
+Rules are **data**, not code: a config can always be validated, printed with [`purgeit rules`](/docs/reference/cli#rules), and shared. Put them in `purgeit.config.ts` (or `.json`, `.mjs`, …, or the `purgeit` key of `package.json`) in the directory you run purgeit from. See the full [configuration reference](/docs/reference/configuration).
+
+```ts title="purgeit.config.ts"
+import { defineConfig } from 'purgeit';
+
+export default defineConfig({
+  /* … */
+});
+```
+
+## Recipes
+
+### A cache that is always safe to delete
+
+```ts
+safe: ['.my-tool-cache'],
+```
+
+### A generic name, but only next to proof
+
+Use a *gated* rule when the name alone is too generic. `out` is only generated output when a `project.toml` sits beside it:
+
+```ts
+gated: [{ name: 'out', when: { file: 'project.toml' } }],
+```
+
+`when` accepts one condition or a list of which any one suffices:
+
+```ts
+{ file: 'package.json' }                              // a sibling file
+{ glob: '*.csproj' }                                  // a sibling matching a glob
+{ grep: { file: 'Makefile', pattern: '^build:' } }    // a sibling whose contents match
+```
+
+### Any directory carrying a tag file
+
+```ts
+markers: [{ name: 'MYTOOL.TAG', file: '.mytool-cache', signature: 'mytool-cache-v1' }],
+```
+
+### Keep things out
+
+```ts
+ignore: ['vault', 'secrets'],   // never entered, anywhere
+exclude: ['legacy/**'],         // skipped, relative to each scanned root
+```
+
+### Switch off a built-in rule
+
+```ts
+disable: ['coverage'],          // unknown names are an error, so typos are caught
+```
+
+### Named groups for `--only`
+
+```ts
+groups: { web: ['node_modules', '.next', 'dist'] },
+// purgeit clean --only web
+```
+
+### Defaults for flags
+
+```ts
+minAge: '14d', minSize: '50MB', depth: 6,
+```
+
+Flags always override config.
+
+## JSON config with editor completion
+
+```json
+{ "$schema": "./node_modules/purgeit/schema.json", "safe": [".my-tool-cache"] }
+```
+
+## Things worth knowing
+
+- A rule with the same name as a built-in **replaces** it.
+- A name can't be both `safe` and `gated` in one config — that is rejected.
+- Version-control directories are never entered, whatever the config says.
+- Matching a name is never enough on its own: [protection checks](/docs/concepts/safety-model) still apply to every match.
