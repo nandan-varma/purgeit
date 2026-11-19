@@ -91,5 +91,5 @@
       }
     }
   ],
-  "ignorePatterns": ["dist", "coverage", "docs", "node_modules"]
+  "ignorePatterns": ["dist/**", "coverage/**", "docs/**", "node_modules/**"]
 }

@@ -40,12 +40,12 @@
     "./schema.json": "./purgeit.schema.json"
   },
   "scripts": {
-    "build": "bun run schema && tsdown",
+    "build": "bun run generate && tsdown",
     "schema": "bun scripts/schema.ts",
     "fmt": "bun fmt",
     "fmt:check": "bun fmt --check",
-    "lint": "oxlint",
-    "lint:fix": "oxlint --fix",
+    "lint": "oxlint src scripts test tsdown.config.ts vitest.config.ts",
+    "lint:fix": "oxlint --fix src scripts test tsdown.config.ts vitest.config.ts",
     "typecheck": "tsgo --noEmit",
     "knip": "knip",
     "doctor": "react-doctor src/tui --no-supply-chain --yes --blocking warning",
@@ -55,7 +55,8 @@
     "check:package": "publint && attw --pack . --profile esm-only",
     "check": "bun run --parallel fmt:check lint typecheck knip doctor && bun run coverage && bun run build && bun run check:package && node scripts/smoke.mjs",
     "prepare": "lefthook install",
-    "prepublishOnly": "bun run check"
+    "prepublishOnly": "bun run check",
+    "generate": "bun scripts/schema.ts && bun scripts/docs-data.ts"
   },
   "dependencies": {
     "bytes": "^3.1.2",

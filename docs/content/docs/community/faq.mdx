@@ -1,0 +1,38 @@
+---
+title: FAQ & troubleshooting
+description: Common questions and how to fix common surprises.
+---
+
+<Accordions type="single">
+  <Accordion title="Is anything deleted without asking?">
+    No. The UI needs an explicit selection plus `y`; `clean` asks unless you pass `--yes`; without a terminal it refuses to delete unless you pass `--yes`.
+  </Accordion>
+  <Accordion title="Why was an artifact skipped?">
+    `clean` and the UI print the reason: modified within `--min-age`, changed after the scan, protected (nested repo, deploy keypair, git-tracked files), or no longer claimed by a rule. See the [list of reasons](/docs/guides/clean-safely#when-something-is-skipped).
+  </Accordion>
+  <Accordion title="Why is the size smaller than du?">
+    purgeit reports space that deleting would actually free. Files hardlinked to something outside the artifact (pnpm's content store) aren't counted. See [How sizes are counted](/docs/concepts/how-it-works#how-sizes-are-counted).
+  </Accordion>
+  <Accordion title="Why didn't it find my build folder?">
+    `build` is only matched beside a manifest (`package.json`, `Cargo.toml`, …). Run `purgeit rules` to see the proof each gated rule needs, or [add your own rule](/docs/guides/custom-rules).
+  </Accordion>
+  <Accordion title="“N directories could not be read”">
+    Permission errors and directories that vanish mid-scan are skipped and counted, never hidden.
+  </Accordion>
+  <Accordion title="The UI says it needs a terminal">
+    You are in a pipe, a CI job or a script. Use [`scan` and `clean`](/docs/reference/cli).
+  </Accordion>
+  <Accordion title="Can I undo a deletion?">
+    No — artifacts are regenerable, which is why the rules are strict. `purgeit history` lists what was removed.
+  </Accordion>
+  <Accordion title="Does it phone home?">
+    No. There is no telemetry and no network access.
+  </Accordion>
+  <Accordion title="Windows and macOS specifics">
+    Both are supported. Space is measured from allocated blocks on every platform; `git` is needed only for the tracked-files check.
+  </Accordion>
+</Accordions>
+
+## It deleted something it shouldn't have
+
+Please [open an issue](https://github.com/nandan-varma/purgeit/issues) with `purgeit history --format json` and the rule that matched. Safety bugs are treated as top priority.

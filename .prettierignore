@@ -2,5 +2,9 @@
 bun.lock
 purgeit.schema.json
 CHANGELOG.md
-docs/
 skills/
+docs/package-lock.json
+docs/content/
+docs/src/generated/
+docs/.next/
+docs/.source/

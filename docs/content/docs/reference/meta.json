@@ -1,0 +1,12 @@
+{
+  "title": "Reference",
+  "icon": "Code",
+  "root": true,
+  "pages": [
+    "cli",
+    "configuration",
+    "rules",
+    "output-formats",
+    "library-api"
+  ]
+}

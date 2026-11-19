@@ -1,0 +1,9 @@
+{
+  "title": "Community",
+  "icon": "Users",
+  "root": true,
+  "pages": [
+    "faq",
+    "contributing"
+  ]
+}

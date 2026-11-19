@@ -1,0 +1,19 @@
+---
+title: Built-in rules
+description: What purgeit recognizes out of the box, across every ecosystem.
+---
+
+Every rule below is generated from the catalog the scanner itself compiles, so this page cannot drift from what the CLI matches. Run `purgeit rules` to see the rules in effect for *your* config.
+
+<RulesTable />
+
+## Kinds of rule
+
+- **safe** — deletable wherever the name appears. Once matched, the scanner never enters it.
+- **gated** — the name alone is too generic (`build`, `vendor`, `bin`), so it only counts when a manifest beside it proves it is generated output; for example `Pods/` next to a `Podfile`.
+- **tagged** — any directory, whatever its name, carrying a [`CACHEDIR.TAG`](https://bford.info/cachedir/) with the standard signature (written by Cargo, Go, Zig, ccache, pytest, …).
+- **pruned** — version-control metadata: never entered, never deleted.
+
+A matching name is not enough to delete: [protection checks](/docs/concepts/safety-model) still apply to every match.
+
+Missing an ecosystem? [Add a rule in your config](/docs/guides/custom-rules), or [contribute it to the catalog](/docs/community/contributing).

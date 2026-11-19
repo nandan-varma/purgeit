@@ -1,0 +1,67 @@
+---
+title: Getting started
+description: Install purgeit, see what it finds, and reclaim your first gigabytes.
+---
+
+purgeit needs **Node.js 22 or newer** on macOS, Linux or Windows. Releases are published to npm with [signed provenance](https://docs.npmjs.com/generating-provenance-statements), so you can verify what you run with `npm audit signatures`.
+
+<Steps>
+<Step>
+
+### Run it
+
+No install needed:
+
+<Tabs items={['npx', 'bunx', 'pnpm', 'global']} groupId="pm" persist>
+  <Tab value="npx">`npx purgeit ~/dev`</Tab>
+  <Tab value="bunx">`bunx purgeit ~/dev`</Tab>
+  <Tab value="pnpm">`pnpm dlx purgeit ~/dev`</Tab>
+  <Tab value="global">`npm install -g purgeit`, then `purgeit ~/dev`</Tab>
+</Tabs>
+
+With no directory it scans the current one. Add `--discover` to also scan the places this machine keeps projects (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, and any home folder that holds projects).
+
+</Step>
+<Step>
+
+### Look around
+
+The [interactive UI](/docs/guides/interactive-ui) fills in as artifacts are measured. Press `space` on what you want gone, `enter` to review, `y` to delete.
+
+</Step>
+<Step>
+
+### Or stay in the shell
+
+List without changing anything, then clean with a preview first:
+
+<Terminal title="~/dev">
+{`$ purgeit scan ~/dev --min-size 100MB
+$ purgeit clean ~/dev --min-size 100MB --dry-run   # runs every check, deletes nothing
+$ purgeit clean ~/dev --min-size 100MB             # asks first`}
+</Terminal>
+
+</Step>
+</Steps>
+
+## What you are looking at
+
+| Column | Meaning |
+| --- | --- |
+| **SIZE** | Disk space deleting it would free |
+| **AGE** | Time since anything inside last changed |
+| **RULE** | Which rule claimed the directory (`purgeit rules` lists them all) |
+| **PATH** | The directory |
+
+<Callout title="Safe by default" type="info">
+  `clean` leaves anything modified in the last **7 days** alone, never deletes without confirmation (or `--yes`), and refuses anything it cannot verify. See [Clean safely](/docs/guides/clean-safely) and the [safety model](/docs/concepts/safety-model).
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card title="Tour the interactive UI" href="/docs/guides/interactive-ui" />
+  <Card title="Run purgeit on a schedule" href="/docs/guides/automation" />
+  <Card title="Add your own rules" href="/docs/guides/custom-rules" />
+  <Card title="Use it from an AI agent" href="/docs/guides/ai-agents" />
+</Cards>

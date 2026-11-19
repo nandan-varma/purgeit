@@ -1,0 +1,57 @@
+---
+title: Clean safely
+description: The workflow for deleting with confidence — preview, review, apply.
+---
+
+Deleting is the one thing purgeit does that you cannot undo, so it gives you several ways to look before you leap.
+
+## 1. Preview with a dry run
+
+```bash
+purgeit clean ~/dev --dry-run
+```
+
+Runs *every* check — rules, protection, recent activity — and reports what would be deleted and what would be skipped, deleting nothing. Skipped paths come with the reason.
+
+## 2. Narrow it down
+
+| You want | Use |
+| --- | --- |
+| Only the big wins | `--min-size 100MB` |
+| Only things you haven't touched in a while | `--min-age 30d` |
+| Only certain tools' output | `--only node_modules,target` or a [group](/docs/reference/configuration) |
+| Only proven-safe names | `--safe-only` (skips rules that need a manifest as proof) |
+| Keep some folders out | `--exclude 'legacy/**'` |
+
+## 3. Review, then apply a plan
+
+For anything a human should approve, split *finding* from *deleting*:
+
+```bash
+purgeit scan ~/dev --format json > plan.json   # delete the entries you want to keep
+purgeit clean --plan plan.json
+```
+
+A plan only *proposes*. At deletion time every entry is re-checked against the rules, protection and "changed since the scan", so a stale or hand-edited plan cannot delete something that is no longer an artifact.
+
+## The 7-day guard
+
+`clean` skips anything with a change inside the last **7 days** (`--min-age`, or `minAge` in config; `0` disables). The interactive UI doesn't apply it by default, because you are choosing each row yourself, but passing `--min-age` there enforces it too.
+
+## When something is skipped
+
+| Reason | Meaning |
+| --- | --- |
+| `recently-active` | something inside changed within `--min-age` |
+| `changed-since-scan` | it changed after the scan (or after the plan was written) |
+| `protected` | nested `.git`, a `*-keypair.json`, or git-tracked files |
+| `no-longer-matches` | no rule claims it any more (renamed, replaced, or its proof file is gone) |
+| `outside-roots` | it resolves outside the folders you scanned (a symlink was involved) |
+| `missing` | it was already gone |
+| `unverifiable` | something couldn't be read, so it wasn't safe to proceed |
+
+Details and the full list of checks: [Safety model](/docs/concepts/safety-model).
+
+## Audit trail
+
+Every deletion and failure is appended to a history file. `purgeit history` shows it, newest first. Dry runs write nothing.

@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+/* Brand: a single teal accent on a neutral base. */
+:root {
+  --color-fd-primary: hsl(187 92% 26%);
+  --color-fd-primary-foreground: hsl(0 0% 100%);
+  --color-fd-ring: hsl(187 92% 32%);
+}
+
+.dark {
+  --color-fd-primary: hsl(187 72% 56%);
+  --color-fd-primary-foreground: hsl(190 50% 8%);
+  --color-fd-ring: hsl(187 72% 56%);
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+}
