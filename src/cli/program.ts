@@ -1,7 +1,7 @@
 import { Command, CommanderError, InvalidArgumentError, Option } from 'commander';
 import { PurgeitError } from '../errors.js';
-import { type CleanCommandFlags, runClean } from './commands/clean.js';
-import { type RulesFlags, runRules } from './commands/rules.js';
+import type { CleanCommandFlags } from './commands/clean.js';
+import type { RulesFlags } from './commands/rules.js';
 import type { ScanCommandFlags } from './commands/scan.js';
 import type { CliEnv } from './env.js';
 import { type ScanFlags, scanOptions } from './flags.js';
