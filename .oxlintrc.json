@@ -63,6 +63,32 @@
       "rules": {
         "no-console": "off"
       }
+    },
+    {
+      "files": ["src/**/*.ts", "src/**/*.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "react",
+                "message": "React and Ink are only allowed in src/tui."
+              },
+              {
+                "name": "ink",
+                "message": "React and Ink are only allowed in src/tui."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["**/tui/**"],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ],
   "ignorePatterns": ["dist", "coverage", "docs", "node_modules"]

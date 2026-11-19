@@ -22,7 +22,7 @@ jobs:
           bun-version-file: .bun-version
       - run: bun install --frozen-lockfile
 
-      # The full gate, so a tag can never publish something CI would reject.
+      # The same gate as CI, so a tag can never publish something CI would reject.
       - run: bun run check
 
       # Authenticates with GitHub's OIDC identity (npm "Trusted Publisher" for
