@@ -5,7 +5,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write # create the GitHub Release
   id-token: write # npm trusted publishing (OIDC) and provenance
 
 jobs:
@@ -28,3 +28,18 @@ jobs:
       # Authenticates with GitHub's OIDC identity (npm "Trusted Publisher" for
       # release.yml); no token is stored. Provenance is attached automatically.
       - run: npm publish --access public
+
+      # Standalone executables for people without Node.
+      - name: Build binaries
+        run: |
+          bun scripts/binaries.ts
+          cd release && sha256sum purgeit-* > SHA256SUMS
+
+      - name: GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '$0 ~ "^## \\[" v "\\]" {found=1; next} /^## \[/ {found=0} found' CHANGELOG.md > notes.md
+          [ -s notes.md ] || echo "See CHANGELOG.md" > notes.md
+          gh release create "$GITHUB_REF_NAME" release/* --title "$GITHUB_REF_NAME" --notes-file notes.md

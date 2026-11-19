@@ -23,12 +23,12 @@ This site is agent-friendly too:
 <Steps>
 <Step>
 
-**Look first.** `purgeit scan <dirs> --format json` lists candidates and deletes nothing. Narrow with `--min-size`, `--min-age`, `--only`.
+**Look first.** `purgeit scan <dirs> --format json` lists candidates and deletes nothing. The report has a `projects[]` rollup (dormant projects first) as well as every entry. Narrow with `--stale`, `--min-size`, `--min-age`, `--only`.
 
 </Step>
 <Step>
 
-**Show the user** the entries and the total. Entries with a non-null `protection` are never deleted.
+**Show the user** the projects and the total — not hundreds of paths. Entries with a non-null `protection` are never deleted; `purgeit explain <path> --format json` tells you why anything is matched, skipped or protected.
 
 </Step>
 <Step>
@@ -46,7 +46,7 @@ This site is agent-friendly too:
 
 - Every path is **re-verified at deletion time** against the rules, git, deploy keys and recent activity, so a stale or edited plan cannot delete the wrong thing. See the [safety model](/docs/concepts/safety-model).
 - Nothing is deleted without `--yes` (or an interactive confirmation), and without a terminal `clean` refuses to guess.
-- Output is stable JSON with documented [exit codes](/docs/guides/automation#exit-codes) and [formats](/docs/reference/output-formats).
+- Output is stable JSON with documented [exit codes](/docs/guides/automation#exit-codes) and [formats](/docs/reference/output-formats). With `--format json`, even **errors** are JSON on stdout (`{"error":{"code","message"}}`), so a parser never has to scrape stderr.
 - Everything deleted is recorded: `purgeit history --format json`.
 
 ## Other useful commands
@@ -56,3 +56,4 @@ This site is agent-friendly too:
 | `purgeit rules --format json` | What is matched, and the proof gated rules need |
 | `purgeit history --format json` | What has been deleted |
 | `purgeit scan --format ndjson` | Stream results as they are measured |
+| `purgeit explain <path> --format json` | Why a directory is matched, skipped or protected, and what `clean` would do |

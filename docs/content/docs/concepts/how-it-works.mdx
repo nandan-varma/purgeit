@@ -34,6 +34,18 @@ roots ─▶ walk ─▶ rules claim directories ─▶ measure ─▶ filters �
 </Step>
 </Steps>
 
+## Projects and dormancy
+
+As the walker descends it knows each directory's listing, so recognising what an artifact belongs to is free:
+
+- a directory with a `.git` **directory** is a repository; a monorepo is one project, however many packages it holds;
+- a `.git` **file** marks a worktree (or submodule). A worktree's file points at the repository it came from, and the worktree is **folded into that project**;
+- outside git, a directory with a manifest (`package.json`, `Cargo.toml`, …) is a project folder.
+
+A project's **activity** is the modification time of git's `HEAD` log: it moves when you commit, check out, pull or rebase, but not on `git status`, and costs one `stat`. A project untouched for `dormantAfter` (30 days by default) is *dormant*. Outside git, the newest change inside its artifacts stands in.
+
+That is what lets the UI and `scan` lead with **big and abandoned** instead of simply big.
+
 ## Why it is fast
 
 - A single traversal does the work `du`, `find` and a tree walk used to do separately.

@@ -8,16 +8,18 @@ export const pythonRules: readonly RuleDefinition[] = [
     description: 'Python bytecode cache',
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: '.venv',
     categories: ['python'],
-    description: 'Virtual environment',
+    description: 'Virtual environment — proved by the pyvenv.cfg inside it',
+    when: { inside: 'pyvenv.cfg' },
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: 'venv',
     categories: ['python'],
-    description: 'Virtual environment',
+    description: 'Virtual environment — proved by the pyvenv.cfg inside it',
+    when: { inside: 'pyvenv.cfg' },
   },
   {
     kind: 'safe',

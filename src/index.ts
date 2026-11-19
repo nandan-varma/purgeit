@@ -32,6 +32,15 @@ export {
 } from './rules/rule-set.js';
 export { discoverRoots } from './scan/discover.js';
 export {
+  activityOf,
+  compareGroups,
+  DEFAULT_DORMANT_MS,
+  groupProjects,
+  isDormant,
+  type ProjectGroup,
+} from './scan/projects.js';
+export type { ProjectRef } from './scan/project.js';
+export {
   type DropReason,
   type Entry,
   normalizeRoots,

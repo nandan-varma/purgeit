@@ -46,7 +46,7 @@ describe('ConfigSchema', () => {
 
 describe('loadConfig', () => {
   it('returns defaults when there is no config', async () => {
-    const loaded = await loadConfig({ cwd: buildTree({}) });
+    const loaded = await loadConfig({ cwd: buildTree({}), userConfigDir: buildTree({}) });
     expect(loaded.source).toBeUndefined();
     expect(loaded.config.defaults).toBe(true);
   });
@@ -56,16 +56,20 @@ describe('loadConfig', () => {
       'purgeit.config.ts':
         "export default { safe: ['.mycache'], minAge: '3d' } satisfies Record<string, unknown>;\n",
     });
-    const loaded = await loadConfig({ cwd });
+    const loaded = await loadConfig({ cwd, userConfigDir: buildTree({}) });
     expect(loaded.config).toMatchObject({ safe: ['.mycache'], minAge: '3d' });
     expect(loaded.source).toBe(join(cwd, 'purgeit.config.ts'));
   });
 
   it('loads JSON configs and the package.json "purgeit" key', async () => {
     const json = buildTree({ 'purgeit.config.json': '{"ignore":["vault"]}' });
-    expect((await loadConfig({ cwd: json })).config.ignore).toEqual(['vault']);
+    expect((await loadConfig({ cwd: json, userConfigDir: buildTree({}) })).config.ignore).toEqual([
+      'vault',
+    ]);
     const pkg = buildTree({ 'package.json': '{"name":"x","purgeit":{"exclude":["legacy"]}}' });
-    expect((await loadConfig({ cwd: pkg })).config.exclude).toEqual(['legacy']);
+    expect((await loadConfig({ cwd: pkg, userConfigDir: buildTree({}) })).config.exclude).toEqual([
+      'legacy',
+    ]);
   });
 
   it('loads an explicit file and fails clearly when it is missing', async () => {
@@ -80,5 +84,40 @@ describe('loadConfig', () => {
     await expect(loadConfig({ cwd })).rejects.toThrow(/purgeit\.config\.json[\s\S]*minAge/);
     writeFileSync(join(cwd, 'purgeit.config.json'), '{not json');
     await expect(loadConfig({ cwd })).rejects.toThrow(PurgeitError);
+  });
+});
+
+describe('loadConfig discovery', () => {
+  const noUser = () => buildTree({});
+
+  it('finds the nearest config in an ancestor of the working directory', async () => {
+    const root = buildTree({
+      'purgeit.config.json': '{"ignore":["outer"]}',
+      sub: { 'purgeit.config.json': '{"ignore":["inner"]}', deep: { deeper: null } },
+      other: { deep: null },
+    });
+    const userConfigDir = noUser();
+    const nested = await loadConfig({ cwd: join(root, 'sub/deep/deeper'), userConfigDir });
+    expect(nested.config.ignore).toEqual(['inner']);
+    expect(nested.source).toBe(join(root, 'sub', 'purgeit.config.json'));
+    const up = await loadConfig({ cwd: join(root, 'other/deep'), userConfigDir });
+    expect(up.config.ignore).toEqual(['outer']);
+  });
+
+  it('falls back to the user-level config, then to the defaults', async () => {
+    const userConfigDir = buildTree({ 'config.json': '{"minAge":"3d"}' });
+    const cwd = buildTree({ a: null });
+    const user = await loadConfig({ cwd: join(cwd, 'a'), userConfigDir });
+    expect(user.config.minAge).toBe('3d');
+    expect(user.source).toBe(join(userConfigDir, 'config.json'));
+
+    const none = await loadConfig({ cwd: join(cwd, 'a'), userConfigDir: join(cwd, 'missing') });
+    expect(none.source).toBeUndefined();
+    expect(none.config.defaults).toBe(true);
+  });
+
+  it('rejects a broken user-level config instead of ignoring it', async () => {
+    const userConfigDir = buildTree({ 'config.json': '{"minAge":"soon"}' });
+    await expect(loadConfig({ cwd: buildTree({}), userConfigDir })).rejects.toThrow(/minAge/);
   });
 });

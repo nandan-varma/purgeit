@@ -8,3 +8,4 @@ docs/content/
 docs/src/generated/
 docs/.next/
 docs/.source/
+docs/public/schema.json

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.6.0] - 2026-11-18
+
+### Added
+- **Projects, not folders.** The UI and `scan` list one row per project — a git repository (a monorepo is one), a worktree folded into its repository, or a manifest folder — sorted dormant-first. `R` selects everything in dormant projects; `--stale` does the same for `scan`/`clean`; `dormantAfter` (default 30d) sets the threshold. Dormancy comes from git's own log, not artifact mtimes.
+- UI: expand/collapse (`→ ←`, `e`/`E`), tri-state project selection, flat/projects toggle (`v`), a 10 MB floor with `m` to show small artifacts, a `?` help overlay, a review grouped by project that warns about recently active and cloud-synced projects.
+- `purgeit explain <path>` — why a directory is matched, skipped or protected, using the same checks `clean` runs.
+- `purgeit init`, `purgeit completion <bash|zsh|fish>`, `scan --by project|artifact`.
+- Config is now discovered by searching upward from the working directory, then `~/.config/purgeit/`; the schema is served at https://purgeit.nandan.fyi/schema.json.
+- Reports gain `project*`, `gitIgnored` and `synced` fields on entries and a `projects[]` rollup; with `--format json`, errors are JSON on stdout too.
+- Git-ignored evidence and cloud-synced-folder detection (Dropbox, iCloud, OneDrive, Google Drive).
+- A new `inside` rule condition (proof from a file inside the directory itself).
+- Standalone binaries for macOS, Linux and Windows, a GitHub Release with checksums on every tag, SECURITY.md and issue templates.
+
+### Changed
+- **Safer rules.** Names that are also common for authored folders now need proof: `target` (Cargo.toml, pom.xml, build.sbt, Gradle or Anchor manifest), `out`, `coverage`, `test-results` and `.cache` (a project manifest), `venv`/`.venv` (a `pyvenv.cfg` inside), `registry` (a Cargo home). A real scan found these were matching unrelated folders.
+
 ## [0.5.1] - 2026-11-18
 
 ### Fixed

@@ -6,8 +6,8 @@ description: Run purgeit unattended with cron, launchd, systemd or CI, and act o
 Unattended runs should be conservative and leave a trail.
 
 ```bash
-# anything untouched for 30+ days and larger than 100 MB
-purgeit clean ~/dev --min-age 30d --min-size 100MB --yes
+# everything in projects you have not worked on for 30+ days, over 100 MB
+purgeit clean ~/dev --stale --min-size 100MB --yes
 ```
 
 `clean` already skips recent activity (default 7 days), re-verifies every path, logs to `purgeit history`, and reports problems through its exit code, so a scheduler can notice.

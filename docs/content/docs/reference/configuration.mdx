@@ -3,7 +3,7 @@ title: Configuration reference
 description: Every config key, generated from the schema that validates it.
 ---
 
-purgeit reads, from the working directory (or `--config <file>`), the first of `purgeit.config.ts`, `.mts`, `.js`, `.mjs`, `.cjs`, `.json`, or the `purgeit` key of `package.json`. TypeScript configs load directly. Unknown keys and bad values are rejected with the file and the problem named. For recipes see [Custom rules](/docs/guides/custom-rules).
+purgeit uses **the nearest config, searching from the working directory upward**: the first of `purgeit.config.ts`, `.mts`, `.js`, `.mjs`, `.cjs`, `.json`, or the `purgeit` key of a `package.json`. If none is found it uses a user-level `config.*` in `~/.config/purgeit/` (the platform's config directory), then the defaults. The nearest config wins outright — configs are not merged. `--config <file>` names one explicitly, `--no-config` ignores all of them, and `purgeit init` writes a starter. TypeScript configs load directly. Unknown keys and bad values are rejected with the file and the problem named. For recipes see [Custom rules](/docs/guides/custom-rules).
 
 <ConfigReference />
 
@@ -21,6 +21,7 @@ markers: [{ name: 'MYTOOL.TAG', file: '.mytool-cache', signature: 'mytool-cache-
 | `{ file: 'package.json' }` | that file sits beside the directory |
 | `{ glob: '*.xcodeproj' }` | any sibling matches |
 | `{ grep: { file, pattern } }` | that sibling's contents match the regex (unreadable ⇒ no proof) |
+| `{ inside: 'pyvenv.cfg' }` | that file exists inside the directory itself |
 
 Names are plain file names, never paths. `file` and `glob` are answered from the directory listing the scanner already has, so they cost nothing.
 
@@ -29,5 +30,7 @@ Names are plain file names, never paths. `file` and `glob` are answered from the
 The JSON Schema ships with the package as `purgeit/schema.json` and is used for editor completion:
 
 ```json
-{ "$schema": "./node_modules/purgeit/schema.json" }
+{ "$schema": "https://purgeit.nandan.fyi/schema.json" }
 ```
+
+The same file ships in the package as `purgeit/schema.json` (`./node_modules/purgeit/schema.json`)

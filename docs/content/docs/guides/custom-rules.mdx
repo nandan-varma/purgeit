@@ -3,7 +3,7 @@ title: Custom rules
 description: Teach purgeit about your own build output, caches and directories to avoid.
 ---
 
-Rules are **data**, not code: a config can always be validated, printed with [`purgeit rules`](/docs/reference/cli#rules), and shared. Put them in `purgeit.config.ts` (or `.json`, `.mjs`, …, or the `purgeit` key of `package.json`) in the directory you run purgeit from. See the full [configuration reference](/docs/reference/configuration).
+Rules are **data**, not code: a config can always be validated, printed with [`purgeit rules`](/docs/reference/cli#rules), and shared. Put them in `purgeit.config.ts` (or `.json`, `.mjs`, …, or the `purgeit` key of `package.json`). purgeit uses the **nearest config, searching from the current directory upward**, then a user-level `config.*` in `~/.config/purgeit/`; the nearest one wins outright. `purgeit init` writes a starter. See the full [configuration reference](/docs/reference/configuration).
 
 ```ts title="purgeit.config.ts"
 import { defineConfig } from 'purgeit';
@@ -35,7 +35,10 @@ gated: [{ name: 'out', when: { file: 'project.toml' } }],
 { file: 'package.json' }                              // a sibling file
 { glob: '*.csproj' }                                  // a sibling matching a glob
 { grep: { file: 'Makefile', pattern: '^build:' } }    // a sibling whose contents match
+{ inside: 'pyvenv.cfg' }                              // a file inside the directory itself
 ```
+
+`inside` is how a bare name like `venv` is proved: the built-in rule only matches a `venv` that contains a `pyvenv.cfg`.
 
 ### Any directory carrying a tag file
 
@@ -67,6 +70,7 @@ groups: { web: ['node_modules', '.next', 'dist'] },
 
 ```ts
 minAge: '14d', minSize: '50MB', depth: 6,
+dormantAfter: '14d',   // when a project counts as dormant (default 30d)
 ```
 
 Flags always override config.

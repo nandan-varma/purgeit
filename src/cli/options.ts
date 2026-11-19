@@ -6,6 +6,7 @@ import { ConfigSchema } from '../config/schema.js';
 import { PurgeitError } from '../errors.js';
 import { createRuleSet, onlySafeRules, restrictRuleSet, type RuleSet } from '../rules/rule-set.js';
 import { discoverRoots } from '../scan/discover.js';
+import { DEFAULT_DORMANT_MS } from '../scan/projects.js';
 import type { ScanOptions } from '../scan/scan.js';
 import { parseDuration, parseSize } from '../units.js';
 import type { CliEnv } from './env.js';
@@ -18,6 +19,8 @@ export interface ResolvedScan {
   readonly options: Omit<ScanOptions, 'signal' | 'io'>;
   /** Refuse to delete anything modified more recently than this (ms). */
   readonly minAge: number;
+  /** A project untouched for this long is dormant (ms). */
+  readonly dormantMs: number;
   readonly configSource: string | undefined;
 }
 
@@ -36,6 +39,7 @@ export async function resolveRules(
       ? { config: ConfigSchema.parse({}), source: undefined }
       : await loadConfig({
           cwd: env.cwd,
+          userConfigDir: env.userConfigDir,
           ...(typeof flags.config === 'string' ? { file: resolve(env.cwd, flags.config) } : {}),
         });
   let rules = createRuleSet(loaded.config);
@@ -68,6 +72,8 @@ export async function resolveScan(
   await Promise.all(roots.map(assertDirectory));
 
   const minAge = parseDuration(flags.minAge ?? config.minAge ?? defaultMinAge);
+  const dormantMs =
+    config.dormantAfter === undefined ? DEFAULT_DORMANT_MS : parseDuration(config.dormantAfter);
   const minSize = flags.minSize ?? config.minSize;
   const depth = flags.depth ?? config.depth;
   return {
@@ -75,11 +81,13 @@ export async function resolveScan(
     rules,
     configSource: source,
     minAge,
+    dormantMs,
     options: {
       rules,
       exclude: [...config.exclude, ...flags.exclude],
       minAge,
       includeEmpty: flags.includeEmpty,
+      dormantFor: flags.stale ? dormantMs : undefined,
       minBytes: minSize === undefined ? undefined : parseSize(minSize),
       depth,
       home: env.home,

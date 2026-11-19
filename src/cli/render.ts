@@ -2,6 +2,7 @@ import { homedir } from 'node:os';
 import { styleText } from 'node:util';
 
 import { PROTECTION_LABELS } from '../fs/protection.js';
+import { activityOf, isDormant, type ProjectGroup } from '../scan/projects.js';
 import type { Entry, ScanSummary } from '../scan/scan.js';
 import { formatAge, formatSize } from '../units.js';
 
@@ -41,6 +42,62 @@ export function renderEntries(entries: readonly Entry[], now: number, home?: str
       ? line
       : styleText('dim', `${line}  (protected: ${PROTECTION_LABELS[entry.protection]})`);
   });
+  return [header, ...lines].join('\n');
+}
+
+const ECOSYSTEM_NAMES: Readonly<Record<string, string>> = {
+  'javascript-typescript': 'JS/TS',
+  python: 'Python',
+  rust: 'Rust',
+  go: 'Go',
+  apple: 'Apple',
+  'java-jvm': 'JVM',
+  dotnet: '.NET',
+  'dart-flutter': 'Dart',
+  cpp: 'C/C++',
+  'cache-marker': 'caches',
+};
+
+const ecosystemList = (group: ProjectGroup): string =>
+  group.ecosystems
+    .filter((id) => id !== 'vcs')
+    .map((id) => ECOSYSTEM_NAMES[id] ?? id)
+    .join(' · ');
+
+/**
+ * A scan rolled up per project, dormant and largest first. Activity is git's
+ * signal when it has one, otherwise the newest change inside the artifacts.
+ */
+export function renderProjects(
+  groups: readonly ProjectGroup[],
+  now: number,
+  dormantAfter: number,
+): string {
+  if (groups.length === 0) return '';
+  const rows = groups.map((group) => ({
+    name: `${group.name}${group.worktrees > 0 ? ` (+${group.worktrees} worktree${group.worktrees === 1 ? '' : 's'})` : ''}`,
+    size: formatSize(group.bytes),
+    items: String(group.artifacts),
+    active: formatAge(now - activityOf(group)),
+    dormant: isDormant(group, now, dormantAfter),
+    eco: ecosystemList(group),
+  }));
+  const w = (pick: (row: (typeof rows)[number]) => string, header: string): number =>
+    Math.max(header.length, ...rows.map((row) => pick(row).length));
+  const [wName, wSize, wItems, wActive] = [
+    w((r) => r.name, 'PROJECT'),
+    w((r) => r.size, 'SIZE'),
+    w((r) => r.items, 'ITEMS'),
+    w((r) => r.active, 'ACTIVE'),
+  ] as const;
+  const header = styleText(
+    'dim',
+    `${pad('PROJECT', wName)}  ${padStart('SIZE', wSize)}  ${padStart('ITEMS', wItems)}  ${padStart('ACTIVE', wActive)}  ECOSYSTEMS`,
+  );
+  const lines = rows.map(
+    (row) =>
+      `${pad(row.name, wName)}  ${padStart(row.size, wSize)}  ${padStart(row.items, wItems)}  ${styleText(row.dormant ? 'green' : 'reset', padStart(row.active, wActive))}  ${styleText('dim', row.eco)}`,
+  );
   return [header, ...lines].join('\n');
 }
 

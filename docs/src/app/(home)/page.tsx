@@ -36,8 +36,8 @@ const features = [
   },
   {
     icon: MonitorCog,
-    title: 'A UI worth using',
-    body: 'A full-screen terminal UI that fills in as results arrive. Sort, filter, select, review, delete.',
+    title: 'Projects, not folders',
+    body: 'One row per project — worktrees folded in, dormant ones first, one key (R) to select them. Review, then delete.',
     href: '/docs/guides/interactive-ui',
   },
   {
@@ -107,20 +107,19 @@ export default function HomePage() {
           </div>
         </div>
 
-        <Terminal title="purgeit scan ~/dev --min-size 100MB" className="shadow-xl">
-          {`$ purgeit scan ~/dev --min-size 100MB
-    SIZE  AGE  RULE          PATH
-  6.5 GB  6h   target        ~/dev/apps/mail/target
-  1.6 GB  2d   build         ~/dev/tools/ipa-forge/build
-979.6 MB  1d   node_modules  ~/dev/personal/mocha/node_modules
-942.9 MB  7h   node_modules  ~/dev/web/tallo/node_modules
+        <Terminal title="purgeit scan ~/dev" className="shadow-xl">
+          {`$ purgeit scan ~/dev
+PROJECT                    SIZE  ITEMS  ACTIVE  ECOSYSTEMS
+old-api                 1.3 GB      2     4mo  JS/TS
+mocha                   1.8 GB      3     5mo  JS/TS · Apple
+mail                    6.9 GB      1      5m  Rust
+pushstack (+1 worktree)   2 GB      5      2m  JS/TS
 
-4 artifacts · 10.0 GB reclaimable — scanned 1 root in 2.1s
+8 projects · 14.8 GB reclaimable — scanned 1 root in 2.1s
+3.1 GB of that is in 2 dormant projects — purgeit clean --stale targets them.
 
-$ purgeit clean ~/dev --min-age 30d --dry-run
-would delete   1.2 GB  ~/dev/old/api/node_modules
-skipped ~/dev/apps/mail/target: modified within the last 30 days
-Dry run: would delete 1 artifact, freeing 1.2 GB (1 skipped)`}
+$ purgeit clean ~/dev --stale --dry-run
+Dry run: would delete 5 artifacts, freeing 3.1 GB`}
         </Terminal>
       </section>
 

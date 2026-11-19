@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import picomatch from 'picomatch';
@@ -21,14 +21,15 @@ const regex = z.string().refine((value) => {
 }, 'must be a valid regular expression');
 
 /**
- * One piece of proof, evaluated against the directory that holds a candidate:
- * a sibling `file`, a sibling matching a `glob`, or a sibling file whose
- * contents match a `grep` pattern.
+ * One piece of proof: a sibling `file`, a sibling matching a `glob`, a sibling
+ * file whose contents match a `grep` pattern, or a file `inside` the candidate
+ * itself (a virtualenv is proved by the `pyvenv.cfg` it contains).
  */
 export const ConditionSchema = z.union([
   z.strictObject({ file: entryName }),
   z.strictObject({ glob: entryName }),
   z.strictObject({ grep: z.strictObject({ file: entryName, pattern: regex }) }),
+  z.strictObject({ inside: entryName }),
 ]);
 export type Condition = z.infer<typeof ConditionSchema>;
 
@@ -51,7 +52,17 @@ async function holds(
   condition: Condition,
   dir: string,
   names: ReadonlySet<string>,
+  candidate: string | undefined,
 ): Promise<boolean> {
+  if ('inside' in condition) {
+    return (
+      candidate !== undefined &&
+      (await access(join(candidate, condition.inside)).then(
+        () => true,
+        () => false,
+      ))
+    );
+  }
   if ('file' in condition) return names.has(condition.file);
   if ('glob' in condition) {
     const matches = globMatcher(condition.glob);
@@ -77,9 +88,10 @@ export async function findProof(
   when: When | readonly Condition[],
   dir: string,
   names: ReadonlySet<string>,
+  candidate?: string,
 ): Promise<Condition | undefined> {
   for (const condition of toConditions(when)) {
-    if (await holds(condition, dir, names)) return condition;
+    if (await holds(condition, dir, names, candidate)) return condition;
   }
   return undefined;
 }

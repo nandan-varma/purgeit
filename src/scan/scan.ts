@@ -5,18 +5,20 @@ import picomatch from 'picomatch';
 
 import { isSkippable, listDir } from '../fs/io.js';
 import { measure } from '../fs/measure.js';
-import { findProtection, type ProtectionReason } from '../fs/protection.js';
+import { findProtection, isGitIgnored, type ProtectionReason } from '../fs/protection.js';
 import { type Hit, matchMarker, matchNamed } from '../rules/match.js';
 import type { MatchRule, RuleSet } from '../rules/rule-set.js';
 import { stream } from '../stream.js';
+import { type ProjectRef, recognizeProject, resolveProject } from './project.js';
+import { syncProvider } from './sync.js';
 
 /** A directory a rule claimed, fully measured. */
 export interface Entry {
   readonly path: string;
   /** The scan root it was found under. */
   readonly root: string;
-  /** Its parent directory relative to the root — what the artifact belongs to. */
-  readonly project: string;
+  /** What it belongs to. */
+  readonly project: ProjectRef;
   readonly rule: MatchRule;
   /** What proved a gated rule (e.g. "package.json"). */
   readonly evidence: string | undefined;
@@ -26,9 +28,13 @@ export interface Entry {
   readonly lastActive: number;
   /** Why it must not be deleted; undefined when it is deletable. */
   readonly protection: ProtectionReason | undefined;
+  /** Whether git ignores it: `true` is evidence it is not authored; undefined outside a repository. */
+  readonly gitIgnored: boolean | undefined;
+  /** The cloud-sync provider whose folder it sits in, if any. */
+  readonly synced: string | undefined;
 }
 
-export type DropReason = 'empty' | 'too-small' | 'too-recent' | 'unreadable';
+export type DropReason = 'empty' | 'too-small' | 'too-recent' | 'active-project' | 'unreadable';
 
 export interface ScanSummary {
   /** Directories a rule claimed, before filtering. */
@@ -63,6 +69,8 @@ export interface ScanOptions {
   readonly minAge?: number;
   /** Keep artifacts that contain no files at all. */
   readonly includeEmpty?: boolean;
+  /** Drop artifacts of projects worked on within this many milliseconds (git's signal, else the artifact's own activity). */
+  readonly dormantFor?: number;
   /** Overrides the home directory (whose Library, Trash and Applications are never entered). */
   readonly home?: string;
 }
@@ -78,6 +86,25 @@ export function normalizeRoots(roots: readonly string[]): string[] {
       !resolved.slice(0, index).some((outer) => root === outer || root.startsWith(outer + sep)),
   );
 }
+
+type ProjectContext = () => Promise<ProjectRef>;
+
+/** Resolves once, on first use: most directories never need their project read. */
+function lazily(make: () => Promise<ProjectRef>): ProjectContext {
+  let pending: Promise<ProjectRef> | undefined;
+  return () => {
+    pending ??= make();
+    return pending;
+  };
+}
+
+/** The project of an artifact that sits outside any project: its own parent folder. */
+const standalone = (path: string): ProjectRef => ({
+  root: dirname(path),
+  kind: 'folder',
+  group: dirname(path),
+  touchedAt: undefined,
+});
 
 /**
  * Finds every directory under `roots` that a rule claims and streams it once
@@ -103,6 +130,7 @@ export async function* scan(
       empty: 0,
       'too-small': 0,
       'too-recent': 0,
+      'active-project': 0,
       unreadable: 0,
     };
     let found = 0;
@@ -122,7 +150,12 @@ export async function* scan(
       emit({ type: 'dropped', path, reason });
     };
 
-    async function settle(root: string, path: string, hit: Hit): Promise<void> {
+    async function settle(
+      root: string,
+      path: string,
+      hit: Hit,
+      project: ProjectContext | undefined,
+    ): Promise<void> {
       if (claimed.has(path)) return;
       claimed.add(path);
       found++;
@@ -144,7 +177,17 @@ export async function* scan(
         return drop(path, 'too-recent');
       }
 
-      const protection = await findProtection(path);
+      const ref = (await project?.()) ?? standalone(path);
+      if (
+        options.dormantFor !== undefined &&
+        startedAt - (ref.touchedAt ?? measured.lastActive) < options.dormantFor
+      ) {
+        return drop(path, 'active-project');
+      }
+      const [protection, gitIgnored] = await Promise.all([
+        findProtection(path),
+        ref.kind === 'folder' ? undefined : isGitIgnored(path),
+      ]);
       signal.throwIfAborted();
       if (protection === undefined) {
         entries++;
@@ -157,18 +200,25 @@ export async function* scan(
         entry: {
           path,
           root,
-          project: relative(root, dirname(path)) || '.',
+          project: ref,
           rule: hit.rule,
           evidence: hit.evidence,
           bytes: measured.bytes,
           files: measured.files,
           lastActive: measured.lastActive,
           protection,
+          gitIgnored,
+          synced: syncProvider(path, home),
         },
       });
     }
 
-    async function visit(root: string, dir: string, depth: number): Promise<void> {
+    async function visit(
+      root: string,
+      dir: string,
+      depth: number,
+      enclosing: ProjectContext | undefined,
+    ): Promise<void> {
       signal.throwIfAborted();
       let children: Awaited<ReturnType<typeof listDir>>;
       try {
@@ -179,10 +229,12 @@ export async function* scan(
         return;
       }
       const names = new Set(children.map((child) => child.name));
+      const seed = recognizeProject(dir, children, enclosing !== undefined);
+      const project = seed === undefined ? enclosing : lazily(() => resolveProject(seed));
 
       if (depth > 0) {
         const tagged = await matchMarker(rules, dir, names);
-        if (tagged !== undefined) return settle(root, dir, tagged);
+        if (tagged !== undefined) return settle(root, dir, tagged, project);
       }
 
       const tasks: Promise<void>[] = [];
@@ -197,17 +249,17 @@ export async function* scan(
         if (rule !== undefined) {
           tasks.push(
             matchNamed(rule, dir, names).then((hit) =>
-              hit === undefined ? undefined : settle(root, path, hit),
+              hit === undefined ? undefined : settle(root, path, hit, project),
             ),
           );
         } else if (options.depth === undefined || depth < options.depth) {
-          tasks.push(visit(root, path, depth + 1));
+          tasks.push(visit(root, path, depth + 1, project));
         }
       }
       await Promise.all(tasks);
     }
 
-    await Promise.all(normalizeRoots(roots).map((root) => visit(root, root, 0)));
+    await Promise.all(normalizeRoots(roots).map((root) => visit(root, root, 0, undefined)));
 
     emit({
       type: 'done',

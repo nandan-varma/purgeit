@@ -15,6 +15,9 @@ export async function runTui(resolved: ResolvedScan, env: CliEnv): Promise<numbe
       idleFor={resolved.minAge}
       historyFile={env.historyFile}
       home={env.home}
+      // An explicit --min-size already decides what is listed; otherwise hide the long tail.
+      floor={resolved.options.minBytes === undefined ? undefined : 0}
+      dormantMs={resolved.dormantMs}
     />,
     { alternateScreen: true },
   );

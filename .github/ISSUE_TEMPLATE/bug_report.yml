@@ -1,0 +1,31 @@
+name: Bug report
+description: Something purgeit did (or did not do) that it should not have
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **If purgeit deleted something it should not have, report it privately instead:** see [SECURITY.md](../blob/main/SECURITY.md).
+  - type: input
+    id: version
+    attributes:
+      label: purgeit version
+      description: Output of `purgeit --version`
+    validations: { required: true }
+  - type: input
+    id: platform
+    attributes:
+      label: OS and how you installed it
+      placeholder: macOS 15, npx / standalone binary / npm -g
+    validations: { required: true }
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: { required: true }
+  - type: textarea
+    id: explain
+    attributes:
+      label: Diagnostics
+      description: For a wrongly matched or skipped directory, paste `purgeit explain <path>`. For a wrong scan, `purgeit scan <dir> --format json` (trim private paths).
+      render: shell

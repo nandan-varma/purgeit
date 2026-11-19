@@ -93,8 +93,43 @@ describe('clean', () => {
     expect(existsSync(join(outside, 'node_modules/x'))).toBe(true);
   });
 
+  it('cannot be tricked with traversal segments or a symlinked ancestor that leaves the roots', async () => {
+    const { root } = fixture();
+    const outside = buildTree({ victim: { node_modules: { 'keep.js': 'precious' } } });
+    backdate(outside);
+    symlinkSync(join(outside, 'victim'), join(root, 'app', 'portal'));
+    const sneaky = [
+      join(root, 'app', '..', '..', outside.split('/').at(-1) ?? '', 'victim', 'node_modules'),
+      join(root, 'app', 'portal', 'node_modules'), // ancestor is a symlink out of the roots
+      `${join(root, 'app')}/node_modules/../../../../..`,
+    ];
+    const events = await run(
+      sneaky.map((path) => ({ path })),
+      { rules, roots: [root] },
+    );
+    for (const path of sneaky) {
+      expect(
+        events.find((e) => 'path' in e && e.path === path && e.type === 'deleted'),
+      ).toBeUndefined();
+    }
+    expect(existsSync(join(outside, 'victim', 'node_modules', 'keep.js'))).toBe(true);
+    expect(existsSync(root)).toBe(true);
+  });
+
+  it('follows a symlinked ancestor that stays inside the roots, deleting the verified real path', async () => {
+    const { root, modules } = fixture();
+    symlinkSync(join(root, 'app'), join(root, 'alias'));
+    const viaAlias = join(root, 'alias', 'node_modules');
+    const events = await run([{ path: viaAlias, bytes: 1 }], { rules, roots: [root] });
+    expect(outcome(events, viaAlias)).toMatchObject({ type: 'deleted' });
+    expect(existsSync(modules)).toBe(false);
+    expect(existsSync(join(root, 'app'))).toBe(true);
+  });
+
   it('refuses protected content', async () => {
-    const root = buildTree({ app: { target: { deploy: { 'p-keypair.json': '[]' } } } });
+    const root = buildTree({
+      app: { 'Cargo.toml': '', target: { deploy: { 'p-keypair.json': '[]' } } },
+    });
     backdate(root);
     const path = join(root, 'app/target');
     const events = await run([{ path }], { rules, roots: [root] });

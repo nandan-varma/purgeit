@@ -19,7 +19,7 @@ export async function matchNamed(
   names: ReadonlySet<string>,
 ): Promise<Hit | undefined> {
   if (rule.kind === 'safe') return { rule, evidence: undefined };
-  const proof = await findProof(rule.when, dir, names);
+  const proof = await findProof(rule.when, dir, names, join(dir, rule.name));
   return proof === undefined ? undefined : { rule, evidence: describeCondition(proof) };
 }
 

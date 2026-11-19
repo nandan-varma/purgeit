@@ -20,6 +20,7 @@ export const KIND_ORDER: Readonly<Record<RuleDefinition['kind'], number>> = {
 export function describeCondition(condition: Condition): string {
   if ('file' in condition) return condition.file;
   if ('glob' in condition) return condition.glob;
+  if ('inside' in condition) return `${condition.inside} inside it`;
   return `${condition.grep.file} matching /${condition.grep.pattern}/`;
 }
 

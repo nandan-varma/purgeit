@@ -85,6 +85,19 @@
                       "grep"
                     ],
                     "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "inside": {
+                        "type": "string",
+                        "minLength": 1
+                      }
+                    },
+                    "required": [
+                      "inside"
+                    ],
+                    "additionalProperties": false
                   }
                 ]
               },
@@ -142,6 +155,19 @@
                       },
                       "required": [
                         "grep"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "inside": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "required": [
+                        "inside"
                       ],
                       "additionalProperties": false
                     }
@@ -242,6 +268,10 @@
     },
     "minSize": {
       "description": "Only offer artifacts at least this large.",
+      "type": "string"
+    },
+    "dormantAfter": {
+      "description": "A project untouched for this long is dormant (default 30d). Drives sorting, the interactive R key and --stale.",
       "type": "string"
     },
     "depth": {

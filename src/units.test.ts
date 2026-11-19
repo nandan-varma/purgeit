@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import { PurgeitError } from './errors.js';
-import { formatAge, formatDuration, formatSize, parseDuration, parseSize } from './units.js';
+import {
+  formatAge,
+  formatAgo,
+  formatDuration,
+  formatSize,
+  parseDuration,
+  parseSize,
+} from './units.js';
 
 describe('parseDuration', () => {
   it.each([
@@ -42,5 +49,9 @@ describe('formatting', () => {
     [240 * 86_400_000, '8mo'],
     [900 * 86_400_000, '2y'],
   ])('age %i → %s', (ms, label) => expect(formatAge(ms)).toBe(label));
+  it('ago reads naturally', () => {
+    expect(formatAgo(1000)).toBe('just now');
+    expect(formatAgo(3 * 86_400_000)).toBe('3d ago');
+  });
   it('durations', () => expect(formatDuration(7 * 86_400_000)).toBe('7 days'));
 });

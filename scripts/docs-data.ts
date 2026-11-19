@@ -2,37 +2,19 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import type { Command } from 'commander';
 import { z } from 'zod';
 
 import pkg from '../package.json' with { type: 'json' };
+import { describeProgram } from '../src/cli/introspect.js';
 import { createProgram } from '../src/cli/program.js';
 import { ConfigSchema } from '../src/config/schema.js';
 import { describeWhen } from '../src/rules/catalog/describe.js';
 import { RULE_CATALOG } from '../src/rules/catalog/index.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER } from '../src/rules/catalog/types.js';
+import { buildSchema } from './schema.js';
 
 const quiet = () => {};
 const json = (value: unknown) => `${JSON.stringify(value, null, 2)}\n`;
-
-function describeCommand(command: Command) {
-  return {
-    name: command.name(),
-    aliases: command.aliases(),
-    description: command.description(),
-    arguments: command.registeredArguments.map((argument) => ({
-      name: argument.name(),
-      required: argument.required,
-      variadic: argument.variadic,
-    })),
-    options: command.options.map((option) => ({
-      flags: option.flags,
-      description: option.description,
-      default: option.defaultValue ?? null,
-      choices: option.argChoices ?? null,
-    })),
-  };
-}
 
 /**
  * Everything the docs site shows that comes from the code: the CLI, the rule
@@ -65,7 +47,7 @@ export function buildDocsData(): Record<string, string> {
   );
 
   return {
-    'cli.json': json(program.commands.map(describeCommand)),
+    'cli.json': json(describeProgram(program)),
     'rules.json': json({ categories, rules }),
     'config.json': json(z.toJSONSchema(ConfigSchema, { io: 'input' })),
     'meta.json': json({ version: pkg.version, node: pkg.engines.node }),
@@ -73,10 +55,14 @@ export function buildDocsData(): Record<string, string> {
 }
 
 export const generatedDir = new URL('../docs/src/generated/', import.meta.url);
+/** The config JSON Schema, served as https://purgeit.nandan.fyi/schema.json. */
+export const publicSchema = new URL('../docs/public/schema.json', import.meta.url);
 
 if (process.argv[1]?.endsWith('docs-data.ts')) {
   mkdirSync(dirname(fileURLToPath(new URL('x', generatedDir))), { recursive: true });
   for (const [name, content] of Object.entries(buildDocsData())) {
     writeFileSync(new URL(name, generatedDir), content);
   }
+  mkdirSync(dirname(fileURLToPath(publicSchema)), { recursive: true });
+  writeFileSync(publicSchema, buildSchema());
 }

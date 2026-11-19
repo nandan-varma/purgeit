@@ -18,10 +18,32 @@ Runs *every* check — rules, protection, recent activity — and reports what w
 | You want | Use |
 | --- | --- |
 | Only the big wins | `--min-size 100MB` |
-| Only things you haven't touched in a while | `--min-age 30d` |
+| Only projects you have abandoned | `--stale` (not worked on for 30 days — change it with `dormantAfter`) |
+| Only artifacts untouched for a while | `--min-age 30d` |
 | Only certain tools' output | `--only node_modules,target` or a [group](/docs/reference/configuration) |
 | Only proven-safe names | `--safe-only` (skips rules that need a manifest as proof) |
 | Keep some folders out | `--exclude 'legacy/**'` |
+
+## Ask why
+
+When something is matched, skipped or protected and you wonder why:
+
+```bash
+purgeit explain ~/dev/app/node_modules
+```
+
+```text
+~/dev/app/node_modules
+  rule       ✓ node_modules — npm / yarn / pnpm dependencies (safe wherever it appears)
+  project    ✓ app (repo, ~/dev/app) · last git activity 5mo ago
+  size       ✓ 979.6 MB in 41,230 files · last changed 5mo ago
+  protection ✓ nothing marks it as authored
+  git        ✓ ignored by git — evidence it is not authored
+  synced     ✓ not in a cloud-synced folder
+  verdict    ✓ clean would delete it
+```
+
+It runs the **same checks `clean` runs**, so the verdict can never disagree with what would happen.
 
 ## 3. Review, then apply a plan
 

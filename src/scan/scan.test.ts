@@ -37,7 +37,12 @@ describe('scan', () => {
     expect(summary.bytes).toBeGreaterThan(25_000);
 
     const modules = entries.find((entry) => entry.rule.name === 'node_modules');
-    expect(modules).toMatchObject({ project: 'app-a', files: 2, protection: undefined });
+    expect(modules).toMatchObject({
+      // the fixture's top-level .git makes the whole tree one repository
+      project: { root, kind: 'repo' },
+      files: 2,
+      protection: undefined,
+    });
     const tagged = entries.find((entry) => entry.rule.kind === 'marker');
     expect(tagged?.evidence).toBe('CACHEDIR.TAG');
     const dist = entries.find((entry) => entry.rule.name === 'dist');
@@ -90,7 +95,11 @@ describe('scan', () => {
 
   it('reports protected artifacts without counting them as reclaimable', async () => {
     const root = buildTree({
-      app: { target: { deploy: { 'p-keypair.json': '[]' } }, node_modules: { a: 'x' } },
+      app: {
+        'Cargo.toml': '',
+        target: { deploy: { 'p-keypair.json': '[]' } },
+        node_modules: { a: 'x' },
+      },
     });
     const { entries, summary } = await scanAll([root], { rules });
     expect(entries.map((e) => [e.rule.name, e.protection])).toEqual([
@@ -146,7 +155,7 @@ describe('scan', () => {
       proj: { node_modules: { x: 'x' } },
     });
     const { entries } = await scanAll([home], { rules, home });
-    expect(entries.map((e) => e.project)).toEqual(['proj']);
+    expect(entries.map((e) => rel(home, e.project.root))).toEqual(['proj']);
   });
 
   it('scans several roots once each and counts unreadable directories', async () => {

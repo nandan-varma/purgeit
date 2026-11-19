@@ -51,6 +51,11 @@ export const ConfigSchema = z
       .describe('Named sets of rules, selectable with `--only <group>`.'),
     minAge: duration.optional().describe('Only offer artifacts untouched for at least this long.'),
     minSize: size.optional().describe('Only offer artifacts at least this large.'),
+    dormantAfter: duration
+      .optional()
+      .describe(
+        'A project untouched for this long is dormant (default 30d). Drives sorting, the interactive R key and --stale.',
+      ),
     depth: z.number().int().positive().optional().describe('Never descend deeper than this.'),
   })
   .superRefine((config, ctx) => {

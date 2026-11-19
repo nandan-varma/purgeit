@@ -5,10 +5,13 @@ description: Every command and option, generated from the CLI itself.
 
 <Terminal title="purgeit --help">
 {`purgeit [dirs…]            browse and select in the interactive UI (default)
-purgeit scan [dirs…]       list artifacts, delete nothing
+purgeit scan [dirs…]       list projects and artifacts, delete nothing
 purgeit clean [dirs…]      delete artifacts
+purgeit explain <path>     why a directory is matched, skipped or protected
 purgeit rules              list the rules in effect
 purgeit history            show what has been deleted
+purgeit init               write a starter config
+purgeit completion <sh>    shell completions (bash, zsh, fish)
 purgeit skill              print the guide for AI agents`}
 </Terminal>
 
@@ -30,6 +33,12 @@ The default command: running `purgeit` with directories (or none) opens this. Se
 
 `--min-age` defaults to `7d` for `clean` and doubles as a guard: anything with a change inside that window is skipped at deletion time, whatever the scan said. See [Clean safely](/docs/guides/clean-safely).
 
+## explain
+
+Runs the same checks `clean` runs against one directory and reports what it finds — the fastest way to understand a surprising result.
+
+<CliReference command="explain" />
+
 ## rules
 
 <CliReference command="rules" />
@@ -37,6 +46,20 @@ The default command: running `purgeit` with directories (or none) opens this. Se
 ## history
 
 <CliReference command="history" />
+
+## init
+
+<CliReference command="init" />
+
+## completion
+
+```bash
+source <(purgeit completion bash)                                    # ~/.bashrc
+source <(purgeit completion zsh)                                     # ~/.zshrc
+purgeit completion fish > ~/.config/fish/completions/purgeit.fish
+```
+
+<CliReference command="completion" />
 
 ## skill
 

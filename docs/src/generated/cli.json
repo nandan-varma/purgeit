@@ -15,60 +15,111 @@
     "options": [
       {
         "flags": "--discover",
+        "names": [
+          "--discover"
+        ],
+        "takesValue": false,
         "description": "also scan the folders where this machine keeps projects",
         "default": false,
         "choices": null
       },
       {
         "flags": "-x, --exclude <glob>",
+        "names": [
+          "-x",
+          "--exclude"
+        ],
+        "takesValue": true,
         "description": "skip directories matching a glob (repeatable)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--only <rules>",
+        "names": [
+          "--only"
+        ],
+        "takesValue": true,
         "description": "only look for these rules or groups (repeatable, comma-separated)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--safe-only",
+        "names": [
+          "--safe-only"
+        ],
+        "takesValue": false,
         "description": "skip rules that need a sibling manifest as proof",
         "default": false,
         "choices": null
       },
       {
         "flags": "--min-size <size>",
+        "names": [
+          "--min-size"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts smaller than this, e.g. 50MB",
         "default": null,
         "choices": null
       },
       {
         "flags": "--min-age <duration>",
+        "names": [
+          "--min-age"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts touched more recently than this, e.g. 7d. Nothing is ever refused in the UI unless you set this.",
         "default": null,
         "choices": null
       },
       {
         "flags": "--depth <n>",
+        "names": [
+          "--depth"
+        ],
+        "takesValue": true,
         "description": "never descend deeper than this",
         "default": null,
         "choices": null
       },
       {
+        "flags": "--stale",
+        "names": [
+          "--stale"
+        ],
+        "takesValue": false,
+        "description": "only artifacts in dormant projects (not worked on for 30 days; see dormantAfter)",
+        "default": false,
+        "choices": null
+      },
+      {
         "flags": "--include-empty",
+        "names": [
+          "--include-empty"
+        ],
+        "takesValue": false,
         "description": "keep artifacts that contain no files",
         "default": false,
         "choices": null
       },
       {
         "flags": "--config <file>",
+        "names": [
+          "--config"
+        ],
+        "takesValue": true,
         "description": "use this config file instead of searching the working directory",
         "default": null,
         "choices": null
       },
       {
         "flags": "--no-config",
+        "names": [
+          "--no-config"
+        ],
+        "takesValue": false,
         "description": "ignore any config file",
         "default": null,
         "choices": null
@@ -89,72 +140,140 @@
     "options": [
       {
         "flags": "--discover",
+        "names": [
+          "--discover"
+        ],
+        "takesValue": false,
         "description": "also scan the folders where this machine keeps projects",
         "default": false,
         "choices": null
       },
       {
         "flags": "-x, --exclude <glob>",
+        "names": [
+          "-x",
+          "--exclude"
+        ],
+        "takesValue": true,
         "description": "skip directories matching a glob (repeatable)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--only <rules>",
+        "names": [
+          "--only"
+        ],
+        "takesValue": true,
         "description": "only look for these rules or groups (repeatable, comma-separated)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--safe-only",
+        "names": [
+          "--safe-only"
+        ],
+        "takesValue": false,
         "description": "skip rules that need a sibling manifest as proof",
         "default": false,
         "choices": null
       },
       {
         "flags": "--min-size <size>",
+        "names": [
+          "--min-size"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts smaller than this, e.g. 50MB",
         "default": null,
         "choices": null
       },
       {
         "flags": "--min-age <duration>",
+        "names": [
+          "--min-age"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts touched more recently than this, e.g. 7d. Default: 0.",
         "default": null,
         "choices": null
       },
       {
         "flags": "--depth <n>",
+        "names": [
+          "--depth"
+        ],
+        "takesValue": true,
         "description": "never descend deeper than this",
         "default": null,
         "choices": null
       },
       {
+        "flags": "--stale",
+        "names": [
+          "--stale"
+        ],
+        "takesValue": false,
+        "description": "only artifacts in dormant projects (not worked on for 30 days; see dormantAfter)",
+        "default": false,
+        "choices": null
+      },
+      {
         "flags": "--include-empty",
+        "names": [
+          "--include-empty"
+        ],
+        "takesValue": false,
         "description": "keep artifacts that contain no files",
         "default": false,
         "choices": null
       },
       {
         "flags": "--config <file>",
+        "names": [
+          "--config"
+        ],
+        "takesValue": true,
         "description": "use this config file instead of searching the working directory",
         "default": null,
         "choices": null
       },
       {
         "flags": "--no-config",
+        "names": [
+          "--no-config"
+        ],
+        "takesValue": false,
         "description": "ignore any config file",
         "default": null,
         "choices": null
       },
       {
         "flags": "--format <format>",
+        "names": [
+          "--format"
+        ],
+        "takesValue": true,
         "description": "output format",
         "default": "text",
         "choices": [
           "text",
           "json",
           "ndjson"
+        ]
+      },
+      {
+        "flags": "--by <unit>",
+        "names": [
+          "--by"
+        ],
+        "takesValue": true,
+        "description": "list per project, or every artifact",
+        "default": "project",
+        "choices": [
+          "project",
+          "artifact"
         ]
       }
     ]
@@ -173,90 +292,247 @@
     "options": [
       {
         "flags": "--discover",
+        "names": [
+          "--discover"
+        ],
+        "takesValue": false,
         "description": "also scan the folders where this machine keeps projects",
         "default": false,
         "choices": null
       },
       {
         "flags": "-x, --exclude <glob>",
+        "names": [
+          "-x",
+          "--exclude"
+        ],
+        "takesValue": true,
         "description": "skip directories matching a glob (repeatable)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--only <rules>",
+        "names": [
+          "--only"
+        ],
+        "takesValue": true,
         "description": "only look for these rules or groups (repeatable, comma-separated)",
         "default": [],
         "choices": null
       },
       {
         "flags": "--safe-only",
+        "names": [
+          "--safe-only"
+        ],
+        "takesValue": false,
         "description": "skip rules that need a sibling manifest as proof",
         "default": false,
         "choices": null
       },
       {
         "flags": "--min-size <size>",
+        "names": [
+          "--min-size"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts smaller than this, e.g. 50MB",
         "default": null,
         "choices": null
       },
       {
         "flags": "--min-age <duration>",
+        "names": [
+          "--min-age"
+        ],
+        "takesValue": true,
         "description": "ignore artifacts touched more recently than this, e.g. 7d. Also the window nothing recently active is deleted within. Default: 7d.",
         "default": null,
         "choices": null
       },
       {
         "flags": "--depth <n>",
+        "names": [
+          "--depth"
+        ],
+        "takesValue": true,
         "description": "never descend deeper than this",
         "default": null,
         "choices": null
       },
       {
+        "flags": "--stale",
+        "names": [
+          "--stale"
+        ],
+        "takesValue": false,
+        "description": "only artifacts in dormant projects (not worked on for 30 days; see dormantAfter)",
+        "default": false,
+        "choices": null
+      },
+      {
         "flags": "--include-empty",
+        "names": [
+          "--include-empty"
+        ],
+        "takesValue": false,
         "description": "keep artifacts that contain no files",
         "default": false,
         "choices": null
       },
       {
         "flags": "--config <file>",
+        "names": [
+          "--config"
+        ],
+        "takesValue": true,
         "description": "use this config file instead of searching the working directory",
         "default": null,
         "choices": null
       },
       {
         "flags": "--no-config",
+        "names": [
+          "--no-config"
+        ],
+        "takesValue": false,
         "description": "ignore any config file",
         "default": null,
         "choices": null
       },
       {
         "flags": "--plan <file>",
+        "names": [
+          "--plan"
+        ],
+        "takesValue": true,
         "description": "delete exactly what a reviewed `scan --format json` report lists",
         "default": null,
         "choices": null
       },
       {
         "flags": "-y, --yes",
+        "names": [
+          "-y",
+          "--yes"
+        ],
+        "takesValue": false,
         "description": "do not ask for confirmation",
         "default": false,
         "choices": null
       },
       {
         "flags": "-n, --dry-run",
+        "names": [
+          "-n",
+          "--dry-run"
+        ],
+        "takesValue": false,
         "description": "run every check but delete nothing",
         "default": false,
         "choices": null
       },
       {
         "flags": "--format <format>",
+        "names": [
+          "--format"
+        ],
+        "takesValue": true,
         "description": "output format",
         "default": "text",
         "choices": [
           "text",
           "json"
         ]
+      }
+    ]
+  },
+  {
+    "name": "explain",
+    "aliases": [],
+    "description": "explain why a directory is (or is not) matched, protected, and what clean would do",
+    "arguments": [
+      {
+        "name": "path",
+        "required": true,
+        "variadic": false
+      }
+    ],
+    "options": [
+      {
+        "flags": "--min-age <duration>",
+        "names": [
+          "--min-age"
+        ],
+        "takesValue": true,
+        "description": "the recent-activity window to judge against (default 7d)",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--config <file>",
+        "names": [
+          "--config"
+        ],
+        "takesValue": true,
+        "description": "use this config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--no-config",
+        "names": [
+          "--no-config"
+        ],
+        "takesValue": false,
+        "description": "ignore any config file",
+        "default": null,
+        "choices": null
+      },
+      {
+        "flags": "--format <format>",
+        "names": [
+          "--format"
+        ],
+        "takesValue": true,
+        "description": "output format",
+        "default": "text",
+        "choices": [
+          "text",
+          "json"
+        ]
+      }
+    ]
+  },
+  {
+    "name": "completion",
+    "aliases": [],
+    "description": "print a shell completion script (bash, zsh or fish)",
+    "arguments": [
+      {
+        "name": "shell",
+        "required": true,
+        "variadic": false
+      }
+    ],
+    "options": []
+  },
+  {
+    "name": "init",
+    "aliases": [],
+    "description": "write a starter purgeit.config.ts in the current directory",
+    "arguments": [],
+    "options": [
+      {
+        "flags": "--json",
+        "names": [
+          "--json"
+        ],
+        "takesValue": false,
+        "description": "write purgeit.config.json (with a $schema) instead",
+        "default": false,
+        "choices": null
       }
     ]
   },
@@ -268,36 +544,60 @@
     "options": [
       {
         "flags": "--category <id>",
+        "names": [
+          "--category"
+        ],
+        "takesValue": true,
         "description": "only this ecosystem, e.g. rust",
         "default": null,
         "choices": null
       },
       {
         "flags": "--only <rules>",
+        "names": [
+          "--only"
+        ],
+        "takesValue": true,
         "description": "only these rules",
         "default": [],
         "choices": null
       },
       {
         "flags": "--safe-only",
+        "names": [
+          "--safe-only"
+        ],
+        "takesValue": false,
         "description": "only rules that need no proof",
         "default": false,
         "choices": null
       },
       {
         "flags": "--config <file>",
+        "names": [
+          "--config"
+        ],
+        "takesValue": true,
         "description": "use this config file",
         "default": null,
         "choices": null
       },
       {
         "flags": "--no-config",
+        "names": [
+          "--no-config"
+        ],
+        "takesValue": false,
         "description": "ignore any config file",
         "default": null,
         "choices": null
       },
       {
         "flags": "--format <format>",
+        "names": [
+          "--format"
+        ],
+        "takesValue": true,
         "description": "output format",
         "default": "text",
         "choices": [
@@ -315,12 +615,21 @@
     "options": [
       {
         "flags": "-n, --limit <count>",
+        "names": [
+          "-n",
+          "--limit"
+        ],
+        "takesValue": true,
         "description": "how many records to show",
         "default": 20,
         "choices": null
       },
       {
         "flags": "--format <format>",
+        "names": [
+          "--format"
+        ],
+        "takesValue": true,
         "description": "output format",
         "default": "text",
         "choices": [

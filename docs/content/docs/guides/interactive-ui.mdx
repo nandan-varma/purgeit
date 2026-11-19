@@ -1,46 +1,74 @@
 ---
 title: Interactive UI
-description: Browse, filter, select and delete in a full-screen terminal UI.
+description: Browse projects, select what to clean, and delete — in a full-screen terminal UI.
 ---
 
 `purgeit [dirs…]` opens a full-screen UI in an interactive terminal. It uses the terminal's alternate screen, so your scrollback is untouched when you leave. Rows appear as they are measured, and the header shows progress and running totals.
 
+## Projects first
+
+A project is the unit you think in, so that is what you see: **one row per project**, with every artifact (`node_modules`, `.next`, `target`, …) folded inside it.
+
 <Terminal title="purgeit ~/dev">
-{`purgeit ~/dev                                          scanned in 2.1s
-12.3 GB reclaimable  ·  2 selected (7.0 GB)
-          SIZE↓  AGE    RULE              PATH
-▸ [x]    6.5 GB  6h     target            ~/dev/apps/mail/target
-  [ ]    1.6 GB  2d     build             ~/dev/tools/ipa-forge/build
-  [x]  979.6 MB  1d     node_modules      ~/dev/personal/mocha/node_modules
-   ⊘       4 KB  22mo   dist              ~/dev/tracked/dist`}
+{`purgeit ~/dev                                               scanned in 2.1s
+14.8 GB reclaimable in 8 projects  ·  3.1 GB dormant (3)  ·  2 selected (3.1 GB)
+projects · sort: dormant first  ·  +62 small artifacts hidden (34 MB) — m to show
+       PROJECT                                SIZE  ITEMS  ACTIVE  ECOSYSTEMS
+▸ [x] › mocha                               1.8 GB      3     5mo  JS/TS · Apple
+  [x] › old-api                             1.3 GB      2     4mo  JS/TS
+  [ ] › mail                                6.9 GB      1      5m  Rust
+  [~] ⌄ pushstack  +1 worktree                2 GB      5      2m  JS/TS
+        [x] node_modules                    948 MB             22h
+        [ ] .next                           412 MB              2m`}
 </Terminal>
 
-- **AGE** is coloured by recency: red under a week, yellow under a month, green beyond.
-- **⊘** marks a *protected* artifact. It is shown with the reason but can never be selected.
-- The two lines under the list say which rule matched and what proved it (for example "proved by `package.json`").
+- **One project, however many checkouts.** A project is the nearest git repository (a monorepo is one project), or a manifest folder outside git. Git **worktrees fold into the repository they were created from** (`+1 worktree`), so agent and experiment worktrees stop multiplying the list.
+- **Dormant first.** *ACTIVE* is when the project was last worked on — from git's own log, so a rebuild or `git status` doesn't count — and anything untouched for 30 days is *dormant*. Dormant projects sort to the top and are the real wins: a large `node_modules` in a project you abandoned months ago.
+- **Small things stay out of the way.** Artifacts under 10 MB are hidden, with a footer saying how many and how much. Press `m` to show them.
+- A single project directory is listed flat — there is nothing to group.
 
-## Keys
+## Select quickly
+
+| Key | Does |
+| --- | --- |
+| `R` | select every artifact in **dormant** projects — the one-key cleanup |
+| `space` | select a row; on a project, all of its artifacts (`[~]` means partly selected) |
+| `a` · `n` · `i` | select all shown · none · invert |
+| `→` `l` / `←` `h` | expand / collapse a project (`←` on an artifact jumps to its project) |
+| `e` · `E` | expand all · collapse all |
+
+## Everything else
 
 | Key | Action |
 | --- | --- |
 | `↑` `↓` / `k` `j` | move |
 | `PgUp` `PgDn` · `g` `G` | page · top · bottom |
-| `space` | select / unselect |
-| `a` · `n` · `i` | select all shown · none · invert |
-| `/` | filter by path or rule, live. `esc` clears |
-| `s` · `r` | cycle sort (size, age, path) · reverse |
+| `/` | filter by project, path or rule, live. `esc` clears |
+| `s` · `r` | cycle sort (dormant first, size, oldest, name) · reverse |
+| `v` | projects ⇄ flat artifact list |
+| `m` | show / hide small artifacts |
+| `?` | help |
 | `enter` | review the selection |
 | `y` | delete (in the review) |
 | `esc` | cancel the review |
 | `b` | back to the list after deleting |
 | `q` | quit |
 
+The two lines under the list explain the row under the cursor: for a project, when it was last worked on and how many artifacts it holds; for an artifact, which rule matched and what proved it, plus whether git ignores it (`git-ignored ✓`, or a warning when it doesn't), and a note when it sits in a cloud-synced folder.
+
 ## Deleting is two deliberate steps
 
-`enter` opens a review with the count and total. Only `y` deletes. Each path is re-verified first; anything refused is listed afterwards with the reason, and what was deleted is recorded in [`purgeit history`](/docs/reference/cli#history).
+`enter` opens a review grouped **by project** with counts and sizes — not forty paths. It warns when a selected project was worked on in the last week, and when artifacts sit in Dropbox, iCloud or similar. Only `y` deletes. Each path is re-verified first; anything refused is listed afterwards with the reason, and what was deleted is recorded in [`purgeit history`](/docs/reference/cli#history).
+
+<Callout title="⊘ protected artifacts">
+A protected artifact — one that contains its own `.git`, a deploy keypair, or git-tracked files — is shown with its reason but can never be selected, not even by `R` or `a`.
+</Callout>
 
 <Accordions>
   <Accordion title="The UI says it needs a terminal">
     The UI requires an interactive terminal. In scripts and pipes use [`scan` and `clean`](/docs/reference/cli) instead; running `purgeit` without a terminal exits with code `2` and says so.
+  </Accordion>
+  <Accordion title="Change what counts as dormant">
+    Set `dormantAfter` in your [config](/docs/reference/configuration), for example `dormantAfter: '14d'`.
   </Accordion>
 </Accordions>

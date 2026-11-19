@@ -8,7 +8,8 @@ import { backdate, blob, buildTree } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
 import { App } from './App.js';
 
-const BOTH = /(?=[\s\S]*node_modules)(?=[\s\S]*target)/;
+/** Both projects are listed (collapsed — projects are the unit). */
+const BOTH = /(?=[\s\S]*\bapp\b)(?=[\s\S]*\brust\b)/;
 const tick = (ms = 60) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function until(read: () => string | undefined, pattern: RegExp): Promise<string> {
@@ -35,6 +36,7 @@ function setup() {
       idleFor={0}
       historyFile={undefined}
       home={root}
+      floor={0}
     />,
   );
   return { root, ...ui };
@@ -45,8 +47,21 @@ describe('<App />', () => {
     const { lastFrame, unmount } = setup();
     const frame = await until(lastFrame, BOTH);
     expect(frame).toMatch(/purgeit/);
-    expect(frame).toMatch(/node_modules/);
-    expect(frame).toMatch(/reclaimable/);
+    expect(frame).toMatch(/reclaimable in 2 projects/);
+    expect(frame).toMatch(/dormant/);
+    expect(frame).not.toMatch(/node_modules\b.*\n.*target/); // artifacts stay folded until asked
+    unmount();
+  });
+
+  it('expands a project to show its artifacts, and shows help', async () => {
+    const { lastFrame, stdin, unmount } = setup();
+    await until(lastFrame, BOTH);
+    stdin.write('e');
+    await until(lastFrame, /(?=[\s\S]*node_modules)(?=[\s\S]*target)/);
+    stdin.write('?');
+    await until(lastFrame, /select every artifact in dormant projects/);
+    stdin.write('\u001b');
+    expect(await until(lastFrame, /space select/)).toMatch(/enter review/);
     unmount();
   });
 
@@ -57,10 +72,10 @@ describe('<App />', () => {
     stdin.write('\r');
     await until(lastFrame, /Nothing selected/);
 
-    stdin.write('a');
+    stdin.write('R'); // everything here is dormant: backdated, and no git activity
     await until(lastFrame, /2 selected/);
     stdin.write('\r');
-    await until(lastFrame, /Delete 2 artifacts/);
+    await until(lastFrame, /Delete 2 artifacts in 2 projects/);
     expect(existsSync(join(root, 'app/node_modules'))).toBe(true);
 
     stdin.write('\u001b'); // esc cancels
@@ -68,7 +83,7 @@ describe('<App />', () => {
     expect(existsSync(join(root, 'app/node_modules'))).toBe(true);
 
     stdin.write('\r');
-    await until(lastFrame, /Delete 2 artifacts/);
+    await until(lastFrame, /Delete 2 artifacts in 2 projects/);
     stdin.write('y');
     await until(lastFrame, /Freed/);
     expect(existsSync(join(root, 'app/node_modules'))).toBe(false);
@@ -83,9 +98,9 @@ describe('<App />', () => {
     const { lastFrame, stdin, unmount } = setup();
     await until(lastFrame, BOTH);
     stdin.write('/');
-    stdin.write('tar');
-    const frame = await until(lastFrame, /filter: tar/);
-    expect(frame).not.toMatch(/node_modules/);
+    stdin.write('rust');
+    const frame = await until(lastFrame, /filter: rust/);
+    expect(frame).not.toMatch(/\bapp\b/);
     stdin.write('\u001b');
     await until(lastFrame, BOTH);
     unmount();
