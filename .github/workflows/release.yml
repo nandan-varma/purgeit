@@ -16,8 +16,8 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 22
-          registry-url: https://registry.npmjs.org
+          # Node 24 ships npm >= 11.5.1, which trusted publishing (OIDC) requires.
+          node-version: 24
           cache: npm
 
       - run: npm ci
@@ -29,6 +29,6 @@ jobs:
       - run: npm test
       - run: npm run build
 
-      - run: npm publish --provenance --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # Authenticates with GitHub's OIDC identity (npm "Trusted Publisher" for
+      # release.yml); no token is stored. Provenance is attached automatically.
+      - run: npm publish --access public
