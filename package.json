@@ -2,25 +2,33 @@
   "name": "purgeit",
   "version": "0.5.0",
   "description": "Find and safely delete regenerable dev build artifacts (node_modules, dist, target, Pods, ...) across your projects",
+  "keywords": [
+    "build-artifacts",
+    "cleanup",
+    "cli",
+    "dev-tools",
+    "disk-space",
+    "node_modules",
+    "npkill",
+    "tui"
+  ],
+  "homepage": "https://purgeit.nandan.fyi",
+  "bugs": {
+    "url": "https://github.com/nandan-varma/purgeit/issues"
+  },
   "license": "MIT",
   "author": "Nandan Varma",
-  "homepage": "https://purgeit.nandan.fyi",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nandan-varma/purgeit.git"
   },
-  "bugs": {
-    "url": "https://github.com/nandan-varma/purgeit/issues"
+  "bin": {
+    "purgeit": "dist/cli.mjs"
   },
-  "keywords": [
-    "cli",
-    "node_modules",
-    "cleanup",
-    "disk-space",
-    "npkill",
-    "dev-tools",
-    "build-artifacts",
-    "tui"
+  "files": [
+    "dist",
+    "skills",
+    "purgeit.schema.json"
   ],
   "type": "module",
   "sideEffects": false,
@@ -31,27 +39,23 @@
     },
     "./schema.json": "./purgeit.schema.json"
   },
-  "bin": {
-    "purgeit": "dist/cli.mjs"
-  },
-  "files": [
-    "dist",
-    "skills",
-    "purgeit.schema.json"
-  ],
   "scripts": {
-    "schema": "tsx scripts/schema.ts",
-    "build": "npm run schema && tsdown",
+    "build": "bun run schema && tsdown",
+    "schema": "bun scripts/schema.ts",
+    "fmt": "bun fmt",
+    "fmt:check": "bun fmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "typecheck": "tsgo --noEmit",
+    "knip": "knip",
+    "doctor": "react-doctor src/tui --no-supply-chain --yes --blocking warning",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "prepublishOnly": "npm run typecheck && npm run lint && npm test && npm run build"
-  },
-  "engines": {
-    "node": ">=22"
+    "check:package": "publint && attw --pack . --profile esm-only",
+    "check": "bun run fmt:check && bun run lint && bun run typecheck && bun run knip && bun run coverage && bun run build && bun run check:package",
+    "prepare": "lefthook install",
+    "prepublishOnly": "bun run check"
   },
   "dependencies": {
     "bytes": "^3.1.2",
@@ -59,24 +63,32 @@
     "commander": "^15.1.0",
     "env-paths": "^4.0.0",
     "ink": "^8.0.0",
-    "ms": "^2.1.3",
     "p-limit": "^7.3.3",
     "picomatch": "^4.0.7",
     "react": "^19.3.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8",
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/bytes": "^3.1.6",
-    "@types/ms": "^2.1.0",
     "@types/node": "^26.6.6",
     "@types/picomatch": "^4.0.3",
     "@types/react": "^19.3.0",
+    "@typescript/native-preview": "^7.0.0-dev.20260707.2",
     "@vitest/coverage-v8": "^5.1.1",
     "ink-testing-library": "^4.0.0",
+    "knip": "^6.46.1",
+    "lefthook": "^2.2.2",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2007",
+    "publint": "^0.3.25",
+    "react-doctor": "^0.9.23",
     "tsdown": "^0.23.7",
-    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vitest": "^5.1.1"
-  }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "packageManager": "bun@1.4.4"
 }

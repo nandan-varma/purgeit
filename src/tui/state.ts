@@ -1,11 +1,11 @@
-import type { CleanEvent, CleanSummary } from '../clean/clean.js';
+import type { CleanEvent, CleanSummary, Target } from '../clean/clean.js';
 import { PROTECTION_LABELS } from '../fs/protection.js';
 import type { Entry, ScanEvent, ScanSummary } from '../scan/scan.js';
 
-export type Phase = 'browse' | 'filter' | 'confirm' | 'cleaning' | 'done';
+type Phase = 'browse' | 'filter' | 'confirm' | 'cleaning' | 'done';
 export type SortKey = 'size' | 'age' | 'path';
 
-export const SORT_KEYS: readonly SortKey[] = ['size', 'age', 'path'];
+const NEXT_SORT: Readonly<Record<SortKey, SortKey>> = { size: 'age', age: 'path', path: 'size' };
 
 export interface Outcome {
   readonly path: string;
@@ -27,7 +27,8 @@ export interface State {
   readonly filter: string;
   readonly notice: string | undefined;
   readonly cleaning: {
-    readonly total: number;
+    /** What this clean will delete; fixed when it starts. */
+    readonly targets: readonly Target[];
     readonly handled: number;
     readonly current: string | undefined;
   };
@@ -64,7 +65,7 @@ export type Action =
   | { readonly type: 'key'; readonly key: KeyPress; readonly pageSize: number };
 
 /** A key press, reduced to what the keymap cares about. */
-export interface KeyPress {
+interface KeyPress {
   readonly input: string;
   readonly up?: boolean;
   readonly down?: boolean;
@@ -139,7 +140,7 @@ export function initialState(): State {
     descending: true,
     filter: '',
     notice: undefined,
-    cleaning: { total: 0, handled: 0, current: undefined },
+    cleaning: { targets: [], handled: 0, current: undefined },
     refused: [],
     failed: [],
     result: undefined,
@@ -170,7 +171,7 @@ export function visibleEntries(
     if (state.sortKey === 'age') return b.lastActive - a.lastActive;
     return a.path.localeCompare(b.path);
   };
-  return shown.sort(
+  return shown.toSorted(
     (a, b) =>
       Number(!isDeletable(a)) - Number(!isDeletable(b)) ||
       direction * compare(a, b) ||
@@ -280,10 +281,10 @@ export function reducer(state: State, action: Action): State {
       const visible = visibleEntries(state);
       const entry = visible[cursorIndex(state, visible)];
       if (entry === undefined) return state;
-      if (!isDeletable(entry)) {
+      if (entry.protection !== undefined) {
         return {
           ...state,
-          notice: `Protected — ${PROTECTION_LABELS[entry.protection as keyof typeof PROTECTION_LABELS]}; it can never be selected.`,
+          notice: `Protected — ${PROTECTION_LABELS[entry.protection]}; it can never be selected.`,
         };
       }
       const selected = new Set(state.selected);
@@ -312,7 +313,7 @@ export function reducer(state: State, action: Action): State {
     }
 
     case 'sort': {
-      const next = SORT_KEYS[(SORT_KEYS.indexOf(state.sortKey) + 1) % SORT_KEYS.length] as SortKey;
+      const next = NEXT_SORT[state.sortKey];
       return { ...state, sortKey: next, descending: next !== 'path', notice: undefined };
     }
     case 'reverse':
@@ -339,7 +340,15 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         phase: 'cleaning',
-        cleaning: { total: selectedEntries(state).length, handled: 0, current: undefined },
+        cleaning: {
+          targets: selectedEntries(state).map((entry) => ({
+            path: entry.path,
+            bytes: entry.bytes,
+            unchangedSince: entry.lastActive,
+          })),
+          handled: 0,
+          current: undefined,
+        },
         refused: [],
         failed: [],
         result: undefined,

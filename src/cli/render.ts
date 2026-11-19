@@ -1,5 +1,6 @@
 import { homedir } from 'node:os';
 import { styleText } from 'node:util';
+
 import { PROTECTION_LABELS } from '../fs/protection.js';
 import type { Entry, ScanSummary } from '../scan/scan.js';
 import { formatAge, formatSize } from '../units.js';

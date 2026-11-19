@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { PurgeitError } from '../errors.js';
+
+import { errorMessage, PurgeitError } from '../errors.js';
 import type { Entry, ScanSummary } from '../scan/scan.js';
 
 /** The machine-readable scan, and the plan `purgeit clean --plan` accepts. */
@@ -65,7 +66,7 @@ export function parsePlan(raw: string, source: string): Plan {
   try {
     json = JSON.parse(raw);
   } catch (error) {
-    throw new PurgeitError(`${source} is not valid JSON: ${(error as Error).message}`);
+    throw new PurgeitError(`${source} is not valid JSON: ${errorMessage(error)}`);
   }
   const parsed = PlanSchema.safeParse(json);
   if (!parsed.success) {

@@ -1,8 +1,9 @@
-import { Box, Text, useApp, useInput, useWindowSize } from 'ink';
-import { useEffect, useMemo, useReducer, useRef } from 'react';
+import { Box, Text, useAnimation, useApp, useInput, useWindowSize } from 'ink';
+import { useEffect, useMemo, useReducer, useState } from 'react';
+
 import { clean } from '../clean/clean.js';
 import type { RuleSet } from '../rules/rule-set.js';
-import { type ScanOptions, scan } from '../scan/scan.js';
+import { scan, type ScanOptions } from '../scan/scan.js';
 import {
   Cleaning,
   ColumnHeadings,
@@ -32,50 +33,62 @@ export interface TuiExit {
   readonly bytes: number;
 }
 
+export function isTuiExit(value: unknown): value is TuiExit {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'count' in value &&
+    typeof value.count === 'number' &&
+    'bytes' in value &&
+    typeof value.bytes === 'number'
+  );
+}
+
 /** Rows used by everything but the list: header (2), headings (1), rule (1), detail (2), footer (1). */
 const CHROME_ROWS = 7;
 const NARROW = 72;
+
+/** Forwards a stream to `onEvent` until it ends or `signal` aborts (an unmounted app must not update). */
+async function pump<T>(source: AsyncIterable<T>, signal: AbortSignal, onEvent: (event: T) => void) {
+  for await (const event of source) {
+    if (signal.aborted) return;
+    onEvent(event);
+  }
+}
 
 export function App(props: AppProps) {
   const { roots, rules, scanOptions, idleFor, historyFile, home } = props;
   const [state, dispatch] = useReducer(reducer, undefined, initialState);
   const { exit } = useApp();
+  // Ages are relative to "now", which advances twice a minute without any input.
+  const [startedAt] = useState(Date.now);
+  const now = startedAt + useAnimation({ interval: 30_000 }).time;
   const { columns, rows } = useWindowSize();
-  const latest = useRef(state);
-  latest.current = state;
 
   useEffect(() => {
     const controller = new AbortController();
-    void (async () => {
-      for await (const event of scan(roots, { ...scanOptions, signal: controller.signal })) {
-        dispatch({ type: 'scan', event });
-      }
-    })();
+    void pump(
+      scan(roots, { ...scanOptions, signal: controller.signal }),
+      controller.signal,
+      (event) => dispatch({ type: 'scan', event }),
+    );
     return () => controller.abort();
   }, [roots, scanOptions]);
 
-  const cleaning = state.phase === 'cleaning';
+  const { targets } = state.cleaning;
   useEffect(() => {
-    if (!cleaning) return;
+    if (targets.length === 0) return undefined;
     const controller = new AbortController();
-    const targets = selectedEntries(latest.current).map((entry) => ({
-      path: entry.path,
-      bytes: entry.bytes,
-      unchangedSince: entry.lastActive,
-    }));
-    void (async () => {
-      for await (const event of clean(targets, {
-        rules,
-        roots,
-        idleFor,
-        signal: controller.signal,
-        ...(historyFile === undefined ? {} : { historyFile }),
-      })) {
-        dispatch({ type: 'clean', event });
-      }
-    })();
+    const events = clean(targets, {
+      rules,
+      roots,
+      idleFor,
+      signal: controller.signal,
+      historyFile,
+    });
+    void pump(events, controller.signal, (event) => dispatch({ type: 'clean', event }));
     return () => controller.abort();
-  }, [cleaning, rules, roots, idleFor, historyFile]);
+  }, [targets, rules, roots, idleFor, historyFile]);
 
   const visible = useMemo(() => visibleEntries(state), [state]);
   const index = cursorIndex(state, visible);
@@ -104,11 +117,11 @@ export function App(props: AppProps) {
 
   const { quit, freedCount, freedBytes } = state;
   useEffect(() => {
-    if (quit) exit({ count: freedCount, bytes: freedBytes } satisfies TuiExit);
+    if (!quit) return;
+    exit({ count: freedCount, bytes: freedBytes } satisfies TuiExit);
   }, [quit, freedCount, freedBytes, exit]);
 
   const layout = { columns, showRule: columns >= NARROW };
-  const now = Date.now();
   const cursorEntry = visible[index];
   const empty =
     state.summary === undefined

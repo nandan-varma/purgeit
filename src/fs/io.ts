@@ -1,6 +1,8 @@
 import type { BigIntStats, Dirent } from 'node:fs';
 import { lstat, readdir } from 'node:fs/promises';
 
+import { errorCode } from '../errors.js';
+
 /**
  * The only door to the filesystem for traversal, injectable so tests can
  * observe it. Calls are deliberately unthrottled: libuv's thread pool is the
@@ -23,5 +25,5 @@ const SKIPPABLE = new Set(['ENOENT', 'ENOTDIR', 'EACCES', 'EPERM', 'ELOOP']);
 
 /** A directory that vanished or may not be read is routine on a real disk; anything else is a bug. */
 export function isSkippable(error: unknown): boolean {
-  return error instanceof Error && SKIPPABLE.has((error as NodeJS.ErrnoException).code ?? '');
+  return SKIPPABLE.has(errorCode(error) ?? '');
 }

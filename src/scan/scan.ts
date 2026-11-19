@@ -1,6 +1,8 @@
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
+
 import picomatch from 'picomatch';
+
 import { createIo, type Io, isSkippable } from '../fs/io.js';
 import { measure } from '../fs/measure.js';
 import { findProtection, type ProtectionReason } from '../fs/protection.js';
@@ -71,7 +73,7 @@ export const HOME_SKIPPED: ReadonlySet<string> = new Set(['Library', '.Trash', '
 
 /** Drops roots that sit inside another root, so nothing is found twice. */
 export function normalizeRoots(roots: readonly string[]): string[] {
-  const resolved = [...new Set(roots.map((root) => resolve(root)))].sort();
+  const resolved = [...new Set(roots.map((root) => resolve(root)))].toSorted();
   return resolved.filter(
     (root, index) =>
       !resolved.slice(0, index).some((outer) => root === outer || root.startsWith(outer + sep)),

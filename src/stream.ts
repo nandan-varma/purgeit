@@ -38,6 +38,7 @@ export async function* stream<T>(
   try {
     while (true) {
       if (head < queue.length) {
+        // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- index checked above
         yield queue[head++] as T;
         if (head > 1024) {
           queue.splice(0, head);

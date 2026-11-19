@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+
 import { createIo, type Io, isSkippable } from '../fs/io.js';
 import type { RuleSet } from '../rules/rule-set.js';
 import { HOME_SKIPPED } from './scan.js';
@@ -10,7 +11,7 @@ import { HOME_SKIPPED } from './scan.js';
  * agents keep their worktrees in (dot directories, which container discovery
  * never enters, so they are listed explicitly).
  */
-export const WELL_KNOWN_ROOTS: readonly string[] = [
+const WELL_KNOWN_ROOTS: readonly string[] = [
   'www',
   'dev',
   'Projects',
@@ -25,7 +26,7 @@ export const WELL_KNOWN_ROOTS: readonly string[] = [
 ];
 
 /** Entries whose presence marks a directory as a project. */
-export const PROJECT_INDICATORS: ReadonlySet<string> = new Set([
+const PROJECT_INDICATORS: ReadonlySet<string> = new Set([
   '.git',
   'package.json',
   'Cargo.toml',

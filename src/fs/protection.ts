@@ -1,6 +1,8 @@
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
+
 import picomatch from 'picomatch';
+
 import type { Io } from './io.js';
 import { isSkippable } from './io.js';
 
@@ -9,10 +11,7 @@ import { isSkippable } from './io.js';
  * name never proves that what is inside is regenerable.
  */
 export type ProtectionReason =
-  | 'nested-repository'
-  | 'deploy-keypair'
-  | 'tracked-files'
-  | 'unverified';
+  'nested-repository' | 'deploy-keypair' | 'tracked-files' | 'unverified';
 
 export const PROTECTION_LABELS: Readonly<Record<ProtectionReason, string>> = {
   'nested-repository': 'contains its own .git repository',

@@ -1,4 +1,5 @@
 import { sep } from 'node:path';
+
 import type { Io } from './io.js';
 
 /**

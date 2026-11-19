@@ -102,12 +102,9 @@ export interface MarkerRuleDefinition extends BaseRuleDefinition {
 }
 
 /** Never entered while scanning (VCS metadata) — not itself a deletion candidate. */
-export interface IgnoreRuleDefinition extends BaseRuleDefinition {
+interface IgnoreRuleDefinition extends BaseRuleDefinition {
   readonly kind: 'ignore';
 }
 
 export type RuleDefinition =
-  | SafeRuleDefinition
-  | GatedRuleDefinition
-  | MarkerRuleDefinition
-  | IgnoreRuleDefinition;
+  SafeRuleDefinition | GatedRuleDefinition | MarkerRuleDefinition | IgnoreRuleDefinition;

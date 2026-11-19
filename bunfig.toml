@@ -1,0 +1,5 @@
+[fmt]
+printWidth = 100
+singleQuote = true
+sortImports = true
+sortPackageJson = true

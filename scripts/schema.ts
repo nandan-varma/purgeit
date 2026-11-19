@@ -1,5 +1,7 @@
 import { writeFileSync } from 'node:fs';
+
 import { z } from 'zod';
+
 import { ConfigSchema } from '../src/config/schema.js';
 
 /** The JSON Schema editors use to complete and validate purgeit.config.json. */

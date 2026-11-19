@@ -1,4 +1,5 @@
 import { createInterface } from 'node:readline/promises';
+
 import { defaultHistoryFile } from '../clean/history.js';
 
 /** Everything the CLI touches outside its arguments, injectable so tests run in-process. */
@@ -29,9 +30,9 @@ export function systemEnv(signal?: AbortSignal): CliEnv {
     out: (text) => process.stdout.write(`${text}\n`),
     err: (text) => process.stderr.write(`${text}\n`),
     cwd: process.cwd(),
-    interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+    interactive: process.stdin.isTTY && process.stdout.isTTY,
     confirm: ask,
-    ...(signal === undefined ? {} : { signal }),
+    signal,
     historyFile: defaultHistoryFile(),
   };
 }

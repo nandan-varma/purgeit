@@ -6,28 +6,24 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+  id-token: write # npm trusted publishing (OIDC) and provenance
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
-          # Node 24 ships npm >= 11.5.1, which trusted publishing (OIDC) requires.
+          # Node 24 ships npm >= 11.5.1, which trusted publishing requires.
           node-version: 24
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - run: bun install --frozen-lockfile
 
-      - run: npm ci
-
-      # Full verify before publish — prepublishOnly is belt-and-suspenders for
-      # local `npm publish`, but the workflow must not rely on it alone.
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
+      # The full gate, so a tag can never publish something CI would reject.
+      - run: bun run check
 
       # Authenticates with GitHub's OIDC identity (npm "Trusted Publisher" for
       # release.yml); no token is stored. Provenance is attached automatically.

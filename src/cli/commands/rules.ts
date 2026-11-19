@@ -1,4 +1,5 @@
 import { styleText } from 'node:util';
+
 import { PurgeitError } from '../../errors.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, type RuleCategory } from '../../rules/catalog/types.js';
 import { describeWhen } from '../../rules/condition.js';
@@ -11,6 +12,9 @@ export interface RulesFlags extends Pick<ScanFlags, 'config' | 'only' | 'safeOnl
   category?: string;
   format: 'text' | 'json';
 }
+
+const inCategory = (rule: MatchRule, category: RuleCategory): boolean =>
+  rule.categories.includes(category);
 
 const detail = (rule: MatchRule): string =>
   rule.kind === 'gated'
@@ -31,8 +35,6 @@ export async function runRules(flags: RulesFlags, env: CliEnv): Promise<number> 
     );
   }
   const all: MatchRule[] = [...rules.named.values(), ...rules.markers];
-  const inCategory = (rule: MatchRule, category: RuleCategory): boolean =>
-    (rule.categories as readonly string[]).includes(category);
 
   if (flags.format === 'json') {
     const selected = all.filter(
@@ -52,7 +54,7 @@ export async function runRules(flags: RulesFlags, env: CliEnv): Promise<number> 
   const width = Math.max(0, ...all.map((rule) => rule.name.length));
   for (const { category, rules: list } of sections) {
     env.out(styleText('bold', CATEGORY_LABELS[category]));
-    for (const rule of [...list].sort((a, b) => a.name.localeCompare(b.name))) {
+    for (const rule of [...list].toSorted((a, b) => a.name.localeCompare(b.name))) {
       env.out(
         `  ${rule.name.padEnd(width)}  ${styleText('dim', rule.kind.padEnd(6))}  ${detail(rule)}`,
       );

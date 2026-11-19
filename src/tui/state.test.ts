@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
+
 import type { Entry } from '../scan/scan.js';
 import {
   type Action,
   initialState,
   reclaimableBytes,
   reducer,
-  type State,
   selectionTotals,
+  type State,
   visibleEntries,
 } from './state.js';
 
@@ -118,7 +119,7 @@ describe('selection', () => {
 
   it('selects all deletable rows, inverts and clears — never protected ones', () => {
     const all = apply(base, { type: 'select-all' });
-    expect([...all.selected].sort()).toEqual(['/a', '/b']);
+    expect([...all.selected].toSorted()).toEqual(['/a', '/b']);
     expect([...apply(all, { type: 'invert' }).selected]).toEqual([]);
     expect(apply(all, { type: 'select-none' }).selected.size).toBe(0);
     const onLock = apply(base, { type: 'jump', to: 'bottom' }, { type: 'toggle' });
@@ -173,7 +174,7 @@ describe('deleting', () => {
       phase: 'done',
       freedBytes: 30,
       freedCount: 1,
-      cleaning: { total: 2, handled: 3, current: '/a' },
+      cleaning: { handled: 3, current: '/a' },
       refused: [{ path: '/b', message: 'busy' }],
       failed: [{ path: '/x', message: 'EBUSY' }],
     });

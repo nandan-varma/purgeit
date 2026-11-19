@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { styleText } from 'node:util';
+
 import { clean, type Target } from '../../clean/clean.js';
 import { PurgeitError } from '../../errors.js';
 import { scanAll } from '../../scan/scan.js';
@@ -59,11 +60,11 @@ export async function runClean(
     idleFor = parseDuration(flags.minAge ?? resolvedRules.config.minAge ?? DEFAULT_MIN_AGE);
     roots = plan.roots.map((root) => resolve(env.cwd, root));
     targets = plan.entries
-      .filter((entry) => entry.protection == null)
+      .filter((entry) => !entry.protection)
       .map((entry) => ({
         path: entry.path,
-        ...(entry.bytes === undefined ? {} : { bytes: entry.bytes }),
-        ...(entry.lastActive === undefined ? {} : { unchangedSince: entry.lastActive }),
+        bytes: entry.bytes,
+        unchangedSince: entry.lastActive,
       }));
   } else {
     const resolved = await resolveScan(dirs, flags, env, DEFAULT_MIN_AGE);
@@ -72,7 +73,7 @@ export async function runClean(
     roots = resolved.roots;
     const result = await scanAll(roots, {
       ...resolved.options,
-      ...(env.signal === undefined ? {} : { signal: env.signal }),
+      signal: env.signal,
     });
     targets = result.entries
       .filter((entry) => entry.protection === undefined)
@@ -117,8 +118,8 @@ export async function runClean(
     roots,
     idleFor,
     dryRun: flags.dryRun,
-    ...(env.historyFile === undefined ? {} : { historyFile: env.historyFile }),
-    ...(env.signal === undefined ? {} : { signal: env.signal }),
+    historyFile: env.historyFile,
+    signal: env.signal,
   })) {
     const path = 'path' in event ? tildify(event.path, env.home) : '';
     if (event.type === 'deleted') {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+
 import { buildTree } from '../../test/tree.js';
 import { ConditionSchema, describeWhen, findProof, WhenSchema } from './condition.js';
 

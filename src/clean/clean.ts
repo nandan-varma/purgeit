@@ -1,5 +1,8 @@
 import { realpath, rm } from 'node:fs/promises';
+
 import pLimit from 'p-limit';
+
+import { errorMessage } from '../errors.js';
 import { createIo, type Io } from '../fs/io.js';
 import type { RuleSet } from '../rules/rule-set.js';
 import { stream } from '../stream.js';
@@ -79,7 +82,7 @@ export async function* clean(
           historyWarned = true;
           emit({
             type: 'warning',
-            message: `could not write history: ${(error as Error).message}`,
+            message: `could not write history: ${errorMessage(error)}`,
           });
         }
       }
@@ -106,7 +109,7 @@ export async function* clean(
           try {
             if (!dryRun) await rm(target.path, { recursive: true, maxRetries: 2 });
           } catch (error) {
-            const message = (error as Error).message;
+            const message = errorMessage(error);
             totals.failed++;
             emit({ type: 'failed', path: target.path, message });
             await record({ action: 'failed', path: target.path, message });

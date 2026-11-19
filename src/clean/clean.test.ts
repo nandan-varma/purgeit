@@ -1,9 +1,11 @@
 import { existsSync, mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
+
 import { backdate, blob, buildTree } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
-import { type CleanEvent, clean, type Target } from './clean.js';
+import { clean, type CleanEvent, type Target } from './clean.js';
 import { appendHistory, readHistory } from './history.js';
 
 const rules = createRuleSet();

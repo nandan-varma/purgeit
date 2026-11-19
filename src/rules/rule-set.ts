@@ -36,31 +36,25 @@ export function createRuleSet(config: Config = ConfigSchema.parse({})): RuleSet 
     : [];
 
   const custom: RuleDefinition[] = [
-    ...config.safe.map(
-      (name): RuleDefinition => ({
-        kind: 'safe',
-        name,
-        categories: ['custom'],
-        description: 'Defined in your config',
-      }),
-    ),
-    ...config.gated.map(
-      (rule): RuleDefinition => ({
-        kind: 'gated',
-        name: rule.name,
-        categories: ['custom'],
-        description: rule.description ?? 'Defined in your config',
-        when: rule.when,
-      }),
-    ),
-    ...config.markers.map(
-      (rule): RuleDefinition => ({
-        kind: 'marker',
-        categories: ['custom'],
-        ...rule,
-        description: rule.description ?? 'Defined in your config',
-      }),
-    ),
+    ...config.safe.map((name): RuleDefinition => ({
+      kind: 'safe',
+      name,
+      categories: ['custom'],
+      description: 'Defined in your config',
+    })),
+    ...config.gated.map((rule): RuleDefinition => ({
+      kind: 'gated',
+      name: rule.name,
+      categories: ['custom'],
+      description: rule.description ?? 'Defined in your config',
+      when: rule.when,
+    })),
+    ...config.markers.map((rule): RuleDefinition => ({
+      kind: 'marker',
+      categories: ['custom'],
+      ...rule,
+      description: rule.description ?? 'Defined in your config',
+    })),
   ];
 
   const named = new Map<string, NamedRule>();

@@ -1,4 +1,4 @@
-import { type Entry, type ScanSummary, scan } from '../../scan/scan.js';
+import { type Entry, scan, type ScanSummary } from '../../scan/scan.js';
 import type { CliEnv } from '../env.js';
 import type { ScanFlags } from '../flags.js';
 import { resolveScan } from '../options.js';
@@ -23,7 +23,7 @@ export async function runScan(
 
   for await (const event of scan(resolved.roots, {
     ...resolved.options,
-    ...(env.signal === undefined ? {} : { signal: env.signal }),
+    signal: env.signal,
   })) {
     if (flags.format === 'ndjson') {
       if (event.type === 'entry') {

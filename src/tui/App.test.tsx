@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
+
 import { render } from 'ink-testing-library';
 import { describe, expect, it } from 'vitest';
+
 import { backdate, blob, buildTree } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
 import { App } from './App.js';
