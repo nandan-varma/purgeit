@@ -6,4 +6,4 @@ coverage/
 
 # AI agents
 .claude/
-.opencode/
+.opencode/release/

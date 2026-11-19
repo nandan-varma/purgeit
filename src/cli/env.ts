@@ -14,6 +14,8 @@ export interface CliEnv {
   /** Where deletions are logged; undefined disables history. */
   readonly historyFile: string | undefined;
   readonly home?: string;
+  /** Where the user-level config lives; defaults to the platform's config directory. */
+  readonly userConfigDir?: string;
 }
 
 async function ask(question: string): Promise<boolean> {

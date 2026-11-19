@@ -2,6 +2,8 @@ import { Command, CommanderError, InvalidArgumentError, Option } from 'commander
 
 import { PurgeitError } from '../errors.js';
 import type { CleanCommandFlags } from './commands/clean.js';
+import type { ExplainFlags } from './commands/explain.js';
+import type { InitFlags } from './commands/init.js';
 import type { RulesFlags } from './commands/rules.js';
 import type { ScanCommandFlags } from './commands/scan.js';
 import type { CliEnv } from './env.js';
@@ -53,6 +55,11 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
     'Default: 0.',
   )
     .addOption(format('text', 'json', 'ndjson'))
+    .addOption(
+      new Option('--by <unit>', 'list per project, or every artifact')
+        .choices(['project', 'artifact'])
+        .default('project'),
+    )
     .action(async (dirs: string[], flags: ScanCommandFlags) => {
       setExit(await (await import('./commands/scan.js')).runScan(dirs, flags, env));
     });
@@ -69,6 +76,36 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
     .addOption(format('text', 'json'))
     .action(async (dirs: string[], flags: CleanCommandFlags) => {
       setExit(await (await import('./commands/clean.js')).runClean(dirs, flags, env));
+    });
+
+  program
+    .command('explain <path>')
+    .description(
+      'explain why a directory is (or is not) matched, protected, and what clean would do',
+    )
+    .option('--min-age <duration>', 'the recent-activity window to judge against (default 7d)')
+    .option('--config <file>', 'use this config file')
+    .option('--no-config', 'ignore any config file')
+    .addOption(format('text', 'json'))
+    .action(async (path: string, flags: ExplainFlags) => {
+      setExit(await (await import('./commands/explain.js')).runExplain(path, flags, env));
+    });
+
+  program
+    .command('completion <shell>')
+    .description('print a shell completion script (bash, zsh or fish)')
+    .action(async (shell: string) => {
+      const { completionScript } = await import('./completion.js');
+      const { describeProgram } = await import('./introspect.js');
+      env.out(completionScript(shell, describeProgram(program)).trimEnd());
+    });
+
+  program
+    .command('init')
+    .description('write a starter purgeit.config.ts in the current directory')
+    .option('--json', 'write purgeit.config.json (with a $schema) instead', false)
+    .action(async (flags: InitFlags) => {
+      setExit(await (await import('./commands/init.js')).runInit(flags, env));
     });
 
   program
@@ -118,6 +155,19 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
   return program;
 }
 
+const isInformational = (code: string): boolean =>
+  code === 'commander.helpDisplayed' || code === 'commander.version' || code === 'commander.help';
+
+/** Machine consumers asked for JSON: give them a parseable error on stdout, not only stderr text. */
+function reportJson(argv: readonly string[], env: CliEnv, code: string, message: string): void {
+  const wantsJson = argv.some((arg, index) =>
+    arg === '--format'
+      ? /^(json|ndjson)$/.test(argv[index + 1] ?? '')
+      : /^--format=(json|ndjson)$/.test(arg),
+  );
+  if (wantsJson) env.out(JSON.stringify({ error: { code, message } }));
+}
+
 /** Runs the CLI in-process and returns its exit code; never exits or throws for user errors. */
 export async function run(argv: readonly string[], env: CliEnv): Promise<number> {
   let code = 0;
@@ -128,14 +178,13 @@ export async function run(argv: readonly string[], env: CliEnv): Promise<number>
     return env.signal?.aborted ? 130 : code;
   } catch (error) {
     if (error instanceof CommanderError) {
-      return error.code === 'commander.helpDisplayed' ||
-        error.code === 'commander.version' ||
-        error.code === 'commander.help'
-        ? 0
-        : 2;
+      if (isInformational(error.code)) return 0;
+      reportJson(argv, env, 'usage', error.message);
+      return 2;
     }
     if (error instanceof PurgeitError) {
       env.err(`purgeit: ${error.message}`);
+      reportJson(argv, env, 'error', error.message);
       return 2;
     }
     throw error;

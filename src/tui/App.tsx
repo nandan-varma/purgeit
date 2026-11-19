@@ -13,9 +13,10 @@ import {
   FilterBar,
   Footer,
   Header,
+  Help,
   List,
 } from './components.js';
-import { cursorIndex, initialState, reducer, selectedEntries, visibleEntries } from './state.js';
+import { cursorRow, initialState, listingOf, reducer, rowIndex } from './state.js';
 
 export interface AppProps {
   readonly roots: readonly string[];
@@ -25,6 +26,10 @@ export interface AppProps {
   readonly idleFor: number;
   readonly historyFile: string | undefined;
   readonly home?: string | undefined;
+  /** Hide artifacts smaller than this until the user asks (0 shows everything). */
+  readonly floor?: number | undefined;
+  /** A project untouched for this long is dormant. */
+  readonly dormantMs?: number | undefined;
 }
 
 /** What the app resolves with when it exits. */
@@ -44,8 +49,8 @@ export function isTuiExit(value: unknown): value is TuiExit {
   );
 }
 
-/** Rows used by everything but the list: header (2), headings (1), rule (1), detail (2), footer (1). */
-const CHROME_ROWS = 7;
+/** Rows used by everything but the list: header (3), headings (1), rule (1), detail (2), footer (1). */
+const CHROME_ROWS = 8;
 const NARROW = 72;
 
 /** Forwards a stream to `onEvent` until it ends or `signal` aborts (an unmounted app must not update). */
@@ -57,13 +62,16 @@ async function pump<T>(source: AsyncIterable<T>, signal: AbortSignal, onEvent: (
 }
 
 export function App(props: AppProps) {
-  const { roots, rules, scanOptions, idleFor, historyFile, home } = props;
-  const [state, dispatch] = useReducer(reducer, undefined, initialState);
+  const { roots, rules, scanOptions, idleFor, historyFile, home, floor, dormantMs } = props;
+  const [state, dispatch] = useReducer(reducer, undefined, () =>
+    initialState({ floor, dormantMs }),
+  );
   const { exit } = useApp();
-  // Ages are relative to "now", which advances twice a minute without any input.
+  const { columns, rows } = useWindowSize();
+  // "Now" advances twice a minute without any input, so ages and dormancy stay current.
   const [startedAt] = useState(Date.now);
   const now = startedAt + useAnimation({ interval: 30_000 }).time;
-  const { columns, rows } = useWindowSize();
+  useEffect(() => dispatch({ type: 'tick', now }), [now]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,8 +98,8 @@ export function App(props: AppProps) {
     return () => controller.abort();
   }, [targets, rules, roots, idleFor, historyFile]);
 
-  const visible = useMemo(() => visibleEntries(state), [state]);
-  const index = cursorIndex(state, visible);
+  const listing = useMemo(() => listingOf(state), [state]);
+  const index = rowIndex(listing.rows, state.cursor);
   const height = Math.max(3, rows - CHROME_ROWS);
 
   useInput((input, key) => {
@@ -102,6 +110,8 @@ export function App(props: AppProps) {
         input,
         up: key.upArrow,
         down: key.downArrow,
+        left: key.leftArrow,
+        right: key.rightArrow,
         pageUp: key.pageUp,
         pageDown: key.pageDown,
         home: key.home,
@@ -121,33 +131,36 @@ export function App(props: AppProps) {
     exit({ count: freedCount, bytes: freedBytes } satisfies TuiExit);
   }, [quit, freedCount, freedBytes, exit]);
 
-  const layout = { columns, showRule: columns >= NARROW };
-  const cursorEntry = visible[index];
+  const layout = { columns, wide: columns >= NARROW };
   const empty =
     state.summary === undefined
       ? 'Looking for artifacts…'
       : state.filter !== ''
         ? `Nothing matches "${state.filter}".`
-        : 'Nothing to clean — no artifacts found.';
+        : state.entries.length > 0
+          ? 'Everything found is smaller than the size floor — press m to show it.'
+          : 'Nothing to clean — no artifacts found.';
 
   let body: React.ReactNode;
   if (state.phase === 'confirm') {
-    body = <ConfirmDialog entries={selectedEntries(state)} height={height + 1} home={home} />;
+    body = <ConfirmDialog state={state} height={height + 1} />;
   } else if (state.phase === 'cleaning') {
     body = <Cleaning state={state} height={height + 1} />;
   } else if (state.phase === 'done') {
     body = <Done state={state} height={height + 1} />;
+  } else if (state.phase === 'help') {
+    body = <Help height={height + 1} />;
   } else {
     body = (
       <>
         <ColumnHeadings state={state} layout={layout} />
         <List
-          entries={visible}
+          rows={listing.rows}
           cursorIndex={index}
           selected={state.selected}
           height={height}
           layout={layout}
-          now={now}
+          now={state.now}
           home={home}
           empty={empty}
         />
@@ -161,11 +174,7 @@ export function App(props: AppProps) {
       <Header state={state} roots={roots} home={home} />
       {body}
       <Text dimColor>{'─'.repeat(Math.max(0, columns))}</Text>
-      {browsing ? (
-        <Detail entry={cursorEntry} home={home} />
-      ) : (
-        <Detail entry={undefined} home={home} />
-      )}
+      <Detail row={browsing ? cursorRow(state) : undefined} now={state.now} home={home} />
       {state.phase === 'filter' ? <FilterBar state={state} /> : <Footer state={state} />}
     </Box>
   );

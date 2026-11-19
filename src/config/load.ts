@@ -1,6 +1,7 @@
 import { stat } from 'node:fs/promises';
-import { join, normalize } from 'node:path';
+import { dirname, join, normalize, resolve } from 'node:path';
 
+import envPaths from 'env-paths';
 import { z } from 'zod';
 
 import { errorMessage, PurgeitError } from '../errors.js';
@@ -14,33 +15,25 @@ export interface LoadedConfig {
 
 export interface LoadConfigOptions {
   readonly cwd: string;
-  /** An explicit config file (any extension c12 understands) instead of searching `cwd`. */
+  /** An explicit config file (any extension c12 understands) instead of searching. */
   readonly file?: string;
+  /** Where the user-level config lives. Defaults to the platform's config directory. */
+  readonly userConfigDir?: string;
 }
 
-/**
- * Finds and validates `purgeit.config.{ts,mts,js,mjs,cjs,json,...}` or the
- * `purgeit` key of package.json in `cwd`. TypeScript configs load directly.
- */
-export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConfig> {
-  if (
-    options.file !== undefined &&
-    !(await stat(options.file).then(
-      (s) => s.isFile(),
-      () => false,
-    ))
-  ) {
-    throw new PurgeitError(`Config file not found: ${options.file}`);
-  }
+/** `~/.config/purgeit` (or the platform's equivalent). */
+const defaultUserConfigDir = (): string => envPaths('purgeit', { suffix: '' }).config;
+
+async function readFrom(cwd: string, file: string | undefined, packageJson: boolean) {
   const { loadConfig: loadC12 } = await import('c12');
   const loaded = await loadC12({
     name: 'purgeit',
-    cwd: options.cwd,
-    configFile: options.file,
+    cwd,
+    configFile: file,
     rcFile: false,
     globalRc: false,
     dotenv: false,
-    packageJson: true,
+    packageJson,
   }).catch((error: unknown) => {
     throw new PurgeitError(`Could not load config: ${errorMessage(error)}`);
   });
@@ -52,14 +45,56 @@ export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConf
   const source =
     loaded._configFile === undefined
       ? fromPackage
-        ? join(options.cwd, 'package.json')
+        ? join(cwd, 'package.json')
         : undefined
       : normalize(loaded._configFile);
-  const parsed = ConfigSchema.safeParse(loaded.config ?? {});
+  return { raw: loaded.config ?? {}, source };
+}
+
+function validate(raw: unknown, source: string | undefined): LoadedConfig {
+  const parsed = ConfigSchema.safeParse(raw);
   if (!parsed.success) {
     throw new PurgeitError(
       `Invalid config${source ? ` (${source})` : ''}:\n${z.prettifyError(parsed.error)}`,
     );
   }
   return { config: parsed.data, source };
+}
+
+/**
+ * Finds and validates the config. With `file`, exactly that file. Otherwise
+ * the nearest `purgeit.config.{ts,mts,js,mjs,cjs,json,…}` or `purgeit` key of a
+ * package.json, searching from `cwd` upward; then the user-level
+ * `config.{ts,json,…}` in the platform's config directory; then the defaults.
+ * The nearest config wins outright — configs are not merged.
+ */
+export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConfig> {
+  if (options.file !== undefined) {
+    if (
+      !(await stat(options.file).then(
+        (s) => s.isFile(),
+        () => false,
+      ))
+    ) {
+      throw new PurgeitError(`Config file not found: ${options.file}`);
+    }
+    const { raw, source } = await readFrom(options.cwd, options.file, true);
+    return validate(raw, source);
+  }
+
+  for (let dir = resolve(options.cwd); ; dir = dirname(dir)) {
+    const found = await readFrom(dir, undefined, true);
+    if (found.source !== undefined) return validate(found.raw, found.source);
+    if (dirname(dir) === dir) break;
+  }
+
+  const user = await readFrom(
+    options.userConfigDir ?? defaultUserConfigDir(),
+    'config',
+    false,
+  ).catch(
+    // a missing user config directory simply means there is none
+    () => undefined,
+  );
+  return user?.source === undefined ? validate({}, undefined) : validate(user.raw, user.source);
 }

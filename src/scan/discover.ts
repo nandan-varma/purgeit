@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import { isSkippable, listDir } from '../fs/io.js';
 import type { RuleSet } from '../rules/rule-set.js';
+import { PROJECT_MANIFESTS } from './project.js';
 import { HOME_SKIPPED } from './scan.js';
 
 /**
@@ -25,26 +26,6 @@ const WELL_KNOWN_ROOTS: readonly string[] = [
   join('.claude', 'worktrees'),
 ];
 
-/** Entries whose presence marks a directory as a project. */
-const PROJECT_INDICATORS: ReadonlySet<string> = new Set([
-  '.git',
-  'package.json',
-  'Cargo.toml',
-  'go.mod',
-  'pyproject.toml',
-  'requirements.txt',
-  'pom.xml',
-  'build.gradle',
-  'build.gradle.kts',
-  'Gemfile',
-  'composer.json',
-  'pubspec.yaml',
-  'Package.swift',
-  'Makefile',
-  'build.zig',
-  'terragrunt.hcl',
-]);
-
 /** How deep below a home folder to look for a project before calling it something else. */
 const PROBE_DEPTH = 2;
 
@@ -62,7 +43,11 @@ async function holdsProject(dir: string, depth: number): Promise<boolean> {
     (entry) => entry.isDirectory() && !entry.name.startsWith('.'),
   );
   const listings = await Promise.all(subdirs.map((sub) => list(join(dir, sub.name))));
-  if (listings.some((names) => names.some((entry) => PROJECT_INDICATORS.has(entry.name)))) {
+  if (
+    listings.some((names) =>
+      names.some((entry) => entry.name === '.git' || PROJECT_MANIFESTS.has(entry.name)),
+    )
+  ) {
     return true;
   }
   if (depth >= PROBE_DEPTH) return false;

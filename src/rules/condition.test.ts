@@ -43,6 +43,18 @@ describe('findProof', () => {
   });
 });
 
+describe('inside', () => {
+  it('proves a candidate by a file within it', async () => {
+    const venv = buildTree({ 'pyvenv.cfg': 'x', lib: null });
+    expect(await findProof({ inside: 'pyvenv.cfg' }, '/parent', names(), venv)).toEqual({
+      inside: 'pyvenv.cfg',
+    });
+    expect(await findProof({ inside: 'missing.cfg' }, '/parent', names(), venv)).toBeUndefined();
+    expect(await findProof({ inside: 'pyvenv.cfg' }, '/parent', names())).toBeUndefined(); // no candidate to look in
+    expect(describeWhen({ inside: 'pyvenv.cfg' })).toBe('pyvenv.cfg inside it');
+  });
+});
+
 describe('describeWhen', () => {
   it('reads as prose', () => {
     expect(describeWhen([{ file: 'Podfile' }, { glob: '*.xcodeproj' }])).toBe(

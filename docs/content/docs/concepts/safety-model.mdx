@@ -10,7 +10,7 @@ purgeit assumes every scan result is stale by the time you act on it, and that *
 <Steps>
 <Step>
 
-**Rules** decide what is a candidate: names that are safe anywhere, names proved by a manifest beside them, and caches that declare themselves with a tag file.
+**Rules** decide what is a candidate: names that are unmistakable anywhere (`node_modules`, `.next`), names proved by a manifest beside them (`target` needs a `Cargo.toml` or `pom.xml`; `coverage`, `out` and `.cache` need a project manifest), directories proved from the inside (`venv` needs the `pyvenv.cfg` a virtualenv always contains), and caches that declare themselves with a tag file. A name that is also a common word for *authored* folders is never trusted on its own.
 
 </Step>
 <Step>
@@ -21,6 +21,8 @@ purgeit assumes every scan result is stale by the time you act on it, and that *
 <Step>
 
 **Protection** marks a candidate as protected when it contains its own `.git` (a checkout, not output), a `*-keypair.json` within three levels (for example Anchor's `target/deploy` keys, a program's on-chain identity), or any file git tracks. If git cannot answer, the candidate is *unverified* and also protected. A protected candidate is listed with its reason and can never be selected.
+
+Purgeit also records **whether git ignores the directory** — evidence it isn't authored — and **whether it sits in a cloud-synced folder** (Dropbox, iCloud, OneDrive, Google Drive), where deleting thousands of files triggers slow syncs. Both are shown in the UI and in `purgeit explain`.
 
 </Step>
 </Steps>

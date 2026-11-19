@@ -166,12 +166,12 @@
     },
     {
       "name": "out",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "javascript-typescript"
       ],
-      "description": "Generic build output (e.g. Next.js static export)",
-      "when": null,
+      "description": "Build output (Next.js static export, IntelliJ and Gradle) — gated, because \"out\" is a common name for authored folders",
+      "when": "package.json or pom.xml or build.gradle or build.gradle.kts",
       "file": null
     },
     {
@@ -186,12 +186,12 @@
     },
     {
       "name": ".cache",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "javascript-typescript"
       ],
-      "description": "Generic framework cache (Parcel, Gatsby, and others)",
-      "when": null,
+      "description": "Framework cache (Parcel, Gatsby, and others) — gated, because a bare .cache can hold anything",
+      "when": "package.json",
       "file": null
     },
     {
@@ -276,22 +276,22 @@
     },
     {
       "name": "test-results",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "javascript-typescript"
       ],
       "description": "Playwright test results",
-      "when": null,
+      "when": "package.json",
       "file": null
     },
     {
       "name": "coverage",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "javascript-typescript"
       ],
-      "description": "Test coverage reports (Istanbul/nyc/Jest/Vitest, also SimpleCov for Ruby)",
-      "when": null,
+      "description": "Test coverage reports (Istanbul/nyc/Jest/Vitest, SimpleCov, coverage.py) — gated on a project manifest",
+      "when": "package.json or Gemfile or pyproject.toml or setup.py or composer.json or pom.xml or build.gradle or build.gradle.kts or .coveragerc",
       "file": null
     },
     {
@@ -336,22 +336,22 @@
     },
     {
       "name": ".venv",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "python"
       ],
-      "description": "Virtual environment",
-      "when": null,
+      "description": "Virtual environment — proved by the pyvenv.cfg inside it",
+      "when": "pyvenv.cfg inside it",
       "file": null
     },
     {
       "name": "venv",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "python"
       ],
-      "description": "Virtual environment",
-      "when": null,
+      "description": "Virtual environment — proved by the pyvenv.cfg inside it",
+      "when": "pyvenv.cfg inside it",
       "file": null
     },
     {
@@ -446,23 +446,23 @@
     },
     {
       "name": "target",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "rust",
         "java-jvm"
       ],
-      "description": "Cargo build output — also Maven's default build output directory",
-      "when": null,
+      "description": "Cargo, Maven, sbt and Anchor build output — gated on the manifest beside it, because 'target' is a common name for authored folders",
+      "when": "Cargo.toml or pom.xml or build.sbt or build.gradle or build.gradle.kts or Anchor.toml",
       "file": null
     },
     {
       "name": "registry",
-      "kind": "safe",
+      "kind": "gated",
       "categories": [
         "rust"
       ],
-      "description": "Cargo crate registry cache (~/.cargo/registry/), regenerable via cargo build",
-      "when": null,
+      "description": "Cargo crate registry cache — only inside a Cargo home (~/.cargo), never a folder that merely has this name",
+      "when": ".crates.toml or .crates2.json",
       "file": null
     },
     {

@@ -57,10 +57,17 @@ export const javascriptRules: readonly RuleDefinition[] = [
     description: "Generic build output (also used by many other ecosystems' bundlers)",
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: 'out',
     categories: ['javascript-typescript'],
-    description: 'Generic build output (e.g. Next.js static export)',
+    description:
+      'Build output (Next.js static export, IntelliJ and Gradle) — gated, because "out" is a common name for authored folders',
+    when: [
+      { file: 'package.json' },
+      { file: 'pom.xml' },
+      { file: 'build.gradle' },
+      { file: 'build.gradle.kts' },
+    ],
   },
   {
     kind: 'safe',
@@ -69,10 +76,12 @@ export const javascriptRules: readonly RuleDefinition[] = [
     description: 'Turborepo cache',
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: '.cache',
     categories: ['javascript-typescript'],
-    description: 'Generic framework cache (Parcel, Gatsby, and others)',
+    description:
+      'Framework cache (Parcel, Gatsby, and others) — gated, because a bare .cache can hold anything',
+    when: { file: 'package.json' },
   },
   {
     kind: 'safe',
@@ -123,16 +132,29 @@ export const javascriptRules: readonly RuleDefinition[] = [
     description: 'Playwright HTML report output',
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: 'test-results',
     categories: ['javascript-typescript'],
     description: 'Playwright test results',
+    when: { file: 'package.json' },
   },
   {
-    kind: 'safe',
+    kind: 'gated',
     name: 'coverage',
     categories: ['javascript-typescript'],
-    description: 'Test coverage reports (Istanbul/nyc/Jest/Vitest, also SimpleCov for Ruby)',
+    description:
+      'Test coverage reports (Istanbul/nyc/Jest/Vitest, SimpleCov, coverage.py) — gated on a project manifest',
+    when: [
+      { file: 'package.json' },
+      { file: 'Gemfile' },
+      { file: 'pyproject.toml' },
+      { file: 'setup.py' },
+      { file: 'composer.json' },
+      { file: 'pom.xml' },
+      { file: 'build.gradle' },
+      { file: 'build.gradle.kts' },
+      { file: '.coveragerc' },
+    ],
   },
   {
     kind: 'safe',

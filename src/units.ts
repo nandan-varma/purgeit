@@ -68,6 +68,12 @@ export function formatAge(elapsedMs: number): string {
   return `${Math.floor(days / 365)}y`;
 }
 
+/** "5m ago", "3d ago", or "just now". */
+export function formatAgo(elapsedMs: number): string {
+  const age = formatAge(elapsedMs);
+  return age === 'now' ? 'just now' : `${age} ago`;
+}
+
 const PROSE_UNITS = [
   ['day', DAY],
   ['hour', HOUR],

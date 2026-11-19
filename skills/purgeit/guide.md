@@ -6,9 +6,12 @@ safely. Prefer the commands below to deleting directories yourself.
 ## Workflow
 
 1. **Look first.** `purgeit scan [dirs…] --format json` lists candidates and deletes nothing.
-   Add `--min-size 50MB`, `--min-age 30d`, `--only node_modules,target` to narrow it.
-2. **Review.** Each entry has `path`, `rule`, `bytes`, `lastActive` (epoch ms) and `protection`.
-   Entries with `protection` set are never deleted. Show the user the list and total before acting.
+   The report has `projects[]` (dormant projects first) and `entries[]`. Narrow with `--stale`
+   (projects not worked on for 30 days), `--min-size 50MB`, `--min-age 30d`, `--only node_modules,target`.
+2. **Review.** Show the user the *projects* and the total, not hundreds of paths. Each entry has `path`,
+   `rule`, `bytes`, `lastActive` (epoch ms), `project` and `protection`. Entries with `protection` set are
+   never deleted. If anything is surprising, `purgeit explain <path> --format json` says why it was matched,
+   skipped or protected.
 3. **Delete only what the user approved.** Trim the report to the approved entries and run
    `purgeit clean --plan plan.json --yes`, or run `purgeit clean [dirs…] --yes` with the same filters.
    Use `--dry-run` to preview.
@@ -23,8 +26,9 @@ safely. Prefer the commands below to deleting directories yourself.
 
 ## Output and exit codes
 
-- `scan --format json` → `{version, roots, entries[], summary}`; `--format ndjson` streams events.
+- `scan --format json` → `{version, roots, entries[], projects[], summary}`; `--format ndjson` streams events.
 - `clean --format json` → `{dryRun, deleted[], refused[], failed[], summary}` (needs `--yes` or `--dry-run`).
+- With `--format json`, errors are JSON on stdout too: `{"error":{"code","message"}}`.
 - Exit `0` success · `1` some paths skipped or failed, or the user declined · `2` bad usage or config · `130` interrupted.
 
 ## Other commands

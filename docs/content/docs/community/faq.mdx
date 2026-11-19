@@ -4,6 +4,15 @@ description: Common questions and how to fix common surprises.
 ---
 
 <Accordions type="single">
+  <Accordion title="What is a project, and what is dormant?">
+    A project is the nearest git repository (worktrees fold into their main repository) or a manifest folder outside git. It is dormant when git's log shows no commit, checkout or pull for 30 days (`dormantAfter` changes that). See [Projects and dormancy](/docs/concepts/how-it-works#projects-and-dormancy).
+  </Accordion>
+  <Accordion title="Why are some artifacts hidden in the UI?">
+    Artifacts under 10 MB are folded away so the list shows what matters; the header says how many and how much. Press `m` to show them, or pass `--min-size` to set your own floor.
+  </Accordion>
+  <Accordion title="Why was a folder named target (or out, coverage, venv) not matched?">
+    Those names are also used for authored folders, so they only match with proof: `target` beside a `Cargo.toml` or `pom.xml`, `out`/`coverage`/`.cache` beside a project manifest, `venv` containing a `pyvenv.cfg`. `purgeit explain <path>` says exactly what is missing.
+  </Accordion>
   <Accordion title="Is anything deleted without asking?">
     No. The UI needs an explicit selection plus `y`; `clean` asks unless you pass `--yes`; without a terminal it refuses to delete unless you pass `--yes`.
   </Accordion>

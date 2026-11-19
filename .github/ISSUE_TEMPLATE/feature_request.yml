@@ -1,0 +1,10 @@
+name: Feature request or new rule
+description: Suggest an improvement, or an ecosystem whose build output purgeit should know
+labels: [enhancement]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like, and why?
+      description: For a new rule, name the directory, the ecosystem, and the file beside it that proves it is generated.
+    validations: { required: true }

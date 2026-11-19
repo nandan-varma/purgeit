@@ -30,6 +30,7 @@ function harness(cwd: string, overrides: Partial<CliEnv> & { answer?: boolean } 
     },
     historyFile: undefined,
     home: buildTree({}),
+    userConfigDir: buildTree({}),
     ...rest,
   };
   return { env, out, err, asked };
@@ -48,16 +49,40 @@ function workspace() {
 const text = (lines: string[]) => lines.join('\n');
 
 describe('scan', () => {
-  it('prints a table and a summary', async () => {
+  it('prints one row per project and a summary, naming what is dormant', async () => {
     const root = workspace();
     const h = harness(root);
     expect(await run(['scan'], h.env)).toBe(0);
+    const output = text(h.out);
+    expect(output).toMatch(/PROJECT\s+SIZE\s+ITEMS\s+ACTIVE\s+ECOSYSTEMS/);
+    expect(output).toMatch(/^app\s/m);
+    expect(output).toMatch(/^rust\s/m);
+    expect(output).toMatch(/2 artifacts · .* reclaimable · 1 protected/);
+    expect(output).toMatch(/of that is in 3 dormant projects — `purgeit clean --stale`/);
+  });
+
+  it('lists every artifact with --by artifact', async () => {
+    const root = workspace();
+    const h = harness(root);
+    expect(await run(['scan', '--by', 'artifact'], h.env)).toBe(0);
     const output = text(h.out);
     expect(output).toMatch(/SIZE\s+AGE\s+RULE\s+PATH/);
     expect(output).toMatch(/node_modules/);
     expect(output).toMatch(/target/);
     expect(output).toMatch(/protected: contains a \*-keypair\.json/);
-    expect(output).toMatch(/2 artifacts · .* reclaimable · 1 protected/);
+  });
+
+  it('--stale keeps only dormant projects', async () => {
+    const root = workspace();
+    writeFileSync(join(root, 'app/node_modules/fresh.js'), 'x');
+    const h = harness(root);
+    await run(['scan', '--stale', '--format', 'json'], h.env);
+    const report = JSON.parse(text(h.out));
+    expect(report.entries.map((e: { project: string }) => e.project).toSorted()).toEqual([
+      'kept',
+      'rust',
+    ]);
+    expect(report.summary.dropped['active-project']).toBe(1);
   });
 
   it('emits one JSON report that doubles as a plan', async () => {
@@ -314,5 +339,104 @@ describe('rules, history, skill, help', () => {
     controller.abort();
     const h = harness(workspace(), { signal: controller.signal });
     expect(await run(['scan'], h.env)).toBe(130);
+  });
+});
+
+describe('explain', () => {
+  it('says what claims a directory, what protects it, and what clean would do', async () => {
+    const root = workspace();
+    const out = async (...args: string[]) => {
+      const h = harness(root);
+      const code = await run(['explain', ...args], h.env);
+      return { code, text: text(h.out), err: text(h.err) };
+    };
+
+    const ok = await out(join(root, 'app/node_modules'));
+    expect(ok.code).toBe(0);
+    expect(ok.text).toMatch(/rule\s+✓ node_modules/);
+    expect(ok.text).toMatch(/project\s+✓ app \(folder/);
+    expect(ok.text).toMatch(/protection\s+✓ nothing marks it as authored/);
+    expect(ok.text).toMatch(/verdict\s+✓ clean would delete it/);
+
+    const locked = await out(join(root, 'kept/dist'));
+    expect(locked.text).toMatch(/protection\s+✗ contains a \*-keypair\.json/);
+    expect(locked.text).toMatch(/verdict\s+✗ clean would skip it: contains a \*-keypair/);
+
+    const nothing = await out(join(root, 'app/src'));
+    expect(nothing.text).toMatch(/rule\s+✗ no rule claims a directory named "src"/);
+
+    const ungated = await out(join(root, 'app'));
+    expect(ungated.text).toMatch(/✗/);
+
+    writeFileSync(join(root, 'app/node_modules/fresh.js'), 'x');
+    const recent = await out(join(root, 'app/node_modules'));
+    expect(recent.text).toMatch(/verdict\s+✗ clean would skip it: modified within the last 7 days/);
+
+    const json = await out(join(root, 'app/node_modules'), '--format', 'json', '--min-age', '0');
+    expect(JSON.parse(json.text)).toMatchObject({
+      matched: true,
+      rule: 'node_modules',
+      protection: null,
+      wouldDelete: true,
+      refusal: null,
+    });
+    expect((await out(join(root, 'nope'))).code).toBe(2);
+    expect((await out(join(root, 'app/package.json'))).code).toBe(2);
+  });
+
+  it('explains a gated name that lacks its proof', async () => {
+    const root = buildTree({ bare: { build: { 'x.o': 'x' } } });
+    const h = harness(root);
+    await run(['explain', join(root, 'bare/build')], h.env);
+    expect(text(h.out)).toMatch(/gated rule, but nothing beside it proves it is generated/);
+  });
+});
+
+describe('completion, init and JSON errors', () => {
+  it.each(['bash', 'zsh', 'fish'])(
+    'prints a %s completion that knows the commands and flags',
+    async (shell) => {
+      const h = harness(buildTree({}));
+      expect(await run(['completion', shell], h.env)).toBe(0);
+      const script = text(h.out);
+      // fish spells long options as `-l name`
+      const dash = shell === 'fish' ? '' : '--';
+      for (const word of ['scan', 'clean', 'explain', `${dash}format`, `${dash}min-age`]) {
+        expect(script, `${shell} script mentions ${word}`).toContain(word);
+      }
+    },
+  );
+
+  it('rejects an unknown shell', async () => {
+    expect(await run(['completion', 'powershell'], harness(buildTree({})).env)).toBe(2);
+  });
+
+  it('writes a starter config, and never overwrites one', async () => {
+    const dir = buildTree({});
+    const h = harness(dir);
+    expect(await run(['init'], h.env)).toBe(0);
+    expect(readFileSync(join(dir, 'purgeit.config.ts'), 'utf8')).toMatch(/defineConfig/);
+    expect(await run(['init'], harness(dir).env)).toBe(2);
+
+    const jsonDir = buildTree({});
+    expect(await run(['init', '--json'], harness(jsonDir).env)).toBe(0);
+    expect(readFileSync(join(jsonDir, 'purgeit.config.json'), 'utf8')).toMatch(/\$schema/);
+  });
+
+  it('gives machine consumers a parseable error on stdout', async () => {
+    const root = workspace();
+    const missing = harness(root);
+    expect(await run(['scan', join(root, 'nope'), '--format', 'json'], missing.env)).toBe(2);
+    expect(JSON.parse(text(missing.out))).toEqual({
+      error: { code: 'error', message: expect.stringMatching(/No such directory/) },
+    });
+
+    const usage = harness(root);
+    expect(await run(['scan', '--format=json', '--bogus'], usage.env)).toBe(2);
+    expect(JSON.parse(text(usage.out)).error.code).toBe('usage');
+
+    const plain = harness(root);
+    await run(['scan', join(root, 'nope')], plain.env);
+    expect(text(plain.out)).toBe(''); // text mode stays text-only
   });
 });

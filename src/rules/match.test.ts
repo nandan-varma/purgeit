@@ -1,3 +1,5 @@
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { backdate, buildTree } from '../../test/tree.js';
@@ -59,5 +61,55 @@ describe('matchPath', () => {
     expect((await matchPath(rules, `${root}/cache`))?.rule.name).toBe('CACHEDIR.TAG');
     expect(await matchPath(rules, `${root}/.git`)).toBeUndefined();
     expect(await matchPath(rules, `${root}/plain/src`)).toBeUndefined();
+  });
+});
+
+describe('rules that need proof', () => {
+  const matched = async (tree: Parameters<typeof buildTree>[0], at: string) => {
+    const root = buildTree(tree);
+    return (await matchPath(rules, join(root, at)))?.rule.name;
+  };
+
+  it('treats a virtualenv as one only when it holds a pyvenv.cfg', async () => {
+    expect(await matched({ p: { venv: { 'pyvenv.cfg': 'home = /usr' } } }, 'p/venv')).toBe('venv');
+    expect(await matched({ p: { '.venv': { 'pyvenv.cfg': 'x' } } }, 'p/.venv')).toBe('.venv');
+    expect(
+      await matched({ p: { venv: { 'notes.txt': 'my own folder' } } }, 'p/venv'),
+    ).toBeUndefined();
+  });
+
+  it('only calls target build output beside a build manifest', async () => {
+    expect(await matched({ p: { 'Cargo.toml': '', target: { a: 'x' } } }, 'p/target')).toBe(
+      'target',
+    );
+    expect(await matched({ p: { 'pom.xml': '', target: { a: 'x' } } }, 'p/target')).toBe('target');
+    expect(
+      await matched({ p: { target: { 'goals.md': 'my targets' } } }, 'p/target'),
+    ).toBeUndefined();
+  });
+
+  it('only calls registry a cargo cache inside a Cargo home', async () => {
+    expect(
+      await matched({ '.cargo': { '.crates.toml': '', registry: { a: 'x' } } }, '.cargo/registry'),
+    ).toBe('registry');
+    expect(
+      await matched(
+        { app: { registry: { 'index.ts': 'a package registry app' } } },
+        'app/registry',
+      ),
+    ).toBeUndefined();
+  });
+
+  it('treats out, coverage, test-results and .cache as generated only beside a manifest', async () => {
+    for (const name of ['out', 'coverage', 'test-results', '.cache']) {
+      expect(
+        await matched({ p: { 'package.json': '{}', [name]: { a: 'x' } } }, `p/${name}`),
+        name,
+      ).toBe(name);
+      expect(
+        await matched({ p: { [name]: { 'report.csv': 'authored data' } } }, `p/${name}`),
+        name,
+      ).toBeUndefined();
+    }
   });
 });

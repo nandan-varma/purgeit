@@ -1,17 +1,15 @@
+import { relative } from 'node:path';
+
 import { Box, Text, useAnimation } from 'ink';
 
 import { tildify } from '../cli/render.js';
 import { PROTECTION_LABELS } from '../fs/protection.js';
 import { describeWhen } from '../rules/catalog/describe.js';
+import { activityOf, groupProjects, type ProjectGroup } from '../scan/projects.js';
 import type { Entry } from '../scan/scan.js';
-import { formatAge, formatSize } from '../units.js';
-import {
-  type Outcome,
-  reclaimableBytes,
-  selectionTotals,
-  type SortKey,
-  type State,
-} from './state.js';
+import { formatAge, formatAgo, formatSize } from '../units.js';
+import { type Row, SORT_LABELS } from './rows.js';
+import { listingOf, reclaimable, selectedEntries, selectionTotals, type State } from './state.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -26,6 +24,9 @@ function Spinner() {
   return <Text color="cyan">{FRAMES[frame % FRAMES.length]}</Text>;
 }
 
+const seconds = (ms: number): string => (ms < 50 ? '<0.1s' : `${(ms / 1000).toFixed(1)}s`);
+const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? '' : 's'}`;
+
 interface HeaderProps {
   readonly state: State;
   readonly roots: readonly string[];
@@ -35,6 +36,8 @@ interface HeaderProps {
 export function Header({ state, roots, home }: HeaderProps) {
   const scanning = state.summary === undefined;
   const totals = selectionTotals(state);
+  const stats = reclaimable(state);
+  const listing = listingOf(state);
   const where = roots.length === 1 ? tildify(roots[0] ?? '', home) : `${roots.length} folders`;
   return (
     <Box flexDirection="column" flexShrink={0}>
@@ -56,105 +59,200 @@ export function Header({ state, roots, home }: HeaderProps) {
         </Box>
       </Box>
       <Text wrap="truncate-end">
-        <Text bold>{formatSize(reclaimableBytes(state))}</Text> reclaimable
-        {totals.count > 0 ? (
-          <Text color="green">
-            {'  ·  '}
-            {totals.count} selected ({formatSize(totals.bytes)})
-          </Text>
+        <Text bold>{formatSize(stats.bytes)}</Text> reclaimable in{' '}
+        {plural(stats.projects, 'project')}
+        {stats.dormantBytes > 0 ? (
+          <Text color="green">{`  ·  ${formatSize(stats.dormantBytes)} dormant (${stats.dormantProjects})`}</Text>
         ) : null}
-        {state.filter !== '' ? <Text color="cyan">{`  ·  filter: ${state.filter}`}</Text> : null}
+        {totals.count > 0 ? (
+          <Text color="cyan">{`  ·  ${totals.count} selected (${formatSize(totals.bytes)})`}</Text>
+        ) : null}
+        {state.filter !== '' ? <Text color="yellow">{`  ·  filter: ${state.filter}`}</Text> : null}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {`${listing.view === 'projects' ? 'projects' : 'artifacts'} · sort: ${SORT_LABELS[state.sortKey]}${state.reversed ? ' (reversed)' : ''}`}
+        {listing.hidden.count > 0
+          ? `  ·  +${plural(listing.hidden.count, 'small artifact')} hidden (${formatSize(listing.hidden.bytes)}) — m to show`
+          : ''}
       </Text>
     </Box>
   );
 }
 
-const seconds = (ms: number): string => (ms < 50 ? '<0.1s' : `${(ms / 1000).toFixed(1)}s`);
-
-const SORT_LABEL: Record<SortKey, string> = { size: 'SIZE', age: 'AGE', path: 'PATH' };
-
 interface Layout {
   readonly columns: number;
-  /** The rule column is dropped on narrow terminals to leave the path room. */
-  readonly showRule: boolean;
+  /** The ecosystem column is dropped on narrow terminals to leave the name room. */
+  readonly wide: boolean;
 }
 
 const SIZE_W = 9;
-const AGE_W = 5;
-const RULE_W = 16;
+const AGE_W = 6;
+const COUNT_W = 6;
+const ECO_W = 18;
+
+const ECOSYSTEM_SHORT: Readonly<Record<string, string>> = {
+  'javascript-typescript': 'JS/TS',
+  python: 'Python',
+  rust: 'Rust',
+  go: 'Go',
+  apple: 'Apple',
+  'java-jvm': 'JVM',
+  dotnet: '.NET',
+  php: 'PHP',
+  ruby: 'Ruby',
+  'dart-flutter': 'Dart',
+  elixir: 'Elixir',
+  cpp: 'C/C++',
+  haskell: 'Haskell',
+  elm: 'Elm',
+  zig: 'Zig',
+  terraform: 'Terraform',
+  'cache-marker': 'caches',
+  custom: 'custom',
+};
+
+const ecosystems = (group: ProjectGroup): string =>
+  group.ecosystems
+    .filter((id) => id !== 'vcs')
+    .map((id) => ECOSYSTEM_SHORT[id] ?? id)
+    .join(' · ');
 
 export function ColumnHeadings({ state, layout }: { state: State; layout: Layout }) {
-  const arrow = state.descending ? '↓' : '↑';
-  const mark = (key: SortKey, label: string): string =>
-    state.sortKey === key ? `${label}${arrow}` : label;
+  const projects = listingOf(state).view === 'projects';
   return (
     <Box flexShrink={0}>
-      <Box width={6} flexShrink={0} />
+      <Box width={7} flexShrink={0} />
+      <Box flexGrow={1} paddingRight={2}>
+        <Text dimColor wrap="truncate-end">
+          {projects ? 'PROJECT' : 'ARTIFACT'}
+        </Text>
+      </Box>
       <Box width={SIZE_W} flexShrink={0} justifyContent="flex-end">
-        <Text dimColor bold={state.sortKey === 'size'}>
-          {mark('size', SORT_LABEL.size)}
-        </Text>
+        <Text dimColor>SIZE</Text>
       </Box>
-      <Box width={AGE_W + 2} flexShrink={0} paddingLeft={2}>
-        <Text dimColor bold={state.sortKey === 'age'}>
-          {mark('age', SORT_LABEL.age)}
-        </Text>
-      </Box>
-      {layout.showRule ? (
-        <Box width={RULE_W + 2} flexShrink={0} paddingLeft={2}>
-          <Text dimColor>RULE</Text>
+      {projects ? (
+        <Box width={COUNT_W + 1} flexShrink={0} justifyContent="flex-end">
+          <Text dimColor>ITEMS</Text>
         </Box>
       ) : null}
-      <Box flexGrow={1} paddingLeft={2}>
-        <Text dimColor bold={state.sortKey === 'path'} wrap="truncate-end">
-          {mark('path', 'PATH')}
-        </Text>
+      <Box width={AGE_W + 1} flexShrink={0} justifyContent="flex-end">
+        <Text dimColor>ACTIVE</Text>
       </Box>
+      {layout.wide && projects ? (
+        <Box width={ECO_W + 2} flexShrink={0} paddingLeft={2}>
+          <Text dimColor>ECOSYSTEMS</Text>
+        </Box>
+      ) : null}
     </Box>
   );
 }
 
+const CHECK = { all: '[x]', some: '[~]', none: '[ ]' } as const;
+
 interface RowProps {
-  readonly entry: Entry;
+  readonly row: Row;
   readonly cursor: boolean;
-  readonly selected: boolean;
+  readonly selected: ReadonlySet<string>;
   readonly layout: Layout;
   readonly now: number;
   readonly home: string | undefined;
 }
 
-function Row({ entry, cursor, selected, layout, now, home }: RowProps) {
-  const locked = entry.protection !== undefined;
-  const elapsed = now - entry.lastActive;
-  const dim = locked;
+function ProjectRow({
+  row,
+  cursor,
+  layout,
+  now,
+}: RowProps & { row: Extract<Row, { type: 'project' }> }) {
+  const { group } = row;
+  const elapsed = now - activityOf(group);
+  const lockedOnly = group.artifacts === 0;
   return (
     <Box flexShrink={0}>
-      <Box width={6} flexShrink={0}>
+      <Box width={7} flexShrink={0}>
         <Text inverse={cursor}>{cursor ? '▸ ' : '  '}</Text>
-        <Text inverse={cursor} color={selected ? 'green' : undefined} dimColor={locked}>
-          {locked ? ' ⊘  ' : selected ? '[x]' : '[ ]'}
+        <Text
+          inverse={cursor}
+          dimColor={lockedOnly}
+          color={row.selection === 'none' ? undefined : 'cyan'}
+        >
+          {lockedOnly ? ' ⊘  ' : `${CHECK[row.selection]} `}
+        </Text>
+        <Text inverse={cursor} dimColor>
+          {row.expanded ? '⌄' : '›'}
+        </Text>
+      </Box>
+      <Box flexGrow={1} paddingRight={2}>
+        <Text inverse={cursor} bold wrap="truncate-end">
+          {group.name}
+          <Text dimColor={!cursor} inverse={cursor}>
+            {group.worktrees > 0 ? `  +${plural(group.worktrees, 'worktree')}` : ''}
+          </Text>
         </Text>
       </Box>
       <Box width={SIZE_W} flexShrink={0} justifyContent="flex-end">
-        <Text inverse={cursor} bold={!dim && entry.bytes >= 1024 ** 3} dimColor={dim}>
-          {formatSize(entry.bytes)}
+        <Text inverse={cursor} bold={group.bytes >= 1024 ** 3}>
+          {formatSize(group.bytes)}
         </Text>
       </Box>
-      <Box width={AGE_W + 2} flexShrink={0} paddingLeft={2}>
-        <Text inverse={cursor} color={dim ? undefined : ageColor(elapsed)} dimColor={dim}>
+      <Box width={COUNT_W + 1} flexShrink={0} justifyContent="flex-end">
+        <Text inverse={cursor} dimColor={!cursor}>
+          {group.artifacts}
+        </Text>
+      </Box>
+      <Box width={AGE_W + 1} flexShrink={0} justifyContent="flex-end">
+        <Text inverse={cursor} color={ageColor(elapsed)}>
           {formatAge(elapsed)}
         </Text>
       </Box>
-      {layout.showRule ? (
-        <Box width={RULE_W + 2} flexShrink={0} paddingLeft={2}>
-          <Text inverse={cursor} dimColor={dim} wrap="truncate-end">
-            {entry.rule.name}
+      {layout.wide ? (
+        <Box width={ECO_W + 2} flexShrink={0} paddingLeft={2}>
+          <Text inverse={cursor} dimColor={!cursor} wrap="truncate-end">
+            {ecosystems(group)}
           </Text>
         </Box>
       ) : null}
-      <Box flexGrow={1} paddingLeft={2}>
-        <Text inverse={cursor} dimColor={dim} wrap="truncate-start">
-          {tildify(entry.path, home)}
+    </Box>
+  );
+}
+
+function ArtifactRow({
+  row,
+  cursor,
+  selected,
+  now,
+  home,
+}: RowProps & { row: Extract<Row, { type: 'artifact' }> }) {
+  const { entry, nested } = row;
+  const locked = entry.protection !== undefined;
+  const elapsed = now - entry.lastActive;
+  const place = nested ? relative(entry.project.root, entry.path) : tildify(entry.path, home);
+  return (
+    <Box flexShrink={0}>
+      <Box width={7} flexShrink={0}>
+        <Text inverse={cursor}>{cursor ? '▸ ' : '  '}</Text>
+        <Text
+          inverse={cursor}
+          color={selected.has(entry.path) ? 'cyan' : undefined}
+          dimColor={locked}
+        >
+          {nested ? '  ' : ''}
+          {locked ? ' ⊘ ' : selected.has(entry.path) ? '[x]' : '[ ]'}
+        </Text>
+      </Box>
+      <Box flexGrow={1} paddingRight={2}>
+        <Text inverse={cursor} dimColor={locked || nested} wrap="truncate-start">
+          {place}
+        </Text>
+      </Box>
+      <Box width={SIZE_W} flexShrink={0} justifyContent="flex-end">
+        <Text inverse={cursor} dimColor={locked}>
+          {formatSize(entry.bytes)}
+        </Text>
+      </Box>
+      <Box width={AGE_W + 1} flexShrink={0} justifyContent="flex-end">
+        <Text inverse={cursor} color={locked ? undefined : ageColor(elapsed)} dimColor={locked}>
+          {formatAge(elapsed)}
         </Text>
       </Box>
     </Box>
@@ -162,7 +260,7 @@ function Row({ entry, cursor, selected, layout, now, home }: RowProps) {
 }
 
 export function List(props: {
-  readonly entries: readonly Entry[];
+  readonly rows: readonly Row[];
   readonly cursorIndex: number;
   readonly selected: ReadonlySet<string>;
   readonly height: number;
@@ -171,37 +269,64 @@ export function List(props: {
   readonly home: string | undefined;
   readonly empty: string;
 }) {
-  const { entries, cursorIndex, height } = props;
-  if (entries.length === 0) {
+  const { rows, cursorIndex, height } = props;
+  if (rows.length === 0) {
     return (
       <Box height={height} flexShrink={0}>
         <Text dimColor>{props.empty}</Text>
       </Box>
     );
   }
-  const start = Math.max(
-    0,
-    Math.min(cursorIndex - Math.floor(height / 2), entries.length - height),
-  );
+  const start = Math.max(0, Math.min(cursorIndex - Math.floor(height / 2), rows.length - height));
   return (
     <Box flexDirection="column" height={height} flexShrink={0}>
-      {entries.slice(start, start + height).map((entry, offset) => (
-        <Row
-          key={entry.path}
-          entry={entry}
-          cursor={start + offset === cursorIndex}
-          selected={props.selected.has(entry.path)}
-          layout={props.layout}
-          now={props.now}
-          home={props.home}
-        />
-      ))}
+      {rows.slice(start, start + height).map((row, offset) => {
+        const common = {
+          cursor: start + offset === cursorIndex,
+          selected: props.selected,
+          layout: props.layout,
+          now: props.now,
+          home: props.home,
+        };
+        return row.type === 'project' ? (
+          <ProjectRow key={row.id} row={row} {...common} />
+        ) : (
+          <ArtifactRow key={row.id} row={row} {...common} />
+        );
+      })}
     </Box>
   );
 }
 
-export function Detail({ entry, home }: { entry: Entry | undefined; home: string | undefined }) {
-  if (entry === undefined) {
+function artifactWhy(entry: Entry): string {
+  if (entry.protection !== undefined) return `protected — ${PROTECTION_LABELS[entry.protection]}`;
+  const rule =
+    entry.rule.kind === 'gated'
+      ? `${entry.rule.description} · proved by ${entry.evidence ?? describeWhen(entry.rule.when)}`
+      : entry.rule.kind === 'marker'
+        ? `${entry.rule.description} · tagged by ${entry.rule.file}`
+        : entry.rule.description;
+  const notes = [
+    entry.gitIgnored === true
+      ? 'git-ignored ✓'
+      : entry.gitIgnored === false
+        ? '⚠ not git-ignored'
+        : '',
+    entry.synced === undefined ? '' : `☁ in ${entry.synced} — deleting may sync slowly`,
+  ].filter(Boolean);
+  return [rule, ...notes].join(' · ');
+}
+
+export function Detail({
+  row,
+  now,
+  home,
+}: {
+  row: Row | undefined;
+  now: number;
+  home: string | undefined;
+}) {
+  if (row === undefined) {
     return (
       <Box flexDirection="column" flexShrink={0}>
         <Text> </Text>
@@ -209,23 +334,40 @@ export function Detail({ entry, home }: { entry: Entry | undefined; home: string
       </Box>
     );
   }
-  const why =
-    entry.protection !== undefined
-      ? `protected — ${PROTECTION_LABELS[entry.protection]}`
-      : entry.rule.kind === 'gated'
-        ? `${entry.rule.description} · proved by ${entry.evidence ?? describeWhen(entry.rule.when)}`
-        : entry.rule.kind === 'marker'
-          ? `${entry.rule.description} · tagged by ${entry.rule.file}`
-          : entry.rule.description;
+  if (row.type === 'artifact') {
+    return (
+      <Box flexDirection="column" flexShrink={0}>
+        <Text wrap="truncate-start">{tildify(row.entry.path, home)}</Text>
+        <Text dimColor wrap="truncate-end">
+          {`${row.entry.files.toLocaleString()} file${row.entry.files === 1 ? '' : 's'} · ${artifactWhy(row.entry)}`}
+        </Text>
+      </Box>
+    );
+  }
+  const { group } = row;
+  const touched =
+    group.touchedAt === undefined
+      ? `artifacts last changed ${formatAgo(now - group.lastActive)} (no git history)`
+      : `last git activity ${formatAgo(now - group.touchedAt)}`;
   return (
     <Box flexDirection="column" flexShrink={0}>
-      <Text wrap="truncate-start">{tildify(entry.path, home)}</Text>
+      <Text wrap="truncate-start">{tildify(group.key, home)}</Text>
       <Text dimColor wrap="truncate-end">
-        {`${entry.files.toLocaleString()} files · ${why}`}
+        {`${row.dormant ? 'dormant' : 'active'} · ${touched} · ${plural(group.artifacts, 'artifact')}${group.protected > 0 ? `, ${group.protected} protected` : ''}`}
       </Text>
     </Box>
   );
 }
+
+const FOOTERS: Record<State['phase'], string> = {
+  browse:
+    'space select · R recommended · enter review · →← expand · / filter · s sort · v view · ? help · q quit',
+  filter: 'type to filter · enter keep · esc clear',
+  confirm: 'y delete · esc cancel',
+  cleaning: 'deleting… ctrl+c to stop',
+  done: 'b back to list · q quit',
+  help: 'esc to close',
+};
 
 export function Footer({ state }: { state: State }) {
   if (state.notice !== undefined) {
@@ -235,16 +377,9 @@ export function Footer({ state }: { state: State }) {
       </Text>
     );
   }
-  const keys: Record<State['phase'], string> = {
-    browse: '↑↓ move · space select · a all · n none · / filter · s sort · enter delete · q quit',
-    filter: 'type to filter · enter keep · esc clear',
-    confirm: 'y delete · esc cancel',
-    cleaning: 'deleting… ctrl+c to stop',
-    done: 'b back to list · q quit',
-  };
   return (
     <Text dimColor wrap="truncate-end">
-      {keys[state.phase]}
+      {FOOTERS[state.phase]}
     </Text>
   );
 }
@@ -259,28 +394,43 @@ export function FilterBar({ state }: { state: State }) {
   );
 }
 
-export function ConfirmDialog(props: {
-  readonly entries: readonly Entry[];
-  readonly height: number;
-  readonly home: string | undefined;
-}) {
-  const bytes = props.entries.reduce((sum, entry) => sum + entry.bytes, 0);
-  const room = Math.max(0, props.height - 4);
-  const shown = props.entries.slice(0, room);
+export function ConfirmDialog(props: { readonly state: State; readonly height: number }) {
+  const { state } = props;
+  const entries = selectedEntries(state);
+  const groups = groupProjects(entries).toSorted((a, b) => b.bytes - a.bytes);
+  const bytes = entries.reduce((sum, entry) => sum + entry.bytes, 0);
+  const active = groups.filter((group) => state.now - activityOf(group) < 7 * DAY);
+  const synced = entries.filter((entry) => entry.synced !== undefined).length;
+  const notes = (active.length > 0 ? 1 : 0) + (synced > 0 ? 1 : 0);
+  const room = Math.max(0, props.height - 3 - notes);
+  const shown = groups.slice(0, room);
   return (
     <Box flexDirection="column" height={props.height} flexShrink={0}>
       <Text bold color="red" wrap="truncate-end">
-        Delete {props.entries.length} artifact{props.entries.length === 1 ? '' : 's'} ·{' '}
-        {formatSize(bytes)}? This cannot be undone.
+        {`Delete ${plural(entries.length, 'artifact')} in ${plural(groups.length, 'project')} · ${formatSize(bytes)}? This cannot be undone.`}
       </Text>
       <Text> </Text>
-      {shown.map((entry) => (
-        <Text key={entry.path} wrap="truncate-start">
-          {`${formatSize(entry.bytes).padStart(9)}  ${tildify(entry.path, props.home)}`}
+      {shown.map((group) => (
+        <Text key={group.key} wrap="truncate-end">
+          {`${formatSize(group.bytes).padStart(9)}  ${group.name}`}
+          <Text dimColor>{`  ${plural(group.entries.length, 'artifact')}`}</Text>
+          {state.now - activityOf(group) < 7 * DAY ? (
+            <Text color="yellow">{`  active ${formatAgo(state.now - activityOf(group))}`}</Text>
+          ) : null}
         </Text>
       ))}
-      {props.entries.length > shown.length ? (
-        <Text dimColor>…and {props.entries.length - shown.length} more</Text>
+      {groups.length > shown.length ? (
+        <Text dimColor>…and {groups.length - shown.length} more projects</Text>
+      ) : null}
+      {active.length > 0 ? (
+        <Text color="yellow" wrap="truncate-end">
+          {`⚠ ${plural(active.length, 'project')} worked on in the last week — deleting dependencies there means a reinstall.`}
+        </Text>
+      ) : null}
+      {synced > 0 ? (
+        <Text color="yellow" wrap="truncate-end">
+          {`☁ ${plural(synced, 'artifact')} sit in cloud-synced folders; deleting may sync slowly.`}
+        </Text>
       ) : null}
     </Box>
   );
@@ -308,7 +458,7 @@ function Outcomes({
   color,
 }: {
   title: string;
-  items: readonly Outcome[];
+  items: readonly { path: string; message: string }[];
   room: number;
   color: string;
 }) {
@@ -347,6 +497,35 @@ export function Done({ state, height }: { state: State; height: number }) {
         room={Math.floor((height - 1) / 2)}
         color="red"
       />
+    </Box>
+  );
+}
+
+const HELP: readonly (readonly [string, string])[] = [
+  ['↑ ↓  k j', 'move'],
+  ['→ ←  l h', 'expand / collapse a project (← on an artifact jumps to its project)'],
+  ['e  E', 'expand all / collapse all'],
+  ['space', 'select a row — on a project, all of its artifacts'],
+  ['a  n  i', 'select all shown / none / invert'],
+  ['R', 'select every artifact in dormant projects (untouched 30+ days)'],
+  ['/', 'filter by project, path or rule (esc clears)'],
+  ['s  r', 'cycle sort (dormant first, size, oldest, name) / reverse'],
+  ['v', 'projects ⇄ flat artifact list'],
+  ['m', 'show / hide small artifacts'],
+  ['enter', 'review the selection — then y deletes, esc cancels'],
+  ['q', 'quit'],
+];
+
+export function Help({ height }: { height: number }) {
+  return (
+    <Box flexDirection="column" height={height} flexShrink={0}>
+      <Text bold>Keys</Text>
+      {HELP.slice(0, Math.max(0, height - 1)).map(([keys, what]) => (
+        <Text key={keys} wrap="truncate-end">
+          <Text color="cyan">{keys.padEnd(12)}</Text>
+          {what}
+        </Text>
+      ))}
     </Box>
   );
 }

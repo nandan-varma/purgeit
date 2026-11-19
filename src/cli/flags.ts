@@ -3,6 +3,9 @@ import { Option } from 'commander';
 import { PurgeitError } from '../errors.js';
 
 /** The flags every command that looks for artifacts shares. */
+/** How `scan` lists its results. */
+export type GroupBy = 'project' | 'artifact';
+
 export interface ScanFlags {
   exclude: string[];
   only: string[];
@@ -11,6 +14,7 @@ export interface ScanFlags {
   minAge?: string;
   depth?: number;
   includeEmpty: boolean;
+  stale: boolean;
   discover: boolean;
   config: string | boolean;
 }
@@ -53,6 +57,10 @@ export function scanOptions(minAgeHint: string): Option[] {
       `ignore artifacts touched more recently than this, e.g. 7d. ${minAgeHint}`,
     ),
     new Option('--depth <n>', 'never descend deeper than this').argParser(positiveInteger),
+    new Option(
+      '--stale',
+      'only artifacts in dormant projects (not worked on for 30 days; see dormantAfter)',
+    ).default(false),
     new Option('--include-empty', 'keep artifacts that contain no files').default(false),
     new Option(
       '--config <file>',

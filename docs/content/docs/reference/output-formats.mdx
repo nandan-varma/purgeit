@@ -23,7 +23,28 @@ One report. It doubles as a [plan](/docs/guides/clean-safely#3-review-then-apply
       "bytes": 979600000,
       "files": 41230,
       "lastActive": 1763500000000,
-      "protection": null
+      "protection": null,
+      "project": "app",
+      "projectRoot": "/Users/me/dev/app",
+      "projectKind": "repo",
+      "projectGroup": "/Users/me/dev/app",
+      "projectTouchedAt": 1760000000000,
+      "gitIgnored": true,
+      "synced": null
+    }
+  ],
+  "projects": [
+    {
+      "name": "app",
+      "group": "/Users/me/dev/app",
+      "artifacts": 3,
+      "bytes": 1200000000,
+      "protected": 0,
+      "worktrees": 1,
+      "ecosystems": ["javascript-typescript"],
+      "touchedAt": 1760000000000,
+      "lastActive": 1763500000000,
+      "dormant": true
     }
   ],
   "summary": {
@@ -44,7 +65,12 @@ One report. It doubles as a [plan](/docs/guides/clean-safely#3-review-then-apply
 | `evidence` | what proved a gated or tagged rule (e.g. `package.json`), else `null` |
 | `lastActive` | newest modification time of anything inside |
 | `protection` | `null` when deletable, otherwise `nested-repository`, `deploy-keypair`, `tracked-files` or `unverified` |
-| `summary.dropped` | entries hidden by filters, by reason |
+| `project`, `projectRoot`, `projectKind` | what it belongs to: a repository, a worktree (`projectGroup` is its main repository) or a manifest folder |
+| `projectTouchedAt` | newest git activity in the project (epoch ms), `null` when git doesn't know |
+| `gitIgnored` | `true` is evidence it is not authored content; `null` outside a repository |
+| `synced` | the cloud-sync provider whose folder it sits in, else `null` |
+| `projects[]` | the same entries rolled up per project, dormant and largest first; `dormant` means untouched for `dormantAfter` (30d) |
+| `summary.dropped` | entries hidden by filters, by reason (`empty`, `too-small`, `too-recent`, `active-project`, `unreadable`) |
 | `summary.unreadable` | directories that could not be listed |
 
 Entries are sorted largest first, protected last.
@@ -83,6 +109,34 @@ An array, newest first:
 ```
 
 `action` is `deleted` or `failed` (`message` explains a failure). The file itself is JSON Lines; a line cut short by a crash is skipped when read.
+
+## Errors
+
+With `--format json` or `ndjson`, a failure is also reported as JSON on stdout (the human text still goes to stderr):
+
+```json
+{ "error": { "code": "error", "message": "No such directory: /nope" } }
+```
+
+`code` is `usage` for bad arguments and `error` for everything else; the exit code is `2`.
+
+## `explain --format json`
+
+```json
+{
+  "path": "/Users/me/dev/app/node_modules",
+  "matched": true,
+  "rule": "node_modules",
+  "evidence": null,
+  "project": { "name": "app", "root": "…", "kind": "repo", "group": "…", "touchedAt": 1760000000000 },
+  "bytes": 979600000, "files": 41230, "lastActive": 1763500000000,
+  "protection": null, "gitIgnored": true, "synced": null,
+  "wouldDelete": true,
+  "refusal": null
+}
+```
+
+When `clean` would skip the path, `wouldDelete` is `false` and `refusal` is `{ code, message }` (the codes listed above).
 
 ## `rules --format json`
 
