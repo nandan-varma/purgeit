@@ -1,5 +1,4 @@
 import { defineConfig } from 'astro/config';
-import { DOC_SECTIONS } from '../src/docs/topics.ts';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
@@ -7,7 +6,7 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'purgeit',
-      description: 'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
+      description: 'Fast, safe cleanup of build artifacts: interactive UI and scriptable CLI for reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
       favicon: '/favicon.svg',
       logo: {
         src: './src/assets/logo.svg',
@@ -47,7 +46,7 @@ export default defineConfig({
             '@type': 'SoftwareApplication',
             name: 'purgeit',
             description:
-              'Interactive TUI and headless CLI for safely reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
+              'Fast, safe cleanup of build artifacts: interactive UI and scriptable CLI for reclaiming disk space from node_modules, dist, target, Pods, and other rebuildable project artifacts.',
             applicationCategory: 'DeveloperApplication',
             operatingSystem: 'macOS, Linux, Windows',
             url: 'https://purgeit.nandan.fyi',
@@ -67,8 +66,33 @@ export default defineConfig({
         { icon: 'github', label: 'GitHub', href: 'https://github.com/nandan-varma/purgeit' },
         { icon: 'npm', label: 'npm', href: 'https://www.npmjs.com/package/purgeit' },
       ],
-      // Shared with `purgeit docs` so the CLI and the site list the same pages.
-      sidebar: DOC_SECTIONS.map(({ label, items }) => ({ label, items: [...items] })),
+      sidebar: [
+        {
+          label: 'Start here',
+          items: [
+            { label: 'Getting started', slug: 'getting-started' },
+            { label: 'Interactive UI', slug: 'tui' },
+            { label: 'CLI reference', slug: 'cli' },
+            { label: 'Configuration', slug: 'configuration' },
+            { label: 'Built-in rules', slug: 'rules' },
+          ],
+        },
+        {
+          label: 'Advanced',
+          items: [
+            { label: 'Safety model', slug: 'architecture' },
+            { label: 'Library API', slug: 'api' },
+            { label: 'Scheduled cleanup', slug: 'scheduled-cleanup' },
+          ],
+        },
+        {
+          label: 'Community',
+          items: [
+            { label: 'FAQ & troubleshooting', slug: 'faq' },
+            { label: 'Contributing', slug: 'contributing' },
+          ],
+        },
+      ],
       editLink: {
         baseUrl: 'https://github.com/nandan-varma/purgeit/edit/main/docs/',
       },

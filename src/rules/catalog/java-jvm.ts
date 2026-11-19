@@ -1,7 +1,7 @@
-import type { GateCondition } from '../../config/schema.js';
+import type { Condition } from '../condition.js';
 import type { RuleDefinition } from './types.js';
 
-const gradleManifest: readonly GateCondition[] = [
+const gradleManifest: readonly Condition[] = [
   { file: 'build.gradle' },
   { file: 'build.gradle.kts' },
   { file: 'settings.gradle' },

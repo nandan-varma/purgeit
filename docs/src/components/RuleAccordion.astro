@@ -4,11 +4,8 @@
 // src/rules/catalog/index.ts), so this table can never drift from what the
 // CLI actually does, unlike a hand-maintained markdown table.
 import { Icon } from '@astrojs/starlight/components';
-import {
-  describeWhen,
-  KIND_LABELS as kindLabel,
-  KIND_ORDER as kindOrder,
-} from '../../../src/rules/catalog/describe.js';
+import { KIND_LABELS as kindLabel, KIND_ORDER as kindOrder } from '../../../src/rules/catalog/describe.js';
+import { describeWhen } from '../../../src/rules/condition.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, RULE_CATALOG } from '../../../src/rules/catalog/index.js';
 import type { RuleCategory, RuleDefinition } from '../../../src/rules/catalog/types.js';
 
@@ -30,7 +27,7 @@ const sections = CATEGORY_ORDER.map((category) => {
     category,
     label: CATEGORY_LABELS[category],
     rules,
-    safeCount: rules.filter((r) => r.kind === 'always-safe').length,
+    safeCount: rules.filter((r) => r.kind === 'safe').length,
     gatedCount: rules.filter((r) => r.kind === 'gated').length,
   };
 }).filter((section) => section.rules.length > 0);
@@ -41,7 +38,7 @@ const totalRules = RULE_CATALOG.length;
 <div class="rule-catalog">
   <p class="rule-catalog-summary">
     {totalRules} built-in rules across {sections.length} ecosystems, generated directly from
-    purgeit's source — see <a href="/rules/#always-safe-vs-gated">how always-safe and gated differ</a>.
+    purgeit's source — see <a href="/rules/#safe-vs-gated">how safe and gated differ</a>.
   </p>
 
   <div class="rule-toolbar">
@@ -422,7 +419,7 @@ const totalRules = RULE_CATALOG.length;
     letter-spacing: 0.01em;
   }
 
-  .badge-always-safe {
+  .badge-safe {
     background-color: var(--sl-color-green-low);
     color: var(--sl-color-green-high);
   }
@@ -437,7 +434,7 @@ const totalRules = RULE_CATALOG.length;
     color: var(--sl-color-blue-high);
   }
 
-  .badge-prune-meta {
+  .badge-ignore {
     background-color: var(--sl-color-gray-6);
     color: var(--sl-color-text-muted);
   }

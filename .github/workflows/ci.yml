@@ -19,43 +19,24 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v7
-
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
           cache: npm
-
       - run: npm ci
-
       - run: npm run typecheck
-
       - run: npm run lint
-
-      - run: npm test
-
+      - run: npm run coverage
       - run: npm run build
 
-      # Scanner/rule-engine/config core must stay framework-agnostic so it's
-      # usable as a plain library independent of the Ink TUI (see
-      # CONTRIBUTING.md for the isolation rationale).
-      - name: "Verify react/ink stay isolated to src/ui/"
+      # The scanner, rules, config and cleaner are a plain library; only the
+      # terminal UI may depend on React and Ink.
+      - name: React and Ink stay inside src/tui
         run: |
-          if grep -rn "from 'react'" src --include='*.ts' --include='*.tsx' | grep -v '^src/ui/'; then
-            echo "::error::react import found outside src/ui/ — keep the scanner/rule-engine/config core framework-agnostic"
-            exit 1
-          fi
-          if grep -rn "from 'ink'" src --include='*.ts' --include='*.tsx' | grep -v '^src/ui/'; then
-            echo "::error::ink import found outside src/ui/ — keep the scanner/rule-engine/config core framework-agnostic"
+          if grep -rnE "from '(react|ink)'" src --include='*.ts' --include='*.tsx' | grep -v '^src/tui/'; then
+            echo "::error::react/ink imported outside src/tui/"
             exit 1
           fi
 
-      - name: Headless smoke test
-        run: |
-          FIXTURE=$(npx tsx test/fixtures/ci-smoke-fixture.ts)
-          node dist/cli.js "$FIXTURE" --json --dry-run > smoke-output.json
-          node -e "
-            const fs = require('fs');
-            const j = JSON.parse(fs.readFileSync('smoke-output.json', 'utf8'));
-            if (j.entries.length < 2) { console.error('Expected >= 2 entries, got', j.entries.length); process.exit(1); }
-            console.log('Smoke test passed:', j.entries.length, 'entries found');
-          "
+      - name: Smoke test the built CLI
+        run: node scripts/smoke.mjs

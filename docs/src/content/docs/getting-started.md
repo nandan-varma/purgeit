@@ -1,71 +1,46 @@
 ---
 title: Getting started
-description: Install purgeit and run your first cleanup.
+description: Install purgeit and clean your first project folder.
 ---
 
-## Installation
-
-Run `purgeit` directly with `npx`:
+purgeit needs Node.js 22 or newer.
 
 ```bash
-npx purgeit ~/dev
+npx purgeit            # scan the current directory in the interactive UI
+npx purgeit ~/dev      # or any directories
+npm install -g purgeit # optional
 ```
 
-Or install it globally:
+## Three ways to use it
+
+| You want to… | Run |
+| --- | --- |
+| Browse, select and delete | `purgeit [dirs…]` |
+| See what's there, change nothing | `purgeit scan [dirs…]` |
+| Delete without a UI | `purgeit clean [dirs…]` |
+
+`purgeit` with no directory scans the current one. `--discover` also scans the places this machine keeps projects (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, and any home folder that holds projects).
+
+## A first run
 
 ```bash
-npm install -g purgeit
-purgeit ~/dev
+purgeit scan ~/dev --min-size 100MB
 ```
 
-## First run
+```text
+    SIZE  AGE  RULE          PATH
+  6.5 GB  6h   target        ~/dev/apps/mail/target
+  1.6 GB  2d   build         ~/dev/tools/ipa-forge/build
+979.6 MB  1d   node_modules  ~/dev/personal/mocha/node_modules
 
-In a terminal, `purgeit` opens an interactive TUI:
+3 artifacts · 9.1 GB reclaimable — scanned 1 root in 2.1s
+```
+
+AGE is how long since anything inside last changed. Then clean up:
 
 ```bash
-purgeit ~/dev
+purgeit clean ~/dev --min-size 100MB --dry-run   # run every check, delete nothing
+purgeit clean ~/dev --min-size 100MB             # asks first
 ```
 
-Every row starts unselected. Use the keyboard to navigate, select artifacts, and delete them after an explicit confirmation — see the [Interactive TUI reference](/tui/) for the full keymap (also available in-app by pressing <kbd>?</kbd>).
-
-For a non-interactive dry-run preview, use headless mode:
-
-```bash
-purgeit --headless --dry-run ~/dev
-```
-
-Or emit JSON for downstream tools:
-
-```bash
-purgeit --json --dry-run ~/dev
-```
-
-To review every folder your projects usually live in at once (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, ...):
-
-```bash
-purgeit scan --discover
-```
-
-The full documentation is also built in: `purgeit docs` lists the pages, and `purgeit docs <topic>` prints one.
-
-## What gets cleaned
-
-purgeit ships with 60+ built-in rules across 16 ecosystems — not just JavaScript. A sample:
-
-- **JavaScript/TypeScript**: `node_modules`, `dist`, `.next`, `.nuxt`, `.turbo`, `.vite`, `coverage`, and more
-- **Python**: `__pycache__`, `.venv`, `.tox`, `.pytest_cache`, `.mypy_cache`, `htmlcov`, and more
-- **Rust**: `target`, `registry` (Cargo's `~/.cargo/registry/` crate cache — point purgeit at `~/.cargo` to reclaim it)
-- **Go**, **PHP**, **Ruby**, **Elixir**, **Haskell**, **Elm**, **Zig**, **Dart/Flutter**
-- **Apple**: `DerivedData`, `.build` (SPM), `Pods` (CocoaPods), `Carthage`
-- **Java/JVM**: `.gradle`, `target` (Maven), `.cxx` (Android NDK)
-- **.NET**: `bin`, `obj` (also covers Eclipse Java)
-- Gated directories — matched only when a sibling manifest proves they're real generated output, e.g. `Pods/` only next to a `Podfile`, `vendor/` only next to a `composer.json`, `go.mod`, `Cargo.toml`, or `Gemfile`
-
-Every one of these is rendered live, with descriptions and gate conditions, on the [built-in rules reference](/rules/) — generated directly from the same source the scan engine compiles against, so it can't go stale. You can extend, narrow, or replace the ruleset with a [configuration file](/configuration/).
-
-## Next steps
-
-- [Interactive TUI](/tui/) — full keymap and workflow for the default terminal experience
-- [CLI reference](/cli/) — every flag, exit codes, and headless/scripting examples
-- [Configuration](/configuration/) — customize the ruleset with `purgeit.config.ts`
-- [API reference](/api/) — use the scanner and rule engine as a library in your own tools
+`clean` leaves anything modified in the last 7 days alone (`--min-age 0` turns that off). See [the safety model](/architecture/) for everything it checks.

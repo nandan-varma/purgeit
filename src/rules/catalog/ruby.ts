@@ -2,7 +2,7 @@ import type { RuleDefinition } from './types.js';
 
 export const rubyRules: readonly RuleDefinition[] = [
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: '.yardoc',
     categories: ['ruby'],
     description: 'YARD documentation generation cache',

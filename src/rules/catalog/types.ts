@@ -1,4 +1,4 @@
-import type { GateCondition } from '../../config/schema.js';
+import type { Condition } from '../condition.js';
 
 /**
  * Ecosystem tags used to group the catalog for docs and for anyone building
@@ -24,7 +24,8 @@ export type RuleCategory =
   | 'cpp'
   | 'terraform'
   | 'cache-marker'
-  | 'vcs';
+  | 'vcs'
+  | 'custom';
 
 /** Human-readable section labels, e.g. for a docs accordion keyed by category. */
 export const CATEGORY_LABELS: Readonly<Record<RuleCategory, string>> = {
@@ -46,6 +47,7 @@ export const CATEGORY_LABELS: Readonly<Record<RuleCategory, string>> = {
   terraform: 'Terraform / Terragrunt',
   'cache-marker': 'Tagged cache directories (any ecosystem)',
   vcs: 'Version control metadata',
+  custom: 'Custom rules (from your config)',
 };
 
 /** Fixed display order for docs, roughly by ecosystem popularity; VCS metadata last. */
@@ -68,6 +70,7 @@ export const CATEGORY_ORDER: readonly RuleCategory[] = [
   'terraform',
   'cache-marker',
   'vcs',
+  'custom',
 ];
 
 interface BaseRuleDefinition {
@@ -77,14 +80,14 @@ interface BaseRuleDefinition {
 }
 
 /** Deletable wherever the name appears — no sibling proof required. */
-export interface AlwaysSafeRuleDefinition extends BaseRuleDefinition {
-  readonly kind: 'always-safe';
+export interface SafeRuleDefinition extends BaseRuleDefinition {
+  readonly kind: 'safe';
 }
 
 /** Deletable only when `when` proves a sibling manifest makes it real generated output. */
 export interface GatedRuleDefinition extends BaseRuleDefinition {
   readonly kind: 'gated';
-  readonly when: GateCondition | readonly GateCondition[];
+  readonly when: Condition | readonly Condition[];
 }
 
 /**
@@ -98,13 +101,13 @@ export interface MarkerRuleDefinition extends BaseRuleDefinition {
   readonly signature: string;
 }
 
-/** Never descended into while scanning (VCS metadata) — not itself a deletion candidate. */
-export interface PruneMetaRuleDefinition extends BaseRuleDefinition {
-  readonly kind: 'prune-meta';
+/** Never entered while scanning (VCS metadata) — not itself a deletion candidate. */
+export interface IgnoreRuleDefinition extends BaseRuleDefinition {
+  readonly kind: 'ignore';
 }
 
 export type RuleDefinition =
-  | AlwaysSafeRuleDefinition
+  | SafeRuleDefinition
   | GatedRuleDefinition
   | MarkerRuleDefinition
-  | PruneMetaRuleDefinition;
+  | IgnoreRuleDefinition;

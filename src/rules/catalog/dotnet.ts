@@ -2,7 +2,7 @@ import type { RuleDefinition } from './types.js';
 
 export const dotnetRules: readonly RuleDefinition[] = [
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: '.vs',
     categories: ['dotnet'],
     description: "Visual Studio's local solution cache",

@@ -1,105 +1,32 @@
 ---
 title: FAQ & troubleshooting
-description: Common questions, edge cases, and how to recover from unexpected behavior.
+description: Common questions.
 ---
 
-## Why is nothing selected by default?
+## Is anything deleted without asking?
 
-`purgeit` is designed to be safe. The TUI opens with every match unselected so you can review sizes and paths before deleting anything. Select rows with <kbd>Space</kbd>, then press <kbd>Enter</kbd> to review and confirm. See the [Interactive TUI reference](/tui/) for the full keymap.
+No. The UI needs an explicit selection plus `y`; `clean` asks unless you pass `--yes`; without a terminal it refuses to delete unless you pass `--yes`.
 
-## I ran `purgeit` and nothing was found
+## Why was an artifact skipped?
 
-Common causes:
+`clean` and the UI print the reason: modified within `--min-age`, changed after the scan, protected (nested repo, deploy keypair, git-tracked files), or no longer claimed by a rule.
 
-- The directory is already clean.
-- You are scanning a directory that does not contain projects in its immediate children (use `--full` for flat mode).
-- The artifacts are below `--min-size`.
-- The artifacts are matched by gated rules but the sibling manifest is missing. See the [built-in rules reference](/rules/).
-- The artifacts contain no files — pass `--include-empty` to list them.
-- The artifacts hold authored content (a nested `.git`, a `*-keypair.json`, or git-tracked files) and are protected — see the `protected:` lines on stderr, or `diagnostics` in JSON, and [Safety checks](/cli/#safety-checks).
+## Why is the size smaller than `du`?
 
-Exit code `1` means nothing was found or deletion had failures.
+purgeit reports space that deleting would actually free. Files hardlinked to something outside the artifact (pnpm's content store) are not counted.
 
-## How do I see a preview without deleting anything?
+## Why didn't it find my `build` folder?
 
-Headless mode with `--dry-run` is the safest way to preview:
+`build` is only matched beside a manifest (`package.json`, `Cargo.toml`, …). Run `purgeit rules` to see the proof each gated rule needs, or add your own rule in [the config](/configuration/).
 
-```bash
-purgeit --headless --dry-run ~/dev
-```
+## "N directories could not be read"
 
-For machine-readable output, add `--json`:
+Permission errors and directories that vanish mid-scan are skipped and counted, never hidden.
 
-```bash
-purgeit --json --dry-run ~/dev
-```
+## Can I undo a deletion?
 
-In a TTY, `--dry-run` still opens the TUI, but confirmed deletions are simulated.
+No; artifacts are regenerable, which is why the rules are strict. `purgeit history` lists what was removed.
 
-## Can I use this in CI or a cron job?
+## Windows
 
-Yes. Use `--headless --delete --yes` to delete non-interactively:
-
-```bash
-purgeit --headless --delete --yes --targets node_modules ~/dev
-```
-
-Be cautious with `--yes` — it skips the confirmation prompt entirely.
-
-## Why does `purgeit` use `du` on macOS/Linux?
-
-`du -s -k` is fast and matches the behavior of the original `CLEANUP.sh`. On Windows, where `du` is unavailable, purgeit falls back to a pure-Node.js recursive `stat` walk.
-
-## How do I exclude a project or path?
-
-Use `--exclude <glob>` (repeatable). The glob is matched against the path relative to the scanned root:
-
-```bash
-purgeit --exclude 'legacy/*' --exclude '*.log' ~/dev
-```
-
-## How do I target only `node_modules`?
-
-```bash
-purgeit --targets node_modules
-```
-
-You can also use target groups defined in a config file:
-
-```bash
-purgeit --targets frontend
-```
-
-## `Pods` or `build` are not showing up
-
-These are [gated rules](/rules/#always-safe-vs-gated). They only appear when a sibling manifest file exists in the same directory. For example, `Pods/` is reported only next to a `Podfile`, and `build/` is reported next to a `package.json`, `pyproject.toml`, `CMakeLists.txt`, or several other manifests — expand the relevant section on the [built-in rules page](/rules/) to see every condition.
-
-To disable gated rules entirely, use `--no-gated`.
-
-## Can I customize which directories are cleaned?
-
-Yes. Create a `purgeit.config.ts` in the root you are scanning. See the [configuration guide](/configuration/) for examples.
-
-## Why does the TUI show sizes as `—` for some rows?
-
-Sizes are computed asynchronously after a match is found. Very large directories or directories with permission issues may take a moment to size. If sizing fails, the entry remains visible with an unknown size.
-
-## How do I abort a long scan?
-
-Press <kbd>Ctrl</kbd>+<kbd>C</kbd> in the TUI. In headless mode, send `SIGINT` or provide an `AbortSignal` to the programmatic API.
-
-## Does `purgeit` delete files outside the scanned root?
-
-No. Matches are always directories found under the scanned root, and right before deleting, each path is resolved through symlinks and refused if it now points outside the roots you scanned. The delete engine also refuses to delete the filesystem root or your home directory as a last-line-of-defense guard.
-
-## Why did `--delete` skip an artifact as "modified within the last 1w"?
-
-Headless `--delete` and `apply` keep any artifact with something modified inside it in the last 7 days — it's probably in use. Pass `--min-age <duration>` to change the window, or `--min-age 0` to turn the check off. See [Safety checks](/cli/#safety-checks).
-
-## What did purgeit delete?
-
-`purgeit history` lists every real deletion (and every failed or refused one), newest first; add `--json` for scripts. See [Deletion history](/cli/#deletion-history).
-
-## Where can I report a bug or request a feature?
-
-Open an issue on [GitHub](https://github.com/nandan-varma/purgeit/issues).
+Supported. Space is measured from allocated blocks and no external tools are needed except `git` for the tracked-files check.

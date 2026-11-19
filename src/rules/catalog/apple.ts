@@ -2,19 +2,19 @@ import type { RuleDefinition } from './types.js';
 
 export const appleRules: readonly RuleDefinition[] = [
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: 'DerivedData',
     categories: ['apple'],
     description: 'Xcode derived data',
   },
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: '.build',
     categories: ['apple'],
     description: 'Swift Package Manager build output (`swift build`)',
   },
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: '.swiftpm',
     categories: ['apple'],
     description: "Xcode's local Swift Package Manager cache",

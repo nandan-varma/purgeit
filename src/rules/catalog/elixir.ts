@@ -2,7 +2,7 @@ import type { RuleDefinition } from './types.js';
 
 export const elixirRules: readonly RuleDefinition[] = [
   {
-    kind: 'always-safe',
+    kind: 'safe',
     name: '.elixir_ls',
     categories: ['elixir'],
     description: 'ElixirLS language server cache',

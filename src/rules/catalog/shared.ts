@@ -1,4 +1,4 @@
-import type { GateCondition } from '../../config/schema.js';
+import type { Condition } from '../condition.js';
 import type { RuleDefinition } from './types.js';
 
 /**
@@ -33,7 +33,7 @@ export const sharedRules: readonly RuleDefinition[] = [
       { file: 'build.gradle.kts' },
       { file: 'pubspec.yaml' },
       { file: 'Cargo.toml' },
-    ] satisfies readonly GateCondition[],
+    ] satisfies readonly Condition[],
   },
   {
     kind: 'gated',
@@ -46,6 +46,6 @@ export const sharedRules: readonly RuleDefinition[] = [
       { file: 'go.mod' },
       { file: 'Cargo.toml' },
       { file: 'Gemfile' },
-    ] satisfies readonly GateCondition[],
+    ] satisfies readonly Condition[],
   },
 ];

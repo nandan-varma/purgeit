@@ -1,138 +1,70 @@
 # purgeit
 
-[![npm version](https://img.shields.io/npm/v/purgeit.svg)](https://www.npmjs.com/package/purgeit)
-[![CI](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml/badge.svg)](https://github.com/nandan-varma/purgeit/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-
-Find and delete regenerable dev build artifacts (`node_modules`, `dist`, `target`, `Pods`, ...) across your projects. Interactive TUI by default; explicit scan, plan, and apply commands for CI and agents.
-
-📖 **[Full documentation](https://purgeit.nandan.fyi)** — getting started, CLI reference, configuration, built-in rules, architecture, API reference.
-
-## Quick start
+Find and safely delete regenerable dev build artifacts — `node_modules`, `target`, `dist`, `Pods`, `.next`, `.build` and 60 more — across all your projects.
 
 ```bash
-npx purgeit tui ~/dev
+npx purgeit ~/dev          # browse, select, delete (interactive)
+npx purgeit scan ~/dev     # just list
+npx purgeit clean ~/dev    # delete, with confirmation
 ```
 
-For a non-destructive review outside the TUI:
+- **Safe.** Nothing is selected by default. Every path is re-verified at the moment of deletion: a rule must still claim it, it must resolve inside the scanned folders, hold no git-tracked files, nested repositories or deploy keys, and be untouched for `--min-age` (7 days for `clean`).
+- **Fast.** One traversal measures size, file count and last activity. Hardlinked files (pnpm) only count when deleting them really frees space.
+- **Honest.** Sizes are space that would be freed. Unreadable directories and filtered results are counted, never hidden.
+- **Scriptable.** `scan --format json` gives a report you can review and hand back to `clean --plan`. Stable exit codes.
+- **Extensible.** Rules are data. Add your own in a typed config (`purgeit.config.ts`) validated by a JSON Schema.
+- **A library.** `scan()` and `clean()` are plain async iterators.
+
+Requires Node.js 22+. macOS, Linux and Windows.
+
+## Use
 
 ```bash
-npx purgeit scan ~/dev --format table
+purgeit [dirs…]            # interactive UI
+purgeit scan  [dirs…]      # --format text|json|ndjson
+purgeit clean [dirs…]      # --yes  --dry-run  --plan plan.json
+purgeit rules              # what is matched, and the proof each rule needs
+purgeit history            # what has been deleted
 ```
 
-For an explicit, revalidated deletion workflow:
+Shared flags: `--discover`, `--exclude <glob>`, `--only <rules>`, `--safe-only`, `--min-size 50MB`, `--min-age 7d`, `--depth <n>`, `--include-empty`, `--config <file>`, `--no-config`.
 
 ```bash
-npx purgeit plan ~/dev --include 'my-app/node_modules' --output cleanup-plan.json
-npx purgeit apply --plan cleanup-plan.json
+purgeit scan ~/dev --min-size 100MB
+purgeit clean ~/dev --only node_modules,target --min-age 30d --dry-run
+purgeit scan ~/dev --format json > plan.json   # trim it, then:
+purgeit clean --plan plan.json --yes
 ```
 
-## Features
-
-- **Safe by default** — nothing selected, permanent delete only after explicit multi-select + confirm
-- **Protects authored content** — a match holding its own `.git`, a `*-keypair.json` deploy key, or any git-tracked file is reported as protected and never deleted
-- **Keeps what's in use** — unattended deletes skip anything modified inside in the last 7 days (`--min-age` to change, `0` to disable), resolve every path through symlinks to stay inside the scanned roots, and are recorded (`purgeit history`)
-- **Scan everywhere at once** — several directories per run, or `--discover` for your usual project folders (`~/dev`, `~/Projects`, `~/Code`, AI agent worktrees, ...); never touches `~/Library`, the Trash or `~/Applications`
-- **Interactive TUI** — a sortable table (size/age/type/name/project/path) with live sizes and a color-coded "warmth" age indicator; selection is a full-row color highlight, not just a checkbox
-- **Headless mode** — `--json`/`--delete` flags for scripting and CI
-- **Cache tags** — any directory with a [`CACHEDIR.TAG`](https://bford.info/cachedir/) (Cargo, Go, Zig, ccache, pytest, ...) is matched whatever its name
-- **60+ built-in rules across 16 ecosystems** — JavaScript/TypeScript, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple/Swift, Elixir, Haskell, Elm, Zig, Dart/Flutter, C/C++, Terraform/Terragrunt, not just `node_modules`. Full list: [purgeit.nandan.fyi/rules](https://purgeit.nandan.fyi/rules/)
-- **Configurable rules** — extend, narrow, or replace the defaults with a `purgeit.config.ts`
-- **Two scan modes** — projects mode (groups by top-level dir) or flat mode (`--full`)
-- **Cross-platform** — works on macOS, Linux, and Windows. On macOS/Linux, uses `du` for fast directory sizing; on Windows, falls back to a pure-Node.js walker
-
-## For people, CI, and AI agents
-
-The CLI serves its version-matched operating protocol and JSON Schema directly. This is the
-canonical source of truth for user documentation, automation, and agents:
-
-```bash
-npx purgeit docs              # every documentation page, version-matched
-npx purgeit docs cli          # one page, with links to the site
-npx purgeit agent instructions
-npx purgeit agent schema
-npx purgeit scan ~/dev --format json
-```
-
-## CLI flags
-
-```
-purgeit [scan|tui|plan] [directory...] [options]
-purgeit apply --plan <file> [--yes] [--min-age <duration>]
-purgeit docs [topic] [--json]
-purgeit history [--json] [--limit <n>]
-purgeit skills <list|get> [name] [--full]
-purgeit agent <instructions|schema>
-  -d, --directory <path>     Root directory to scan (default: cwd; or pass several as arguments)
-      --discover             Also scan the usual project folders under your home directory
-      --full                 Flat scan mode
-      --project <name>       Limit to a single project (projects mode only)
-      --exclude <glob>       Exclude paths matching glob (repeatable)
-      --targets <names>      Comma-separated rule names to restrict matching
-      --min-size <size>      Skip matches below this size (e.g. 10MB, 500KB)
-      --min-age <duration>   Skip matches with anything modified inside within this window
-                              (e.g. 7d, 24h); also the --delete/apply recency guard (default 7d, 0 = off)
-      --max-age <duration>   Skip matches older than this age (e.g. 30d)
-      --include-empty        Also list artifacts containing no files (hidden by default)
-      --depth <n>            Max recursion depth
-      --config <path>        Explicit config file
-      --no-config            Ignore config file (defaults only)
-      --no-gated             Disable gated rules (always-safe only)
-      --sort <size|path|name> Sort key (default: size)
-      --asc                  Ascending sort (default: descending)
-      --dry-run              Simulate deletion without touching files. In headless mode this is the default unless --delete is given; in a TTY the TUI still opens and confirmed deletions are simulated.
-      --delete               Actually delete matched artifacts
-  -y, --yes                  Skip confirmation prompt (headless --delete only)
-      --json                 Machine-readable JSON output
-      --tui                  Force interactive TUI
-      --headless             Force non-interactive mode
-      --concurrency <n>      Max concurrent operations (default: 8)
-      --color / --no-color   Force ANSI color
-  -h, --help                 Show help
-  -V, --version              Print version
-```
-
-Exit codes: 0 success, 1 nothing found / deletion had failures, 2 usage or environment error.
-
-## Configuration
-
-Create a `purgeit.config.ts` (or `.js`, `.json`, `.mjs`, `.cjs`) in your project root:
+## Configure
 
 ```ts
-export default {
-  extends: 'merge', // 'merge' (default) or 'replace'
-  skipDirs: ['tmp', '_tmp_clone'],
-  alwaysSafeRemove: ['coverage'],
-  gated: [
-    { name: 'generated', when: { file: 'codegen.json' } },
-  ],
-  targets: {
-    frontend: ['node_modules', '.next', 'dist'],
-  },
-};
+// purgeit.config.ts
+import { defineConfig } from 'purgeit';
+
+export default defineConfig({
+  safe: ['.my-cache'],
+  gated: [{ name: 'out', when: { file: 'project.toml' } }],
+  exclude: ['legacy/**'],
+  minAge: '14d',
+});
 ```
 
-Config is resolved via [cosmiconfig](https://github.com/cosmiconfig/cosmiconfig) — searches from cwd upward. Use `--config <path>` to specify explicitly, or `--no-config` for defaults only.
+## Library
 
-`.js`/`.ts`/`.cjs`/`.mjs` config files are executed as code (same trust model as ESLint/Jest configs) — only run purgeit somewhere you trust the config files that could be found by that upward search.
+```ts
+import { createRuleSet, scanAll, clean } from 'purgeit';
 
-## Platform notes
+const rules = createRuleSet();
+const { entries } = await scanAll(['/Users/me/dev'], { rules });
+```
 
-- **macOS / Linux** — directory sizes are computed via `du -s -k`, which is fast and matches the behavior of the original CLEANUP.sh script.
-- **Windows** — `du` is not available, so sizing uses a pure-Node.js recursive `stat` walk. This is correct but slower for very large trees. The TUI works best in [Windows Terminal](https://aka.ms/terminal); legacy `cmd.exe` may have limited Unicode box-drawing support.
-- **WSL** — full Unix environment, behaves identically to Linux.
+Documentation: <https://purgeit.nandan.fyi>
 
-## Development
+## Develop
 
 ```bash
-npm install
-npm test              # vitest run
-npm run coverage      # 100% threshold (excludes src/ui/)
-npm run typecheck     # tsc --noEmit
-npm run lint:fix      # biome check --write src/
-npm run build         # tsup → dist/
+npm ci && npm run typecheck && npm run lint && npm test && npm run build
 ```
-
-## License
 
 MIT

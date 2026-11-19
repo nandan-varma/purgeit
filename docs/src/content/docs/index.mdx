@@ -1,9 +1,9 @@
 ---
 title: purgeit
-description: Find and delete regenerable dev build artifacts across your projects.
+description: Find and safely delete regenerable dev build artifacts across your projects.
 template: splash
 hero:
-  tagline: Reclaim disk space from node_modules, dist, target, Pods, and more. Interactive TUI by default, scriptable via flags for CI/cron.
+  tagline: Reclaim disk space from node_modules, target, dist, Pods and more — fast, with safety checks that run again at the moment of deletion.
   image:
     file: ../../assets/logo.svg
   actions:
@@ -22,41 +22,29 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Features
-
 <CardGrid stagger>
-  <Card title="Safe by default" icon="approve-check">
-    Nothing is selected. Permanent deletion requires explicit multi-select + confirmation.
+  <Card title="Safe by design" icon="approve-check">
+    Nothing is selected by default, nothing is deleted without confirmation, and every path is re-verified against the rules, git, and recent activity right before it is removed.
   </Card>
-  <Card title="Interactive TUI" icon="screen">
-    Sortable table with live sizes, full-row highlight selection, and keyboard-driven workflow.
+  <Card title="Fast" icon="rocket">
+    One traversal gives size, file count and last activity. Hardlinked files (pnpm) are counted only when deleting them really frees space.
   </Card>
-  <Card title="Headless mode" icon="document">
-    `--json` and `--delete` flags for scripting, CI, and cron jobs.
+  <Card title="Interactive UI" icon="screen">
+    A full-screen terminal UI that fills in as measurements arrive: sort, filter, select, confirm.
   </Card>
-  <Card title="Cloud cleanup" icon="cloud-download">
-    Find and delete forgotten AWS/GCP dev environments — tagged CloudFormation stacks, labeled Compute Engine/GKE resources — [see how](/cloud/).
+  <Card title="Scriptable" icon="document">
+    `scan --format json` produces a report you can review and feed back to `clean --plan`. Stable exit codes.
   </Card>
-  <Card title="60+ rules, 16 ecosystems" icon="setting">
-    JS/TS, Python, Rust, Go, PHP, Ruby, Java/JVM, .NET, Apple, and more — [see them all](/rules/), or extend with a `purgeit.config.ts`.
+  <Card title="65 rules, 16 ecosystems" icon="setting">
+    JS/TS, Python, Rust, Go, Apple, JVM, .NET and more — extend them with a typed, JSON-Schema-validated config.
   </Card>
-  <Card title="Two scan modes" icon="list-format">
-    Projects mode groups by top-level directory; flat mode (`--full`) scans everything as one unit.
-  </Card>
-  <Card title="Cross-platform" icon="rocket">
-    macOS, Linux, and Windows. Uses `du` on Unix; pure-Node fallback on Windows.
+  <Card title="A library too" icon="puzzle">
+    `scan`, `clean`, and the rule engine are plain async-iterator APIs with no UI dependency.
   </Card>
 </CardGrid>
 
-## Install in one command
-
 ```bash
-# Run without installing
-npx purgeit ~/dev
-
-# Or install globally
-npm install -g purgeit
-purgeit ~/dev
+npx purgeit ~/dev          # browse and select
+npx purgeit scan ~/dev     # just list
+npx purgeit clean ~/dev    # delete, with confirmation
 ```
-
-No config required. Start with the [Interactive TUI reference](/tui/) for the default terminal experience, or the [CLI reference](/cli/) for `--json`, `--delete`, `--dry-run`, and every other flag.

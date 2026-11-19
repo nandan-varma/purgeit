@@ -1,68 +1,75 @@
-/**
- * Shared confirm -> stream delete events -> tally control flow, used by
- * both the local (headless.ts) and cloud (headless-cloud.ts) non-interactive
- * paths. This duplication existed once in headless.ts before the cloud path
- * existed; a second real caller is what justifies extracting it now — see
- * DeleteEvent (scan/deleter.ts, keyed by `path`) and CloudDeleteEvent
- * (providers/types.ts, keyed by `id`), which this normalizes to a common
- * `key` field rather than forcing the two domain types themselves together.
- */
+import { z } from 'zod';
+import { PurgeitError } from '../errors.js';
+import type { Entry, ScanSummary } from '../scan/scan.js';
 
-export interface ReportIO {
-  readonly stdout: (text: string) => void;
-  readonly stderr: (text: string) => void;
-  readonly confirm: (question: string) => Promise<boolean>;
+/** The machine-readable scan, and the plan `purgeit clean --plan` accepts. */
+export interface ScanReport {
+  readonly version: 1;
+  readonly roots: readonly string[];
+  readonly entries: readonly ReportEntry[];
+  readonly summary: ScanSummary;
 }
 
-/** Asks a yes/no question on the real terminal. The default `confirm` for both headless paths. */
-export async function defaultConfirm(question: string): Promise<boolean> {
-  const readline = await import('node:readline/promises');
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+interface ReportEntry {
+  readonly path: string;
+  readonly rule: string;
+  readonly kind: string;
+  readonly categories: readonly string[];
+  readonly evidence: string | null;
+  readonly bytes: number;
+  readonly files: number;
+  readonly lastActive: number;
+  readonly protection: string | null;
+}
+
+export function toReportEntry(entry: Entry): ReportEntry {
+  return {
+    path: entry.path,
+    rule: entry.rule.name,
+    kind: entry.rule.kind,
+    categories: entry.rule.categories,
+    evidence: entry.evidence ?? null,
+    bytes: entry.bytes,
+    files: entry.files,
+    lastActive: entry.lastActive,
+    protection: entry.protection ?? null,
+  };
+}
+
+export function toReport(
+  roots: readonly string[],
+  entries: readonly Entry[],
+  summary: ScanSummary,
+): ScanReport {
+  return { version: 1, roots, entries: entries.map(toReportEntry), summary };
+}
+
+const PlanSchema = z.object({
+  version: z.literal(1),
+  roots: z.array(z.string()).min(1),
+  entries: z.array(
+    z.object({
+      path: z.string(),
+      bytes: z.number().optional(),
+      lastActive: z.number().optional(),
+      protection: z.string().nullable().optional(),
+    }),
+  ),
+});
+
+export type Plan = z.infer<typeof PlanSchema>;
+
+/** Parses a `purgeit scan --format json` report that was reviewed and trimmed into a plan. */
+export function parsePlan(raw: string, source: string): Plan {
+  let json: unknown;
   try {
-    const answer = await rl.question(`${question} [y/N] `);
-    return /^y(es)?$/i.test(answer.trim());
-  } finally {
-    rl.close();
+    json = JSON.parse(raw);
+  } catch (error) {
+    throw new PurgeitError(`${source} is not valid JSON: ${(error as Error).message}`);
   }
-}
-
-export type NormalizedDeleteEvent =
-  | { readonly type: 'deleting'; readonly key: string }
-  | { readonly type: 'deleted'; readonly key: string; readonly dryRun: boolean }
-  | { readonly type: 'error'; readonly key: string; readonly message: string }
-  | { readonly type: 'done'; readonly deleted: number; readonly failed: number };
-
-/**
- * Confirms (unless `yes`) using the caller-supplied question text, then
- * drives `runDelete()` — a thunk, not an already-started generator, so
- * nothing is deleted if the user declines — printing progress and a final
- * tally. Returns the process exit code (1 if any deletion failed).
- */
-export async function confirmAndDelete(
-  io: ReportIO,
-  opts: { readonly confirmQuestion: string; readonly yes: boolean },
-  runDelete: () => AsyncGenerator<NormalizedDeleteEvent>,
-): Promise<number> {
-  if (!opts.yes) {
-    const proceed = await io.confirm(opts.confirmQuestion);
-    if (!proceed) {
-      io.stdout('Aborted.');
-      return 0;
-    }
+  const parsed = PlanSchema.safeParse(json);
+  if (!parsed.success) {
+    throw new PurgeitError(`${source} is not a purgeit plan:\n${z.prettifyError(parsed.error)}`);
   }
-
-  let deletedCount = 0;
-  let failedCount = 0;
-  for await (const event of runDelete()) {
-    if (event.type === 'deleted') {
-      io.stdout(`${event.dryRun ? '(dry-run) ' : ''}deleted: ${event.key}`);
-    } else if (event.type === 'error') {
-      io.stderr(`error: ${event.key}: ${event.message}`);
-    } else if (event.type === 'done') {
-      deletedCount = event.deleted;
-      failedCount = event.failed;
-    }
-  }
-  io.stdout(`${deletedCount} deleted, ${failedCount} failed`);
-  return failedCount > 0 ? 1 : 0;
+  return parsed.data;
 }

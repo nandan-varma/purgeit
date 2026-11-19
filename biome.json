@@ -1,19 +1,18 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.5.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "files": {
     "includes": [
-      "**/src/**/*.ts",
-      "**/src/**/*.tsx",
-      "**/test/**/*.ts",
-      "!**/node_modules",
-      "!**/dist"
+      "src/**",
+      "test/**",
+      "scripts/**",
+      "*.ts",
+      "!dist",
+      "!docs",
+      "!node_modules",
+      "!coverage"
     ]
   },
-  "formatter": {
-    "indentStyle": "space",
-    "indentWidth": 2,
-    "lineWidth": 100
-  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 100 },
   "linter": {
     "rules": {
       "preset": "recommended",
@@ -22,19 +21,9 @@
         "noUnusedVariables": "error",
         "useExhaustiveDependencies": "error"
       },
-      "suspicious": {
-        "noExplicitAny": "warn"
-      },
-      "style": {
-        "noNonNullAssertion": "warn",
-        "useConst": "error"
-      }
+      "style": { "useConst": "error", "noNonNullAssertion": "error" },
+      "suspicious": { "noExplicitAny": "error" }
     }
   },
-  "javascript": {
-    "formatter": {
-      "quoteStyle": "single",
-      "trailingCommas": "all"
-    }
-  }
+  "javascript": { "formatter": { "quoteStyle": "single", "trailingCommas": "all" } }
 }
