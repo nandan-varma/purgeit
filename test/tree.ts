@@ -10,7 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 
 /**
  * A directory tree as data: a string is a file's contents, `null` an empty
@@ -66,4 +66,9 @@ export function hardlink(existing: string, link: string): void {
 /** A file of `bytes` bytes (random so it is never sparse or compressed away). */
 export function blob(bytes: number): string {
   return 'x'.repeat(bytes);
+}
+
+/** `path` relative to `root`, always with forward slashes, so assertions read the same everywhere. */
+export function rel(root: string, path: string): string {
+  return relative(root, path).split(sep).join('/');
 }

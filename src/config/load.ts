@@ -1,5 +1,5 @@
 import { stat } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, normalize } from 'node:path';
 import { z } from 'zod';
 import { PurgeitError } from '../errors.js';
 import { type Config, ConfigSchema } from './schema.js';
@@ -46,8 +46,13 @@ export async function loadConfig(options: LoadConfigOptions): Promise<LoadedConf
   const fromPackage = loaded.layers?.some(
     (layer) => layer.configFile === 'package.json' && Object.keys(layer.config ?? {}).length > 0,
   );
+  // c12 reports forward slashes on Windows; callers compare and print native paths.
   const source =
-    loaded._configFile ?? (fromPackage ? join(options.cwd, 'package.json') : undefined);
+    loaded._configFile === undefined
+      ? fromPackage
+        ? join(options.cwd, 'package.json')
+        : undefined
+      : normalize(loaded._configFile);
   const parsed = ConfigSchema.safeParse(loaded.config ?? {});
   if (!parsed.success) {
     throw new PurgeitError(

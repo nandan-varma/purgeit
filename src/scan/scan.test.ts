@@ -1,7 +1,7 @@
 import { symlinkSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { backdate, blob, buildTree } from '../../test/tree.js';
+import { backdate, blob, buildTree, rel } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
 import { normalizeRoots, scan, scanAll } from './scan.js';
 
@@ -29,7 +29,7 @@ describe('scan', () => {
   it('finds artifacts by rule, with proof, and never enters one', async () => {
     const root = projects();
     const { entries, summary } = await scanAll([root], { rules });
-    const found = entries.map((entry) => entry.path.slice(root.length + 1)).sort();
+    const found = entries.map((entry) => rel(root, entry.path)).sort();
     expect(found).toEqual(['app-a/dist', 'app-a/node_modules', 'cache/thing', 'rust-b/target']);
     expect(summary.entries).toBe(4);
     expect(summary.bytes).toBeGreaterThan(25_000);
@@ -72,8 +72,7 @@ describe('scan', () => {
     const dropped: string[] = [];
     const kept: string[] = [];
     for await (const event of scan([root], { rules, minBytes: 100_000, minAge: 7 * 86_400_000 })) {
-      if (event.type === 'dropped')
-        dropped.push(`${event.path.slice(root.length + 1)}:${event.reason}`);
+      if (event.type === 'dropped') dropped.push(`${rel(root, event.path)}:${event.reason}`);
       if (event.type === 'entry') kept.push(event.entry.path);
     }
     expect(kept).toEqual([]);
@@ -106,9 +105,7 @@ describe('scan', () => {
       l1: { l2: { l3: { node_modules: { x: 'x' } } } },
     });
     const paths = async (options: object) =>
-      (await scanAll([root], { rules, ...options })).entries
-        .map((e) => e.path.slice(root.length + 1))
-        .sort();
+      (await scanAll([root], { rules, ...options })).entries.map((e) => rel(root, e.path)).sort();
 
     expect(await paths({})).toEqual([
       'a/node_modules',
@@ -170,7 +167,8 @@ describe('scan', () => {
 
 describe('normalizeRoots', () => {
   it('drops duplicates and roots nested in another', () => {
-    expect(normalizeRoots(['/a/b', '/a', '/a/', '/ab', '/a/b/c'])).toEqual(['/a', '/ab']);
+    const abs = (...paths: string[]) => paths.map((path) => resolve(path));
+    expect(normalizeRoots(abs('/a/b', '/a', '/a/', '/ab', '/a/b/c'))).toEqual(abs('/a', '/ab'));
   });
 });
 

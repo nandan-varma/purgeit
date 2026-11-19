@@ -92,9 +92,19 @@ describe('scan', () => {
       'target',
     ]);
 
+    // Allocated sizes depend on the filesystem's block size, so derive the threshold from a scan.
+    const all = harness(root);
+    await run(['scan', '--format', 'json'], all.env);
+    const sizes: number[] = JSON.parse(text(all.out)).entries.map(
+      (e: { bytes: number }) => e.bytes,
+    );
+    const largest = Math.max(...sizes);
     const big = harness(root);
-    await run(['scan', '--min-size', '8KB', '--format', 'json'], big.env);
-    expect(JSON.parse(text(big.out)).entries).toHaveLength(1);
+    await run(['scan', '--min-size', String(largest), '--format', 'json'], big.env);
+    expect(JSON.parse(text(big.out)).entries).toHaveLength(
+      sizes.filter((s) => s >= largest).length,
+    );
+    expect(JSON.parse(text(big.out)).entries.length).toBeLessThan(sizes.length);
 
     const fresh = harness(root);
     await run(['scan', '--min-age', '60d', '--format', 'json'], fresh.env);
@@ -239,7 +249,7 @@ describe('clean', () => {
     expect(existsSync(join(root, 'rust/target'))).toBe(false);
     expect(existsSync(join(root, 'app/node_modules'))).toBe(true);
     expect(existsSync(join(root, 'app/src'))).toBe(true);
-    expect(text(h.out)).toMatch(/skipped .*app\/src/);
+    expect(text(h.out)).toMatch(/skipped .*app[\\/]src/);
 
     const bad = join(buildTree({}), 'bad.json');
     writeFileSync(bad, '{"version":2}');

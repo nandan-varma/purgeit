@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTree } from '../../test/tree.js';
+import { buildTree, rel } from '../../test/tree.js';
 import { createRuleSet } from '../rules/rule-set.js';
 import { discoverRoots } from './discover.js';
 
@@ -14,9 +14,7 @@ describe('discoverRoots', () => {
       node_modules: { dep: { 'package.json': '{}' } },
       '.hidden': { app: { 'package.json': '{}' } },
     });
-    const roots = (await discoverRoots(createRuleSet(), { home })).map((root) =>
-      root.slice(home.length + 1),
-    );
+    const roots = (await discoverRoots(createRuleSet(), { home })).map((root) => rel(home, root));
     expect(roots.sort()).toEqual(['.claude/worktrees', 'dev', 'work']);
   });
 
