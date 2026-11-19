@@ -90,20 +90,20 @@ export async function* clean(
         limit(async () => {
           if (signal.aborted) return;
           emit({ type: 'start', path: target.path });
-          const refusal = await inspect(target, {
+          const verdict = await inspect(target, {
             rules: options.rules,
             realRoots,
             idleFor: options.idleFor ?? 0,
             now,
           });
-          if (refusal !== undefined) {
+          if ('refusal' in verdict) {
             totals.refused++;
-            emit({ type: 'refused', path: target.path, refusal });
+            emit({ type: 'refused', path: target.path, refusal: verdict.refusal });
             return;
           }
           const bytes = target.bytes ?? 0;
           try {
-            if (!dryRun) await rm(target.path, { recursive: true, maxRetries: 2 });
+            if (!dryRun) await rm(verdict.real, { recursive: true, maxRetries: 2 });
           } catch (error) {
             const message = errorMessage(error);
             totals.failed++;

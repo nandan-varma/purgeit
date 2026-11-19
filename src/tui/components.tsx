@@ -2,7 +2,7 @@ import { Box, Text, useAnimation } from 'ink';
 
 import { tildify } from '../cli/render.js';
 import { PROTECTION_LABELS } from '../fs/protection.js';
-import { describeWhen } from '../rules/condition.js';
+import { describeWhen } from '../rules/catalog/describe.js';
 import type { Entry } from '../scan/scan.js';
 import { formatAge, formatSize } from '../units.js';
 import {

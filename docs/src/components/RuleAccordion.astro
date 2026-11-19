@@ -4,8 +4,11 @@
 // src/rules/catalog/index.ts), so this table can never drift from what the
 // CLI actually does, unlike a hand-maintained markdown table.
 import { Icon } from '@astrojs/starlight/components';
-import { KIND_LABELS as kindLabel, KIND_ORDER as kindOrder } from '../../../src/rules/catalog/describe.js';
-import { describeWhen } from '../../../src/rules/condition.js';
+import {
+  describeWhen,
+  KIND_LABELS as kindLabel,
+  KIND_ORDER as kindOrder,
+} from '../../../src/rules/catalog/describe.js';
 import { CATEGORY_LABELS, CATEGORY_ORDER, RULE_CATALOG } from '../../../src/rules/catalog/index.js';
 import type { RuleCategory, RuleDefinition } from '../../../src/rules/catalog/types.js';
 

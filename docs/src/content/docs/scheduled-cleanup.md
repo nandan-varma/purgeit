@@ -25,6 +25,6 @@ The plan only *proposes*: each entry is re-checked against the rules, protection
 
 ## cron
 
-```cron
+```text
 0 3 * * 0  /usr/local/bin/purgeit clean ~/dev --min-age 30d --yes >> ~/purgeit.log 2>&1
 ```
