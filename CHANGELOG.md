@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.5.1] - 2026-11-18
+
+### Fixed
+- Piping output (`purgeit scan | head`) no longer crashes with an `EPIPE` stack trace; it stops quietly.
+- `clean` now deletes the *verified real path*, closing a window in which an ancestor swapped for a symlink after the safety check could redirect the delete.
+- `SIGTERM` is handled like `SIGINT` (stops starting new work, exit code 130).
+- The interactive UI no longer reads refs during render or updates after unmount, and ages advance while it is open.
+
+### Changed
+- Smaller and simpler: removed the `ms` dependency and an unused filesystem indirection layer.
+- New documentation site on Fumadocs, with every page also served as Markdown (`.md` or `Accept: text/markdown`), `llms.txt`, a searchable rules browser and generated CLI/config references.
+- Tooling: Bun, oxlint, `tsgo`, knip, React Doctor, publint and attw behind one `bun run check` gate used by CI and releases; releases publish through npm trusted publishing with provenance.
+
 ## [0.5.0] - 2026-11-18 — complete rewrite
 
 Breaking: no compatibility with 0.x flags, config keys or output.
