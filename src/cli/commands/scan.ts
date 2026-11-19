@@ -37,14 +37,14 @@ export async function runScan(
     }
     if (event.type === 'found') {
       found++;
-      if (showProgress) process.stderr.write(`\rscanning… ${found} found`);
+      if (showProgress) env.errRaw(`\rscanning… ${found} found`);
     } else if (event.type === 'entry') {
       entries.push(event.entry);
     } else if (event.type === 'done') {
       summary = event.summary;
     }
   }
-  if (showProgress) process.stderr.write('\r\u001b[K');
+  if (showProgress) env.errRaw('\r\u001b[K');
   if (summary === undefined) return 130;
 
   entries.sort(compareEntries);

@@ -85,39 +85,40 @@ export async function* clean(
       }
     };
 
-    await Promise.all(
-      targets.map((target) =>
-        limit(async () => {
-          if (signal.aborted) return;
-          emit({ type: 'start', path: target.path });
-          const verdict = await inspect(target, {
-            rules: options.rules,
-            realRoots,
-            idleFor: options.idleFor ?? 0,
-            now,
-          });
-          if ('refusal' in verdict) {
-            totals.refused++;
-            emit({ type: 'refused', path: target.path, refusal: verdict.refusal });
-            return;
-          }
-          const bytes = target.bytes ?? 0;
-          try {
-            if (!dryRun) await rm(verdict.real, { recursive: true, maxRetries: 2 });
-          } catch (error) {
-            const message = errorMessage(error);
-            totals.failed++;
-            emit({ type: 'failed', path: target.path, message });
-            await record({ action: 'failed', path: target.path, message });
-            return;
-          }
-          totals.deleted++;
-          totals.bytes += bytes;
-          emit({ type: 'deleted', path: target.path, bytes, dryRun });
-          await record({ action: 'deleted', path: target.path, bytes });
-        }),
-      ),
-    );
+    /** Verifies and deletes one target; a refusal or failure never stops the rest. */
+    const deleteOne = async (target: Target): Promise<void> => {
+      if (signal.aborted) return;
+      emit({ type: 'start', path: target.path });
+      const verdict = await inspect(target, {
+        rules: options.rules,
+        realRoots,
+        idleFor: options.idleFor ?? 0,
+        now,
+      });
+      if ('refusal' in verdict) {
+        totals.refused++;
+        emit({ type: 'refused', path: target.path, refusal: verdict.refusal });
+        return;
+      }
+      // `inspect` may take a while: never begin an `rm` the consumer has aborted since.
+      if (signal.aborted) return;
+      const bytes = target.bytes ?? 0;
+      try {
+        if (!dryRun) await rm(verdict.real, { recursive: true, maxRetries: 2 });
+      } catch (error) {
+        const message = errorMessage(error);
+        totals.failed++;
+        emit({ type: 'failed', path: target.path, message });
+        await record({ action: 'failed', path: target.path, message });
+        return;
+      }
+      totals.deleted++;
+      totals.bytes += bytes;
+      emit({ type: 'deleted', path: target.path, bytes, dryRun });
+      await record({ action: 'deleted', path: target.path, bytes });
+    };
+
+    await Promise.all(targets.map((target) => limit(() => deleteOne(target))));
 
     emit({ type: 'done', summary: { ...totals, dryRun } });
   }, options.signal);

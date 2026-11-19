@@ -7,5 +7,6 @@ coverage/
 # AI agents
 .claude/
 .opencode/
+.pi/
 release/
 *.bun-build

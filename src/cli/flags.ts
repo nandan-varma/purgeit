@@ -35,6 +35,9 @@ const positiveInteger = (value: string): number => {
   return parsed;
 };
 
+/** The `--min-age` default every artifact-deleting command shares. */
+export const DEFAULT_MIN_AGE = '7d';
+
 /** The shared options, in the order `--help` shows them. */
 export function scanOptions(minAgeHint: string): Option[] {
   return [

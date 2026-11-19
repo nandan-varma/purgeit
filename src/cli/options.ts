@@ -86,7 +86,7 @@ export async function resolveScan(
       rules,
       exclude: [...config.exclude, ...flags.exclude],
       minAge,
-      includeEmpty: flags.includeEmpty,
+      includeEmpty: flags.includeEmpty || (config.includeEmpty ?? false),
       dormantFor: flags.stale ? dormantMs : undefined,
       minBytes: minSize === undefined ? undefined : parseSize(minSize),
       depth,

@@ -36,6 +36,15 @@ describe('findProof', () => {
     expect(await findProof(when, dir, names())).toBeUndefined();
   });
 
+  it('reads only the first megabyte of a grep target', async () => {
+    // A match past the cap is not seen, so an oversized file proves nothing.
+    const dir = buildTree({ Makefile: `${'x'.repeat(1 << 20)}\nbuild:\n` });
+    const when = { grep: { file: 'Makefile', pattern: '^build:' } };
+    expect(await findProof(when, dir, names('Makefile'))).toBeUndefined();
+    const small = buildTree({ Makefile: 'x\nbuild:\n' });
+    expect(await findProof(when, small, names('Makefile'))).toEqual(when);
+  });
+
   it('returns the first condition of a list that holds', async () => {
     const when = [{ file: 'a' }, { file: 'b' }];
     expect(await findProof(when, '/x', names('b', 'c'))).toEqual({ file: 'b' });

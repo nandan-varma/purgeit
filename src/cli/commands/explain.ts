@@ -11,6 +11,7 @@ import { findProject, projectName } from '../../scan/project.js';
 import { syncProvider } from '../../scan/sync.js';
 import { formatAgo, formatSize, parseDuration } from '../../units.js';
 import type { CliEnv } from '../env.js';
+import { DEFAULT_MIN_AGE } from '../flags.js';
 import { resolveRules } from '../options.js';
 import { tildify } from '../render.js';
 
@@ -41,7 +42,7 @@ export async function runExplain(path: string, flags: ExplainFlags, env: CliEnv)
     env,
   );
   const now = Date.now();
-  const idleFor = parseDuration(flags.minAge ?? config.minAge ?? '7d');
+  const idleFor = parseDuration(flags.minAge ?? config.minAge ?? DEFAULT_MIN_AGE);
 
   const hit = await matchPath(rules, target);
   const name = basename(target);

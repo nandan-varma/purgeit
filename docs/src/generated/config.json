@@ -270,6 +270,10 @@
       "description": "Only offer artifacts at least this large.",
       "type": "string"
     },
+    "includeEmpty": {
+      "description": "Offer artifacts that contain no files (normally dropped).",
+      "type": "boolean"
+    },
     "dormantAfter": {
       "description": "A project untouched for this long is dormant (default 30d). Drives sorting, the interactive R key and --stale.",
       "type": "string"

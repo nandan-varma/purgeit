@@ -73,6 +73,11 @@ export const CATEGORY_ORDER: readonly RuleCategory[] = [
   'custom',
 ];
 
+/** Is `value` the id of a known category? A guard, so callers never need a cast. */
+export function isCategory(value: string): value is RuleCategory {
+  return CATEGORY_ORDER.some((category) => category === value);
+}
+
 interface BaseRuleDefinition {
   readonly name: string;
   readonly categories: readonly RuleCategory[];

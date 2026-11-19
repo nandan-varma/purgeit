@@ -3,11 +3,12 @@ import { Command, CommanderError, InvalidArgumentError, Option } from 'commander
 import { PurgeitError } from '../errors.js';
 import type { CleanCommandFlags } from './commands/clean.js';
 import type { ExplainFlags } from './commands/explain.js';
+import type { HistoryFlags } from './commands/history.js';
 import type { InitFlags } from './commands/init.js';
 import type { RulesFlags } from './commands/rules.js';
 import type { ScanCommandFlags } from './commands/scan.js';
 import type { CliEnv } from './env.js';
-import { type ScanFlags, scanOptions } from './flags.js';
+import { DEFAULT_MIN_AGE, type ScanFlags, scanOptions } from './flags.js';
 
 declare const __VERSION__: string | undefined;
 
@@ -20,6 +21,8 @@ const withScanOptions = (command: Command, minAgeHint: string): Command => {
 
 const format = (...choices: string[]): Option =>
   new Option('--format <format>', 'output format').choices(choices).default(choices[0]);
+
+const NO_RULES: string[] = [];
 
 export function createProgram(env: CliEnv, setExit: (code: number) => void): Command {
   const program = new Command('purgeit')
@@ -68,7 +71,7 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
     program
       .command('clean [dirs...]')
       .description('delete artifacts, re-verifying each one at the moment of deletion'),
-    'Also the window nothing recently active is deleted within. Default: 7d.',
+    `Also the window nothing recently active is deleted within. Default: ${DEFAULT_MIN_AGE}.`,
   )
     .option('--plan <file>', 'delete exactly what a reviewed `scan --format json` report lists')
     .option('-y, --yes', 'do not ask for confirmation', false)
@@ -83,7 +86,10 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
     .description(
       'explain why a directory is (or is not) matched, protected, and what clean would do',
     )
-    .option('--min-age <duration>', 'the recent-activity window to judge against (default 7d)')
+    .option(
+      '--min-age <duration>',
+      `the recent-activity window to judge against (default ${DEFAULT_MIN_AGE})`,
+    )
     .option('--config <file>', 'use this config file')
     .option('--no-config', 'ignore any config file')
     .addOption(format('text', 'json'))
@@ -116,7 +122,7 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
       '--only <rules>',
       'only these rules',
       (value: string, prev: string[]) => [...prev, ...value.split(',')],
-      [] as string[],
+      NO_RULES,
     )
     .option('--safe-only', 'only rules that need no proof', false)
     .option('--config <file>', 'use this config file')
@@ -141,7 +147,7 @@ export function createProgram(env: CliEnv, setExit: (code: number) => void): Com
       20,
     )
     .addOption(format('text', 'json'))
-    .action(async (flags: { limit: number; format: 'text' | 'json' }) => {
+    .action(async (flags: HistoryFlags) => {
       setExit(await (await import('./commands/history.js')).runHistory(flags, env));
     });
 

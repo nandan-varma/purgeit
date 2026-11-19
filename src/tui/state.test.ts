@@ -143,6 +143,20 @@ describe('listing', () => {
     expect(press(shown, 'm').showSmall).toBe(false);
   });
 
+  it('counts hidden small artifacts only when the filter would have shown them', () => {
+    let state = press(
+      add(
+        initialState({ now: NOW, floor: 10 * MB }),
+        entry('/r/old/tiny', 1 * MB, OLD),
+        entry('/r/busy/tiny', 2 * MB, BUSY),
+      ),
+      '/',
+    );
+    for (const letter of 'old') state = press(state, letter);
+    expect(state.filter).toBe('old');
+    expect(listingOf(state).hidden).toEqual({ count: 1, bytes: MB });
+  });
+
   it('filters by project, path or rule, live', () => {
     let state = press(fixture(), '/');
     for (const letter of 'mid') state = press(state, letter);

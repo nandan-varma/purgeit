@@ -16,7 +16,7 @@ import {
   Help,
   List,
 } from './components.js';
-import { cursorRow, initialState, listingOf, reducer, rowIndex } from './state.js';
+import { initialState, listingOf, reclaimable, reducer, rowIndex } from './state.js';
 
 export interface AppProps {
   readonly roots: readonly string[];
@@ -99,6 +99,7 @@ export function App(props: AppProps) {
   }, [targets, rules, roots, idleFor, historyFile]);
 
   const listing = useMemo(() => listingOf(state), [state]);
+  const stats = useMemo(() => reclaimable(state), [state]);
   const index = rowIndex(listing.rows, state.cursor);
   const height = Math.max(3, rows - CHROME_ROWS);
 
@@ -153,7 +154,7 @@ export function App(props: AppProps) {
   } else {
     body = (
       <>
-        <ColumnHeadings state={state} layout={layout} />
+        <ColumnHeadings view={listing.view} layout={layout} />
         <List
           rows={listing.rows}
           cursorIndex={index}
@@ -171,10 +172,10 @@ export function App(props: AppProps) {
 
   return (
     <Box flexDirection="column" width={columns} height={rows}>
-      <Header state={state} roots={roots} home={home} />
+      <Header state={state} listing={listing} stats={stats} roots={roots} home={home} />
       {body}
       <Text dimColor>{'─'.repeat(Math.max(0, columns))}</Text>
-      <Detail row={browsing ? cursorRow(state) : undefined} now={state.now} home={home} />
+      <Detail row={browsing ? listing.rows[index] : undefined} now={state.now} home={home} />
       {state.phase === 'filter' ? <FilterBar state={state} /> : <Footer state={state} />}
     </Box>
   );

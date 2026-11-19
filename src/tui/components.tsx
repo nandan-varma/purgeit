@@ -8,8 +8,9 @@ import { describeWhen } from '../rules/catalog/describe.js';
 import { activityOf, groupProjects, type ProjectGroup } from '../scan/projects.js';
 import type { Entry } from '../scan/scan.js';
 import { formatAge, formatAgo, formatSize } from '../units.js';
-import { type Row, SORT_LABELS } from './rows.js';
-import { listingOf, reclaimable, selectedEntries, selectionTotals, type State } from './state.js';
+import { type Listing, type Row, SORT_LABELS } from './rows.js';
+import { selectedEntries, selectionTotals, type State } from './state.js';
+import type { reclaimable } from './state.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const FRAMES = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
@@ -29,15 +30,16 @@ const plural = (n: number, noun: string): string => `${n} ${noun}${n === 1 ? '' 
 
 interface HeaderProps {
   readonly state: State;
+  /** Computed once per render by `App` and shared by every chrome component. */
+  readonly listing: Listing;
+  readonly stats: ReturnType<typeof reclaimable>;
   readonly roots: readonly string[];
   readonly home: string | undefined;
 }
 
-export function Header({ state, roots, home }: HeaderProps) {
+export function Header({ state, listing, stats, roots, home }: HeaderProps) {
   const scanning = state.summary === undefined;
   const totals = selectionTotals(state);
-  const stats = reclaimable(state);
-  const listing = listingOf(state);
   const where = roots.length === 1 ? tildify(roots[0] ?? '', home) : `${roots.length} folders`;
   return (
     <Box flexDirection="column" flexShrink={0}>
@@ -117,8 +119,8 @@ const ecosystems = (group: ProjectGroup): string =>
     .map((id) => ECOSYSTEM_SHORT[id] ?? id)
     .join(' · ');
 
-export function ColumnHeadings({ state, layout }: { state: State; layout: Layout }) {
-  const projects = listingOf(state).view === 'projects';
+export function ColumnHeadings({ view, layout }: { view: Listing['view']; layout: Layout }) {
+  const projects = view === 'projects';
   return (
     <Box flexShrink={0}>
       <Box width={7} flexShrink={0} />

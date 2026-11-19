@@ -94,11 +94,13 @@ Requires `--yes` or `--dry-run`.
   "deleted": [{ "path": "…", "bytes": 979600000 }],
   "refused": [{ "path": "…", "code": "recently-active", "message": "modified within the last 7 days" }],
   "failed": [{ "path": "…", "message": "EBUSY: resource busy or locked" }],
-  "summary": { "deleted": 1, "refused": 1, "failed": 0, "bytes": 979600000, "dryRun": false }
+  "summary": { "deleted": 1, "refused": 1, "failed": 0, "bytes": 979600000, "dryRun": false },
+  "interrupted": false,
+  "left": 0
 }
 ```
 
-`refused[].code` is one of `dangerous`, `missing`, `outside-roots`, `no-longer-matches`, `protected`, `recently-active`, `changed-since-scan`, `unverifiable`. When there is nothing to clean the output is `{"deleted":[],"refused":[],"failed":[]}`.
+`refused[].code` is one of `dangerous`, `missing`, `outside-roots`, `no-longer-matches`, `protected`, `recently-active`, `changed-since-scan`, `unverifiable`. When there is nothing to clean the output is `{"deleted":[],"refused":[],"failed":[]}`. `interrupted` is `true` (exit code 130) when a Ctrl+C stopped the run early; `left` counts the targets it never reached.
 
 ## `history --format json`
 

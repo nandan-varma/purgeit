@@ -22,6 +22,7 @@ function harness(cwd: string, overrides: Partial<CliEnv> & { answer?: boolean } 
   const env: CliEnv = {
     out: (text) => out.push(text),
     err: (text) => err.push(text),
+    errRaw: (text) => err.push(text.trimEnd()),
     cwd,
     interactive: false,
     confirm: async (question) => {
@@ -144,6 +145,19 @@ describe('scan', () => {
         .entries.map((e: { rule: string }) => e.rule)
         .toSorted(),
     ).toEqual(['dist', 'node_modules']);
+  });
+
+  it('keeps empty artifacts when the config says includeEmpty', async () => {
+    const root = buildTree({ p: { 'package.json': '{}', node_modules: null } });
+    backdate(root);
+    writeFileSync(join(root, 'purgeit.config.json'), '{"includeEmpty":true}');
+    const withConfig = harness(root);
+    await run(['scan', '--format', 'json'], withConfig.env);
+    expect(JSON.parse(text(withConfig.out)).summary.entries).toBe(1);
+
+    const without = harness(root);
+    await run(['scan', '--no-config', '--format', 'json'], without.env);
+    expect(JSON.parse(text(without.out)).summary.entries).toBe(0);
   });
 
   it('reads purgeit.config from the working directory unless told not to', async () => {
@@ -285,6 +299,25 @@ describe('clean', () => {
       await run(['clean', '--plan', join(root, 'none.json'), '--yes'], harness(root).env),
     ).toBe(2);
     expect(await run(['clean', '--plan', file, root, '--yes'], harness(root).env)).toBe(2);
+  });
+
+  it('reports an interrupted run instead of a completed one', async () => {
+    const root = workspace();
+    const file = join(buildTree({}), 'plan.json');
+    writeFileSync(
+      file,
+      JSON.stringify({
+        version: 1,
+        roots: [root],
+        entries: [{ path: join(root, 'rust/target'), bytes: 10, lastActive: 0 }],
+      }),
+    );
+    const controller = new AbortController();
+    controller.abort();
+    const h = harness(root, { signal: controller.signal });
+    expect(await run(['clean', '--plan', file, '--yes', '--format', 'json'], h.env)).toBe(130);
+    expect(JSON.parse(text(h.out))).toMatchObject({ interrupted: true, left: 1 });
+    expect(JSON.parse(text(h.out)).deleted).toEqual([]);
   });
 });
 

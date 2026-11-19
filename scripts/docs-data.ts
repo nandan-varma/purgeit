@@ -26,6 +26,7 @@ export function buildDocsData(): Record<string, string> {
     {
       out: quiet,
       err: quiet,
+      errRaw: quiet,
       cwd: process.cwd(),
       interactive: false,
       confirm: async () => false,

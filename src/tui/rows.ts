@@ -67,9 +67,12 @@ const matches = (entry: Entry, needle: string): boolean =>
   entry.rule.name.toLowerCase().includes(needle) ||
   entry.project.group.toLowerCase().includes(needle);
 
+/** The filter needle, lowered; empty when the list is not filtered. */
+const needleOf = (state: ListState): string => state.filter.trim().toLowerCase();
+
 /** Entries that survive the filter and the size floor. */
 export function listedEntries(state: ListState): Entry[] {
-  const needle = state.filter.trim().toLowerCase();
+  const needle = needleOf(state);
   return state.entries.filter(
     (entry) =>
       (state.showSmall || entry.bytes >= state.floor) && (needle === '' || matches(entry, needle)),
@@ -102,18 +105,23 @@ function selectionOf(group: ProjectGroup, selected: ReadonlySet<string>): 'all' 
   return chosen === 0 ? 'none' : chosen === deletable.length ? 'all' : 'some';
 }
 
+/** Small artifacts the floor holds back — counted only when the filter would have shown them. */
+function hiddenByFloor(state: ListState): { count: number; bytes: number } {
+  if (state.showSmall) return { count: 0, bytes: 0 };
+  const needle = needleOf(state);
+  const held = state.entries.filter(
+    (entry) => entry.bytes < state.floor && (needle === '' || matches(entry, needle)),
+  );
+  return { count: held.length, bytes: held.reduce((sum, entry) => sum + entry.bytes, 0) };
+}
+
 /**
  * Builds what the list shows. Projects are the default unit; with a single
  * project there is nothing to group, so its artifacts are listed directly.
  */
 export function buildListing(state: ListState, now: number): Listing {
-  const all = state.entries;
   const shown = listedEntries(state);
-  const hiddenEntries = state.showSmall ? [] : all.filter((entry) => entry.bytes < state.floor);
-  const hidden = {
-    count: hiddenEntries.length,
-    bytes: hiddenEntries.reduce((sum, entry) => sum + entry.bytes, 0),
-  };
+  const hidden = hiddenByFloor(state);
 
   const compare = groupComparator(state, now);
   const direction = state.reversed ? -1 : 1;

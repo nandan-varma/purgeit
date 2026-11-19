@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises';
+import { access, open } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import picomatch from 'picomatch';
@@ -48,6 +48,24 @@ function globMatcher(glob: string): (name: string) => boolean {
   return matcher;
 }
 
+/** Proof files are small in practice; never drag a runaway multi-gigabyte one into memory. */
+const GREP_LIMIT = 1 << 20;
+
+/** True if the first `GREP_LIMIT` bytes of `dir/file` match `pattern`. */
+async function grepFile(dir: string, file: string, pattern: string): Promise<boolean> {
+  let handle: Awaited<ReturnType<typeof open>> | undefined;
+  try {
+    handle = await open(join(dir, file), 'r');
+    const buffer = Buffer.alloc(GREP_LIMIT);
+    const { bytesRead } = await handle.read(buffer, 0, GREP_LIMIT, 0);
+    return new RegExp(pattern, 'm').test(buffer.subarray(0, bytesRead).toString('utf8'));
+  } catch {
+    return false;
+  } finally {
+    await handle?.close();
+  }
+}
+
 async function holds(
   condition: Condition,
   dir: string,
@@ -71,12 +89,7 @@ async function holds(
   }
   const { file, pattern } = condition.grep;
   if (!names.has(file)) return false;
-  try {
-    return new RegExp(pattern, 'm').test(await readFile(join(dir, file), 'utf8'));
-  } catch {
-    // A condition is proof: a file that cannot be read proves nothing.
-    return false;
-  }
+  return grepFile(dir, file, pattern);
 }
 
 /**

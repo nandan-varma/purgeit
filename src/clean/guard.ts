@@ -86,6 +86,9 @@ export async function inspect(
     if (!lstats.isDirectory() || (await matchPath(context.rules, path)) === undefined) {
       return refuse('no-longer-matches', 'is no longer claimed by any rule');
     }
+    // Matching `path` (not `real`) is sound: a symlinked target is refused above by
+    // lstat, and a symlinked ancestor of `path` resolves to the same real parent,
+    // so the listing `matchPath` reads is the directory `real` lives in.
 
     const protection = await findProtection(path);
     if (protection !== undefined) return refuse('protected', PROTECTION_LABELS[protection]);

@@ -2,12 +2,12 @@ import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { styleText } from 'node:util';
 
-import { clean, type Target } from '../../clean/clean.js';
+import { clean, type CleanSummary, type Target } from '../../clean/clean.js';
 import { PurgeitError } from '../../errors.js';
 import { scanAll } from '../../scan/scan.js';
 import { formatSize, parseDuration } from '../../units.js';
 import type { CliEnv } from '../env.js';
-import type { ScanFlags } from '../flags.js';
+import { DEFAULT_MIN_AGE, type ScanFlags } from '../flags.js';
 import { resolveRules, resolveScan } from '../options.js';
 import { tildify } from '../render.js';
 import { parsePlan } from '../report.js';
@@ -19,12 +19,55 @@ export interface CleanCommandFlags extends ScanFlags {
   format: 'text' | 'json';
 }
 
-const DEFAULT_MIN_AGE = '7d';
-
 const plural = (count: number, noun: string): string => `${count} ${noun}${count === 1 ? '' : 's'}`;
 
-/**
- * Finds artifacts (or reads a reviewed plan) and deletes them. Every path is
+/** What a clean run produced, in the shapes both output formats need. */
+interface CleanOutcome {
+  readonly deleted: { path: string; bytes: number }[];
+  readonly refused: { path: string; code: string; message: string }[];
+  readonly failed: { path: string; message: string }[];
+  readonly summary: CleanSummary;
+  /** A Ctrl+C mid-run skips the rest: never present that as a completed clean. */
+  readonly interrupted: boolean;
+  /** Targets no event accounted for — skipped because the run was interrupted. */
+  readonly left: number;
+}
+
+/** Prints the outcome in the requested format and returns the exit code. */
+function reportRun(flags: CleanCommandFlags, env: CliEnv, outcome: CleanOutcome): number {
+  const { summary, interrupted, left } = outcome;
+  if (flags.format === 'text') {
+    const head = flags.dryRun
+      ? `Dry run: would delete ${plural(summary.deleted, 'artifact')}, freeing ${formatSize(summary.bytes)}`
+      : `Deleted ${plural(summary.deleted, 'artifact')}, freed ${formatSize(summary.bytes)}`;
+    const rest = [
+      summary.refused > 0 ? `${summary.refused} skipped` : '',
+      summary.failed > 0 ? `${summary.failed} failed` : '',
+    ].filter(Boolean);
+    env.out(rest.length === 0 ? head : `${head} (${rest.join(', ')})`);
+    if (interrupted && left > 0) {
+      env.out(styleText('yellow', `Interrupted — ${plural(left, 'artifact')} left unprocessed.`));
+    }
+  } else {
+    env.out(
+      JSON.stringify(
+        {
+          dryRun: flags.dryRun,
+          ...outcome,
+          summary,
+          interrupted,
+          left,
+        },
+        null,
+        2,
+      ),
+    );
+  }
+  if (interrupted) return 130;
+  return summary.refused > 0 || summary.failed > 0 ? 1 : 0;
+}
+
+/** Finds artifacts (or reads a reviewed plan) and deletes them. Every path is
  * re-verified at the moment of deletion, and anything touched within
  * `--min-age` (7 days unless configured) is left alone.
  */
@@ -111,7 +154,7 @@ export async function runClean(
   const deleted: { path: string; bytes: number }[] = [];
   const refused: { path: string; code: string; message: string }[] = [];
   const failed: { path: string; message: string }[] = [];
-  let summary: { deleted: number; refused: number; failed: number; bytes: number } | undefined;
+  let summary: CleanSummary | undefined;
 
   for await (const event of clean(targets, {
     rules,
@@ -141,18 +184,12 @@ export async function runClean(
     }
   }
   if (summary === undefined) return 130;
-
-  if (text) {
-    const head = flags.dryRun
-      ? `Dry run: would delete ${plural(summary.deleted, 'artifact')}, freeing ${formatSize(summary.bytes)}`
-      : `Deleted ${plural(summary.deleted, 'artifact')}, freed ${formatSize(summary.bytes)}`;
-    const rest = [
-      summary.refused > 0 ? `${summary.refused} skipped` : '',
-      summary.failed > 0 ? `${summary.failed} failed` : '',
-    ].filter(Boolean);
-    env.out(rest.length === 0 ? head : `${head} (${rest.join(', ')})`);
-  } else {
-    env.out(JSON.stringify({ dryRun: flags.dryRun, deleted, refused, failed, summary }, null, 2));
-  }
-  return summary.refused > 0 || summary.failed > 0 ? 1 : 0;
+  return reportRun(flags, env, {
+    deleted,
+    refused,
+    failed,
+    summary,
+    interrupted: env.signal?.aborted === true,
+    left: targets.length - summary.deleted - summary.refused - summary.failed,
+  });
 }

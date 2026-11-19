@@ -51,6 +51,10 @@ export const ConfigSchema = z
       .describe('Named sets of rules, selectable with `--only <group>`.'),
     minAge: duration.optional().describe('Only offer artifacts untouched for at least this long.'),
     minSize: size.optional().describe('Only offer artifacts at least this large.'),
+    includeEmpty: z
+      .boolean()
+      .optional()
+      .describe('Offer artifacts that contain no files (normally dropped).'),
     dormantAfter: duration
       .optional()
       .describe(

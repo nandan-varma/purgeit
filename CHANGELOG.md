@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Ctrl+C at the `clean` confirmation prompt no longer hangs; the process exits 130 immediately. Aborting a run no longer starts new deletions between the safety check and the `rm`, and an interrupted run says so (`Interrupted — N artifacts left unprocessed.`, exit 130) instead of printing a complete-looking summary; `--format json` reports `interrupted` and `left`.
+- Closing stderr early (`purgeit clean … 2> >(head)`) no longer crashes with an exit-70 stack trace; both pipes now stop quietly.
+- The UI's "N small artifacts hidden" count now respects the active filter instead of counting small artifacts from projects the filter excluded.
+- A `grep` rule condition reads at most the first megabyte of its proof file, so a runaway multi-gigabyte sibling can no longer drag the whole file into memory.
+
+### Changed
+- The UI computes its listing once per render instead of four to five times, keeping scans of thousands of artifacts responsive.
+- Config parity: `includeEmpty` can now be set in `purgeit.config.*` like its flag `--include-empty`.
+- Internal: shared `DEFAULT_MIN_AGE`, an `isCategory` guard and cast-free target checks (the codebase bans type assertions), scan progress writes go through the CLI environment, and `bun scripts/binaries.ts` uses `fileURLToPath` so it works from Windows hosts too.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added
